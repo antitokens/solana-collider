@@ -1,5 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
+use solana_program::program_pack::{IsInitialized, Pack, Sealed};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct CollisionState {

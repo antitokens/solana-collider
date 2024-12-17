@@ -1,9 +1,14 @@
 use thiserror::Error;
+use solana_program::program_error::ProgramError;
 
-#[derive(Error, Debug, Copy, Clone)]
+#[derive(Error, Debug)]
 pub enum CollisionError {
     #[error("Both ANTI and PRO tokens cannot be zero")]
     BothTokensZero,
-    #[error("Invalid calculation result")]
-    InvalidCalculation,
+}
+
+impl From<CollisionError> for ProgramError {
+    fn from(e: CollisionError) -> Self {
+        ProgramError::Custom(1)
+    }
 }
