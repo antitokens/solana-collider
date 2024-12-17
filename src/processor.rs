@@ -10,7 +10,7 @@ use solana_program::{
     system_instruction,
     sysvar::Sysvar,
 };
-use spl_token::instruction as token_instruction;
+use spl_token_2022::instruction as token_instruction;
 
 pub struct Processor;
 

@@ -3834,13 +3834,13 @@ dependencies = [
 
 [[package]]
 name = "solana-collider"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "borsh 0.10.4",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token",
+ "spl-token-2022",
  "thiserror",
  "tokio",
 ]

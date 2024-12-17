@@ -10,7 +10,7 @@ use solana_sdk::{
     system_program,
     hash::Hash,
 };
-use spl_token::{
+use spl_token_2022::{
     instruction as token_instruction,
     state::{Account as TokenAccount, Mint},
 };
@@ -54,12 +54,12 @@ impl TestContext {
             &mint_keypair.pubkey(),
             mint_rent,
             Mint::LEN as u64,
-            &spl_token::id(),
+            &spl_token_2022::id(),
         );
 
         // Initialise mint
         let init_mint_ix = token_instruction::initialise_mint(
-            &spl_token::id(),
+            &spl_token_2022::id(),
             &mint_keypair.pubkey(),
             &self.payer.pubkey(),
             Some(&self.payer.pubkey()),
@@ -95,12 +95,12 @@ impl TestContext {
             &account_keypair.pubkey(),
             account_rent,
             TokenAccount::LEN as u64,
-            &spl_token::id(),
+            &spl_token_2022::id(),
         );
 
         // Initialise token account
         let init_account_ix = token_instruction::initialise_account(
-            &spl_token::id(),
+            &spl_token_2022::id(),
             &account_keypair.pubkey(),
             mint,
             owner,
@@ -125,7 +125,7 @@ impl TestContext {
         amount: u64,
     ) -> Result<(), BanksClientError> {
         let mint_ix = token_instruction::mint_to(
-            &spl_token::id(),
+            &spl_token_2022::id(),
             mint,
             account,
             &self.payer.pubkey(),
