@@ -1,0 +1,18 @@
+[package]
+name = "solana-collider"
+version = "0.1.0"
+edition = "2021"
+description = "Collider contract for Solana"
+
+[features]
+no-entrypoint = []
+
+[dependencies]
+solana-program = "1.17"
+thiserror = "1.0"
+spl-token = { version = "4.0", features = ["no-entrypoint"] }
+borsh = "0.10"
+num-traits = "0.2"
+
+[lib]
+crate-type = ["cdylib", "lib"]
