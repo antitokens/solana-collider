@@ -2,16 +2,17 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
     entrypoint::ProgramResult,
-    msg,
-    program::{invoke, invoke_signed},
+    //msg,
+    //program::{invoke, invoke_signed},
+    program::{invoke_signed},
     program_error::ProgramError,
     pubkey::Pubkey,
-    system_instruction,
+    //system_instruction,
     program_pack::Pack,
 };
 use spl_token::instruction as token_instruction;
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::f64::consts::PI;
+//use std::f64::consts::PI;
 
 // Declare the program ID
 #[cfg(test)]
@@ -40,7 +41,7 @@ pub enum CollisionError {
 }
 
 impl From<CollisionError> for ProgramError {
-    fn from(e: CollisionError) -> Self {
+    fn from(_e: CollisionError) -> Self {
         ProgramError::Custom(1)
     }
 }
@@ -51,7 +52,7 @@ entrypoint!(process_instruction);
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    instruction_data: &[u8],
+    _instruction_data: &[u8],
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
@@ -60,7 +61,7 @@ pub fn process_instruction(
     let baryon_mint = next_account_info(accounts_iter)?;
     let photon_mint = next_account_info(accounts_iter)?;
     let payer = next_account_info(accounts_iter)?;
-    let system_program = next_account_info(accounts_iter)?;
+    let _system_program = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
 
     // Parse amounts from token accounts
