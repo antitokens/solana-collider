@@ -18,6 +18,7 @@ node_modules
 **/.DS_Store
 
 # Rust
+/test-ledger
 /target
 **/*.rs.bk
 .anchor
