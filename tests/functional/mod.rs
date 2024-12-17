@@ -1,7 +1,17 @@
+
+//! Program Author: sshmatrix, for Antitoken
+//! Program Description: Collider's custom tests
+//! Version: 0.0.1
+//! License: MIT
+//! Created: 17 Dec 2024
+//! Last Modified: 17 Dec 2024
+//! Repository: https://github.com/antitokens/solana-collider
+//! Contact: dev@antitoken.pro
+
 impl TestContext {
     // Add these methods to the existing impl block
 
-    pub async fn initialize_collider(
+    pub async fn initialise_collider(
         &mut self,
         baryon_mint: &Pubkey,
         photon_mint: &Pubkey,
@@ -127,9 +137,9 @@ impl TestContext {
         let vault_anti = self.create_vault_account(&anti_mint).await?;
         let vault_pro = self.create_vault_account(&pro_mint).await?;
 
-        // Initialize collider
+        // Initialise collider
         let state = self
-            .initialize_collider(&baryon_mint, &photon_mint, &vault_anti, &vault_pro)
+            .initialise_collider(&baryon_mint, &photon_mint, &vault_anti, &vault_pro)
             .await?;
 
         // Create user token accounts

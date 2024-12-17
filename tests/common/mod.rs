@@ -1,4 +1,12 @@
-use crate::state::CollisionState;
+//! Program Author: sshmatrix, for Antitoken
+//! Program Description: Collider's standard tests
+//! Version: 0.0.1
+//! License: MIT
+//! Created: 17 Dec 2024
+//! Last Modified: 17 Dec 2024
+//! Repository: https://github.com/antitokens/solana-collider
+//! Contact: dev@antitoken.pro
+
 use solana_program::{program_pack::Pack, pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
@@ -11,6 +19,7 @@ use spl_token_2022::{
     instruction as token_instruction,
     state::{Account as TokenAccount, Mint},
 };
+use crate::state::CollisionState;
 
 pub struct TestContext {
     pub program_id: Pubkey,
@@ -31,7 +40,7 @@ impl TestContext {
         );
 
         let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
-        let (authority, authority_bump) =
+        let (authority, authority_bump) = 
             Pubkey::find_program_address(&[b"authority"], &program_id);
 
         TestContext {
@@ -44,10 +53,7 @@ impl TestContext {
         }
     }
 
-    pub async fn create_token_mint(
-        &mut self,
-        authority: Option<&Pubkey>,
-    ) -> Result<Pubkey, BanksClientError> {
+    pub async fn create_token_mint(&mut self, authority: Option<&Pubkey>) -> Result<Pubkey, BanksClientError> {
         let mint_keypair = Keypair::new();
         let mint_rent = self
             .banks_client
