@@ -1,14 +1,11 @@
-use solana_program::{
-    program_pack::Pack,
-    pubkey::Pubkey,
-    system_instruction,
-};
+use crate::state::CollisionState;
+use solana_program::{program_pack::Pack, pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-    system_program,
     hash::Hash,
+    signature::{Keypair, Signer},
+    system_program,
+    transaction::Transaction,
 };
 use spl_token_2022::{
     instruction as token_instruction,
@@ -20,6 +17,8 @@ pub struct TestContext {
     pub payer: Keypair,
     pub last_blockhash: Hash,
     pub banks_client: BanksClient,
+    pub authority: Pubkey,
+    pub authority_bump: u8,
 }
 
 impl TestContext {
@@ -32,18 +31,26 @@ impl TestContext {
         );
 
         let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
+        let (authority, authority_bump) =
+            Pubkey::find_program_address(&[b"authority"], &program_id);
 
         TestContext {
             program_id,
             payer,
             last_blockhash: recent_blockhash,
             banks_client,
+            authority,
+            authority_bump,
         }
     }
 
-    pub async fn create_token_mint(&mut self) -> Result<Pubkey, BanksClientError> {
+    pub async fn create_token_mint(
+        &mut self,
+        authority: Option<&Pubkey>,
+    ) -> Result<Pubkey, BanksClientError> {
         let mint_keypair = Keypair::new();
-        let mint_rent = self.banks_client
+        let mint_rent = self
+            .banks_client
             .get_rent()
             .await?
             .minimum_balance(Mint::LEN);
@@ -57,12 +64,15 @@ impl TestContext {
             &spl_token_2022::id(),
         );
 
-        // Initialise mint
-        let init_mint_ix = token_instruction::initialise_mint(
+        // Initialise mint with specified authority or payer
+        let mint_authority = authority.unwrap_or(&self.payer.pubkey());
+        let freeze_authority = authority.or(Some(&self.payer.pubkey()));
+
+        let init_mint_ix = token_instruction::initialize_mint(
             &spl_token_2022::id(),
             &mint_keypair.pubkey(),
-            &self.payer.pubkey(),
-            Some(&self.payer.pubkey()),
+            mint_authority,
+            freeze_authority,
             9,
         )?;
 
@@ -84,7 +94,8 @@ impl TestContext {
         owner: &Pubkey,
     ) -> Result<Pubkey, BanksClientError> {
         let account_keypair = Keypair::new();
-        let account_rent = self.banks_client
+        let account_rent = self
+            .banks_client
             .get_rent()
             .await?
             .minimum_balance(TokenAccount::LEN);
@@ -98,8 +109,8 @@ impl TestContext {
             &spl_token_2022::id(),
         );
 
-        // Initialise token account
-        let init_account_ix = token_instruction::initialise_account(
+        // Initialise token account using initialize_account3
+        let init_account_ix = token_instruction::initialize_account3(
             &spl_token_2022::id(),
             &account_keypair.pubkey(),
             mint,
@@ -116,6 +127,49 @@ impl TestContext {
         self.banks_client.process_transaction(transaction).await?;
 
         Ok(account_keypair.pubkey())
+    }
+
+    pub async fn create_vault_account(
+        &mut self,
+        mint: &Pubkey,
+    ) -> Result<Pubkey, BanksClientError> {
+        // Create vault owned by PDA
+        self.create_token_account(mint, &self.authority).await
+    }
+
+    pub async fn create_collision_state(
+        &mut self,
+        baryon_mint: &Pubkey,
+        photon_mint: &Pubkey,
+        vault_anti: &Pubkey,
+        vault_pro: &Pubkey,
+    ) -> Result<Pubkey, BanksClientError> {
+        let state_keypair = Keypair::new();
+        let state_rent = self
+            .banks_client
+            .get_rent()
+            .await?
+            .minimum_balance(CollisionState::LEN);
+
+        // Create state account
+        let create_state_ix = system_instruction::create_account(
+            &self.payer.pubkey(),
+            &state_keypair.pubkey(),
+            state_rent,
+            CollisionState::LEN as u64,
+            &self.program_id,
+        );
+
+        let transaction = Transaction::new_signed_with_payer(
+            &[create_state_ix],
+            Some(&self.payer.pubkey()),
+            &[&self.payer, &state_keypair],
+            self.last_blockhash,
+        );
+
+        self.banks_client.process_transaction(transaction).await?;
+
+        Ok(state_keypair.pubkey())
     }
 
     pub async fn mint_tokens(
@@ -151,10 +205,18 @@ impl TestContext {
         Ok(token_account.amount)
     }
 
+    pub async fn get_vault_balances(
+        &mut self,
+        vault_anti: &Pubkey,
+        vault_pro: &Pubkey,
+    ) -> Result<(u64, u64), BanksClientError> {
+        let anti_balance = self.get_token_balance(vault_anti).await?;
+        let pro_balance = self.get_token_balance(vault_pro).await?;
+        Ok((anti_balance, pro_balance))
+    }
+
     pub async fn update_blockhash(&mut self) -> Result<(), BanksClientError> {
-        self.last_blockhash = self.banks_client
-            .get_latest_blockhash()
-            .await?;
+        self.last_blockhash = self.banks_client.get_latest_blockhash().await?;
         Ok(())
     }
 }

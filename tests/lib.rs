@@ -261,7 +261,7 @@ mod tests {
             .await
             .unwrap();
 
-        // Transaction 8a: Create input token accounts
+        // Transaction 8: Create input token accounts
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         let create_input_token_accounts_tx = Transaction::new_signed_with_payer(
             &[
@@ -289,7 +289,7 @@ mod tests {
             .await
             .unwrap();
 
-        // Transaction 8b: Create output token accounts
+        // Transaction 9: Create output token accounts
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         let create_output_token_accounts_tx = Transaction::new_signed_with_payer(
             &[
@@ -317,7 +317,7 @@ mod tests {
             .await
             .unwrap();
 
-        // Transaction 9: Initialize input token accounts
+        // Transaction 10: Initialize input token accounts
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         let init_input_accounts_tx = Transaction::new_signed_with_payer(
             &[
@@ -345,7 +345,7 @@ mod tests {
             .await
             .unwrap();
 
-        // Transaction 10: Initialize output token accounts
+        // Transaction 11: Initialize output token accounts
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         let init_output_accounts_tx = Transaction::new_signed_with_payer(
             &[
@@ -373,7 +373,7 @@ mod tests {
             .await
             .unwrap();
 
-        // Transaction 11: Mint ANTI tokens
+        // Transaction 12: Mint ANTI tokens
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         let mint_anti_tx = Transaction::new_signed_with_payer(
             &[spl_token_2022::instruction::mint_to(
@@ -394,7 +394,7 @@ mod tests {
             .await
             .unwrap();
 
-        // Transaction 12: Mint PRO tokens
+        // Transaction 13: Mint PRO tokens
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         let mint_pro_tx = Transaction::new_signed_with_payer(
             &[spl_token_2022::instruction::mint_to(
@@ -412,7 +412,7 @@ mod tests {
         );
         banks_client.process_transaction(mint_pro_tx).await.unwrap();
 
-        // Transaction 13: Perform collision
+        // Transaction 14: Perform collision
         let recent_blockhash = banks_client.get_latest_blockhash().await.unwrap();
         let collide_ix = Instruction {
             program_id: PROGRAM_ID,
@@ -426,8 +426,8 @@ mod tests {
                 AccountMeta::new(photon_mint.pubkey(), false),
                 AccountMeta::new(vault_anti.pubkey(), false),
                 AccountMeta::new(vault_pro.pubkey(), false),
-                AccountMeta::new_readonly(anti_mint.pubkey(), false), // Required for transfer_checked
-                AccountMeta::new_readonly(pro_mint.pubkey(), false), // Required for transfer_checked
+                AccountMeta::new_readonly(anti_mint.pubkey(), false),
+                AccountMeta::new_readonly(pro_mint.pubkey(), false),
                 AccountMeta::new(payer.pubkey(), true),
                 AccountMeta::new_readonly(system_program::id(), false),
                 AccountMeta::new_readonly(spl_token_2022::id(), false),
@@ -530,11 +530,7 @@ mod tests {
         assert!(result.is_err());
 
         // Test invalid instruction data
-        let result = process_instruction(
-            &PROGRAM_ID,
-            &accounts,
-            &[255], // Invalid instruction
-        );
+        let result = process_instruction(&PROGRAM_ID, &accounts, &[255]);
         assert!(result.is_err());
     }
 }

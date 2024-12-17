@@ -21,8 +21,8 @@ pub struct CollisionState {
     pub baryon_mint: Pubkey,
     pub photon_mint: Pubkey,
     pub authority: Pubkey,
-    pub vault_anti: Pubkey, // Programme-controlled vault for ANTI tokens
-    pub vault_pro: Pubkey,  // Programme-controlled vault for PRO tokens
+    pub vault_anti: Pubkey,
+    pub vault_pro: Pubkey,
 }
 
 #[derive(Debug)]
@@ -60,8 +60,8 @@ pub fn initialise(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResul
     let state_account = next_account_info(accounts_iter)?;
     let baryon_mint = next_account_info(accounts_iter)?;
     let photon_mint = next_account_info(accounts_iter)?;
-    let vault_anti = next_account_info(accounts_iter)?; // Vault for ANTI tokens
-    let vault_pro = next_account_info(accounts_iter)?; // Vault for PRO tokens
+    let vault_anti = next_account_info(accounts_iter)?;
+    let vault_pro = next_account_info(accounts_iter)?;
     let payer = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
@@ -83,7 +83,7 @@ pub fn initialise(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResul
             baryon_mint: *baryon_mint.key,
             photon_mint: *photon_mint.key,
             authority: authority_pubkey,
-            vault_anti: *vault_anti.key, // Store vault accounts in state
+            vault_anti: *vault_anti.key,
             vault_pro: *vault_pro.key,
         };
 
@@ -209,10 +209,10 @@ pub fn collide(
     let photon_token_account = next_account_info(accounts_iter)?;
     let baryon_mint = next_account_info(accounts_iter)?;
     let photon_mint = next_account_info(accounts_iter)?;
-    let vault_anti = next_account_info(accounts_iter)?; // Vault for ANTI tokens
-    let vault_pro = next_account_info(accounts_iter)?; // Vault for PRO tokens
-    let anti_mint = next_account_info(accounts_iter)?; // Required for transfer_checked
-    let pro_mint = next_account_info(accounts_iter)?; // Required for transfer_checked
+    let vault_anti = next_account_info(accounts_iter)?;
+    let vault_pro = next_account_info(accounts_iter)?;
+    let anti_mint = next_account_info(accounts_iter)?;
+    let pro_mint = next_account_info(accounts_iter)?;
     let _payer = next_account_info(accounts_iter)?;
     let _system_program = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
@@ -261,7 +261,7 @@ pub fn collide(
         &authority_pubkey,
         &[],
         anti_amount,
-        9, // Decimals
+        9,
     )?;
 
     invoke_signed(
@@ -284,7 +284,7 @@ pub fn collide(
         &authority_pubkey,
         &[],
         pro_amount,
-        9, // Decimals
+        9,
     )?;
 
     invoke_signed(
