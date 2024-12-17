@@ -24,7 +24,7 @@ use solana_program::{
 use spl_token_2022::instruction as token_instruction;
 
 // Programme ID for the collision contract
-solana_program::declare_id!("6mC548mJ3rtFKcSTmQpQnLkRJ3UNzgg9qTDYpojLkvNV");
+solana_program::declare_id!("HzRwAPcT3qWEpNNiaNAZmg9rsurmf2CWSmBxhcdpoaHf");
 
 /// State structure for the collision programme
 /// Stores critical programme parameters and vault addresses

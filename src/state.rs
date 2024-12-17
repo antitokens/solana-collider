@@ -20,25 +20,3 @@ pub struct CollisionState {
     pub vault_anti: Pubkey,
     pub vault_pro: Pubkey,
 }
-
-impl Sealed for CollisionState {}
-
-impl IsInitialized for CollisionState {
-    fn is_initialized(&self) -> bool {
-        self.is_initialized
-    }
-}
-
-impl Pack for CollisionState {
-    const LEN: usize = 1 + 32 + 32 + 32 + 32 + 32; // bool + 5 Pubkeys
-
-    fn pack_into_slice(&self, dst: &mut [u8]) {
-        let mut slice = dst;
-        self.serialize(&mut slice).unwrap();
-    }
-
-    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        let state = Self::try_from_slice(src).map_err(|_| ProgramError::InvalidAccountData)?;
-        Ok(state)
-    }
-}
