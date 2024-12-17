@@ -1,9 +1,8 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::pubkey::Pubkey;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub enum CollisionInstruction {
-    /// Initializes a new collider pair
+    /// Initialises a new collider pair
     /// 
     /// Accounts expected:
     /// 0. `[signer]` The account of the person initialising the collider
@@ -11,7 +10,7 @@ pub enum CollisionInstruction {
     /// 2. `[]` The BARYON token mint
     /// 3. `[]` The PHOTON token mint
     /// 4. `[]` The system program
-    Initialize,
+    Initialise,
 
     /// Performs the collision between ANTI and PRO tokens
     /// 

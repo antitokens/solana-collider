@@ -2,17 +2,14 @@
 name = "solana-collider"
 version = "0.1.0"
 edition = "2021"
-description = "Collider contract for Solana"
-
-[features]
-no-entrypoint = []
 
 [dependencies]
-solana-program = "1.17"
+solana-program = "1.18"
 thiserror = "1.0"
 spl-token = { version = "4.0", features = ["no-entrypoint"] }
 borsh = "0.10"
-num-traits = "0.2"
 
-[lib]
-crate-type = ["cdylib", "lib"]
+[dev-dependencies]
+solana-program-test = "1.18"
+solana-sdk = "1.18"
+tokio = { version = "1.28", features = ["full"] }

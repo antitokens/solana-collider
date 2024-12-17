@@ -9,7 +9,7 @@ use solana_sdk::{
     rent::Rent,
 };
 
-mod test_initialization {
+mod test_initialisation {
     use super::*;
 
     #[tokio::test]
@@ -20,7 +20,7 @@ mod test_initialization {
         let baryon_mint = context.create_token_mint().await.unwrap();
         let photon_mint = context.create_token_mint().await.unwrap();
         
-        // Test initialization
+        // Test initialisation
         let result = initialise_collision(&mut context, &baryon_mint, &photon_mint).await;
         assert!(result.is_ok());
 

@@ -1,29 +1,18 @@
+mod instruction;
+pub use instruction::CollisionInstruction;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
     entrypoint::ProgramResult,
-    //msg,
-    //program::{invoke, invoke_signed},
     program::{invoke_signed},
     program_error::ProgramError,
     pubkey::Pubkey,
-    //system_instruction,
     program_pack::Pack,
 };
 use spl_token::instruction as token_instruction;
 use borsh::{BorshDeserialize, BorshSerialize};
-//use std::f64::consts::PI;
 
 // Declare the program ID
-#[cfg(test)]
-pub mod test {
-    use super::*;
-    use solana_program::pubkey::Pubkey;
-    
-    // Create a known program ID for tests
-    pub const PROGRAM_ID: Pubkey = Pubkey::new_from_array([8; 32]);
-}
-// Regular program ID for production
 solana_program::declare_id!("3K81PoodXnhxB9XUQM6ZtRhshdrkDDFwVbABV8PgPziw");
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -55,9 +44,11 @@ pub fn process_instruction(
     _instruction_data: &[u8],
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-
+    
     let anti_token_account = next_account_info(accounts_iter)?;
     let pro_token_account = next_account_info(accounts_iter)?;
+    let _baryon_token_account = next_account_info(accounts_iter)?;
+    let _photon_token_account = next_account_info(accounts_iter)?;
     let baryon_mint = next_account_info(accounts_iter)?;
     let photon_mint = next_account_info(accounts_iter)?;
     let payer = next_account_info(accounts_iter)?;

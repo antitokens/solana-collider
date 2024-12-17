@@ -57,8 +57,8 @@ impl TestContext {
             &spl_token::id(),
         );
 
-        // Initialize mint
-        let init_mint_ix = token_instruction::initialize_mint(
+        // Initialise mint
+        let init_mint_ix = token_instruction::initialise_mint(
             &spl_token::id(),
             &mint_keypair.pubkey(),
             &self.payer.pubkey(),
@@ -98,8 +98,8 @@ impl TestContext {
             &spl_token::id(),
         );
 
-        // Initialize token account
-        let init_account_ix = token_instruction::initialize_account(
+        // Initialise token account
+        let init_account_ix = token_instruction::initialise_account(
             &spl_token::id(),
             &account_keypair.pubkey(),
             mint,
