@@ -464,17 +464,17 @@ mod tests {
             accounts: vec![
                 // Programme accounts
                 AccountMeta::new(state_account.pubkey(), false),
-                // User token accounts
-                AccountMeta::new(anti_account.pubkey(), false),
-                AccountMeta::new(pro_account.pubkey(), false),
-                AccountMeta::new(baryon_account.pubkey(), false),
-                AccountMeta::new(photon_account.pubkey(), false),
+                // User token accounts - mark as writable
+                AccountMeta::new(anti_account.pubkey(), true),
+                AccountMeta::new(pro_account.pubkey(), true),
+                AccountMeta::new(baryon_account.pubkey(), true),
+                AccountMeta::new(photon_account.pubkey(), true),
                 // Mint accounts
-                AccountMeta::new(baryon_mint.pubkey(), false),
-                AccountMeta::new(photon_mint.pubkey(), false),
-                // Vault accounts
-                AccountMeta::new(vault_anti.pubkey(), false),
-                AccountMeta::new(vault_pro.pubkey(), false),
+                AccountMeta::new_readonly(baryon_mint.pubkey(), false),
+                AccountMeta::new_readonly(photon_mint.pubkey(), false),
+                // Vault accounts - mark as writable
+                AccountMeta::new(vault_anti.pubkey(), true),
+                AccountMeta::new(vault_pro.pubkey(), true),
                 // Input mint accounts for transfer_checked
                 AccountMeta::new_readonly(anti_mint.pubkey(), false),
                 AccountMeta::new_readonly(pro_mint.pubkey(), false),
