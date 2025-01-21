@@ -13,14 +13,14 @@ use anchor_lang::prelude::*;
 pub mod create_poll;
 pub mod deposit;
 pub mod equalise;
-pub mod initialiser;
+pub mod initialise;
 pub mod withdraw;
 
 // Re-export the instruction structs
 pub use create_poll::creator;
 pub use deposit::depositor;
 pub use equalise::equaliser;
-pub use initialiser::initialiser;
+pub use initialise::initialiser;
 pub use withdraw::withdrawer;
 
 // Add instruction data structs

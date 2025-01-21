@@ -9,15 +9,15 @@ declare_id!("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G");
 
 #[program]
 pub mod collider_beta {
-    use instructions::deposit;
-    use instructions::equalise;
-
     use super::*;
     use crate::instructions::create_poll;
-    use crate::instructions::initialiser;
+    use crate::instructions::initialise;
+    use instructions::deposit;
+    use instructions::equalise;
+    use instructions::withdraw;
 
     pub fn initialise(ctx: Context<Initialise>) -> Result<()> {
-        initialiser::initialiser(ctx)
+        initialise::initialiser(ctx)
     }
 
     pub fn create_poll(
@@ -49,7 +49,7 @@ pub mod collider_beta {
     }
 
     pub fn withdraw_tokens(ctx: Context<WithdrawTokens>, poll_index: u64) -> Result<()> {
-        instructions::withdraw::withdrawer(ctx, poll_index)
+        withdraw::withdrawer(ctx, poll_index)
     }
 }
 
