@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, TokenAccount};
 use solana_collider::{self, instructions::*};
 use solana_program_test::*;
 use solana_sdk::{
@@ -49,8 +49,6 @@ async fn test_full_collider_flow() {
     // Create token mints
     let anti_mint = Keypair::new();
     let pro_mint = Keypair::new();
-    let user_anti_token = Keypair::new();
-    let user_pro_token = Keypair::new();
 
     // Initialise mints
     let rent = banks_client.get_rent().await.unwrap();

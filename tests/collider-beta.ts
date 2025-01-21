@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import { Program, Idl } from "@coral-xyz/anchor";
 import { ColliderBeta } from "../target/types/collider_beta";
 
 describe("Initialises the program", () => {
@@ -7,8 +7,7 @@ describe("Initialises the program", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const program = anchor.workspace
-    .ColliderBeta as ColliderBeta as unknown as Program<anchor.Idl>;
+  const program = anchor.workspace.ColliderBeta as Program<ColliderBeta & Idl>;
 
   it("Program is initialised!", async () => {
     // Create a keypair for the new state account

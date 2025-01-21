@@ -7,12 +7,13 @@
     "@solana/web3.js": "^1.98.0",
     "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.10",
+    "fs": "^0.0.1-security",
     "mocha": "^11.0.1",
     "ts-mocha": "^10.0.0",
     "typescript": "^5.7.3"
   },
   "scripts": {
-    "build": "RUST_LOG=trace RUST_BACKTRACE=1 anchor build",
-    "test": "RUST_LOG=trace RUST_BACKTRACE=1 anchor test"
+    "build": "RUST_LOG=trace RUST_BACKTRACE=full anchor build",
+    "test": "RUST_LOG=trace RUST_BACKTRACE=full anchor test"
   }
 }
