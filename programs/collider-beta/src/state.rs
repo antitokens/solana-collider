@@ -31,8 +31,8 @@ pub struct PollAccount {
     pub total_anti: u64,
     pub total_pro: u64,
     pub deposits: Vec<UserDeposit>,
-    pub equalized: bool,
-    pub equalization_results: Option<EqualizationResult>,
+    pub equalised: bool,
+    pub equalisation_results: Option<EqualisationResult>,
 }
 
 impl PollAccount {
@@ -46,10 +46,10 @@ impl PollAccount {
         8 + // total_anti
         8 + // total_pro
         1024 + // deposits vector space
-        1 + // equalized
-        1024; // equalization_results
+        1 + // equalised
+        1024; // equalisation_results
 
-    pub fn is_active(&self, current_time: i64) -> bool {
+    pub fn is_active(&self, _current_time: i64) -> bool {
         // Implementation from utils
         true
     }
@@ -66,7 +66,7 @@ pub struct UserDeposit {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct EqualizationResult {
+pub struct EqualisationResult {
     pub anti_returns: Vec<u64>,
     pub pro_returns: Vec<u64>,
     pub truth_values: Vec<u64>,

@@ -28,27 +28,27 @@ pub struct DepositTokens<'info> {
     
     #[account(
         mut,
-        constraint = user_anti_token.owner == authority.key() @ VotingError::InvalidTokenAccount,
-        constraint = user_anti_token.mint == poll_anti_token.mint @ VotingError::InvalidTokenAccount
+        constraint = user_anti_token.owner == authority.key() @ PredictError::InvalidTokenAccount,
+        constraint = user_anti_token.mint == poll_anti_token.mint @ PredictError::InvalidTokenAccount
     )]
     pub user_anti_token: Account<'info, TokenAccount>,
     
     #[account(
         mut,
-        constraint = user_pro_token.owner == authority.key() @ VotingError::InvalidTokenAccount,
-        constraint = user_pro_token.mint == poll_pro_token.mint @ VotingError::InvalidTokenAccount
+        constraint = user_pro_token.owner == authority.key() @ PredictError::InvalidTokenAccount,
+        constraint = user_pro_token.mint == poll_pro_token.mint @ PredictError::InvalidTokenAccount
     )]
     pub user_pro_token: Account<'info, TokenAccount>,
     
     #[account(
         mut,
-        constraint = poll_anti_token.owner == poll.key() @ VotingError::InvalidTokenAccount
+        constraint = poll_anti_token.owner == poll.key() @ PredictError::InvalidTokenAccount
     )]
     pub poll_anti_token: Account<'info, TokenAccount>,
     
     #[account(
         mut,
-        constraint = poll_pro_token.owner == poll.key() @ VotingError::InvalidTokenAccount
+        constraint = poll_pro_token.owner == poll.key() @ PredictError::InvalidTokenAccount
     )]
     pub poll_pro_token: Account<'info, TokenAccount>,
     
@@ -67,13 +67,13 @@ pub fn handler(
     let clock = Clock::get()?;
     require!(
         poll.is_active(clock.unix_timestamp),
-        VotingError::PollInactive
+        PredictError::PollInactive
     );
 
     // Verify minimum deposit
     require!(
         anti_amount >= MIN_DEPOSIT_AMOUNT || pro_amount >= MIN_DEPOSIT_AMOUNT,
-        VotingError::InsufficientDeposit
+        PredictError::InsufficientDeposit
     );
 
     // Transfer ANTI tokens if amount > 0
@@ -122,9 +122,9 @@ pub fn handler(
     // Update poll state
     poll.deposits.push(deposit);
     poll.total_anti = poll.total_anti.checked_add(anti_amount)
-        .ok_or(error!(VotingError::MathError))?;
+        .ok_or(error!(PredictError::MathError))?;
     poll.total_pro = poll.total_pro.checked_add(pro_amount)
-        .ok_or(error!(VotingError::MathError))?;
+        .ok_or(error!(PredictError::MathError))?;
 
     // Emit deposit event
     emit!(DepositEvent {
@@ -132,6 +132,8 @@ pub fn handler(
         depositor: ctx.accounts.authority.key(),
         anti_amount,
         pro_amount,
+        u_value,
+        s_value,
         timestamp: clock.unix_timestamp,
     });
 
@@ -140,9 +142,6 @@ pub fn handler(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use anchor_lang::solana_program::clock::Clock;
-
     #[test]
     fn test_deposit_validation() {
         // Mock test environment here

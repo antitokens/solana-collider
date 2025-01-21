@@ -10,7 +10,7 @@
 use crate::state::*;
 use crate::utils::*;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{Token, TokenAccount};
 
 #[derive(Accounts)]
 pub struct EqualiseTokens<'info> {
@@ -39,12 +39,12 @@ pub fn handler(
     // Verify poll has ended
     let clock = Clock::get()?;
     let end_time = parse_iso_timestamp(&poll.end_time)?;
-    require!(clock.unix_timestamp >= end_time, VotingError::PollActive);
+    require!(clock.unix_timestamp >= end_time, PredictError::PollEnded);
 
     // Validate truth values
     require!(
         truth_values.len() == 2 && truth_values.iter().all(|v| *v <= BASIS_POINTS),
-        VotingError::InvalidTruthValues
+        PredictError::InvalidTruthValues
     );
 
     // Calculate distributions and returns
@@ -68,6 +68,8 @@ pub fn handler(
     emit!(EqualisationEvent {
         poll_index,
         truth_values,
+        total_anti: poll.total_anti,
+        total_pro: poll.total_pro,
         timestamp: clock.unix_timestamp,
     });
 

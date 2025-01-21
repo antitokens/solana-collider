@@ -25,7 +25,7 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_equalization() {
+    fn test_calculate_equalisation() {
         let deposits = vec![
             UserDeposit {
                 user: Pubkey::new_unique(),
@@ -46,7 +46,7 @@ mod tests {
         ];
 
         let truth = vec![6000, 4000]; // 60% vs 40%
-        let (anti_returns, pro_returns) = calculate_equalization(
+        let (anti_returns, pro_returns) = calculate_equalisation(
             &deposits,
             4000, // total anti
             3000, // total pro
@@ -110,44 +110,4 @@ mod tests {
             "2025-01-19T00:00:00Z".to_string(),
             None).unwrap();
     }
-}
-
-// In programs/voting-program/tests/program_test.rs
-use anchor_lang::{prelude::*, solana_program::program_pack::Pack};
-use solana_program_test::*;
-use solana_sdk::{account::Account, signature::Signer};
-use voting_program::state::*;
-
-#[tokio::test]
-async fn test_full_voting_flow() {
-    let program_id = Pubkey::new_unique();
-    let mut program_test = ProgramTest::new(
-        "voting_program",
-        program_id,
-        processor!(voting_program::entry),
-    );
-
-    // Add accounts needed for test
-    let authority = Keypair::new();
-    program_test.add_account(
-        authority.pubkey(),
-        Account {
-            lamports: 1_000_000_000,
-            data: vec![],
-            owner: solana_program::system_program::id(),
-            executable: false,
-            rent_epoch: 0,
-        },
-    );
-
-    // Start the test validator
-    let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
-
-    // Your test implementation here
-    // Example:
-    // 1. Initialize program
-    // 2. Create poll
-    // 3. Deposit tokens
-    // 4. Equalize
-    // 5. Withdraw
 }

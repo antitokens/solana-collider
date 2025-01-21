@@ -9,17 +9,12 @@
 
 // lib.rs
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token};
 
 pub mod instructions;
 pub mod state;
 pub mod utils;
 
-use instructions::*;
-use state::*;
-use utils::*;
-
-declare_id!("Voting11111111111111111111111111111111111111");
+declare_id!("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G");
 
 #[constant]
 pub const BASIS_POINTS: u64 = 10000; // For fixed-point arithmetic
@@ -28,7 +23,7 @@ pub const MAX_DESC_LENGTH: usize = 500;
 pub const MIN_DEPOSIT_AMOUNT: u64 = 1000; // 0.001 tokens minimum deposit
 
 #[program]
-pub mod voting_program {
+pub mod collider_beta {
     use super::*;
 
     pub fn initialise(ctx: Context<Initialise>) -> Result<()> {
@@ -55,7 +50,11 @@ pub mod voting_program {
         instructions::deposit::handler(ctx, poll_index, anti_amount, pro_amount)
     }
 
-    pub fn equalise(ctx: Context<Equalise>, poll_index: u64, truth_values: Vec<u64>) -> Result<()> {
+    pub fn equalise(
+        ctx: Context<EqualiseTokens>,
+        poll_index: u64,
+        truth_values: Vec<u64>,
+    ) -> Result<()> {
         instructions::equalise::handler(ctx, poll_index, truth_values)
     }
 
@@ -65,6 +64,6 @@ pub mod voting_program {
 }
 
 // Re-export common types for convenience
-pub use instructions::{CreatePoll, DepositTokens, Equalise, Initialise, WithdrawTokens};
+pub use instructions::{CreatePoll, DepositTokens, EqualiseTokens, Initialise, WithdrawTokens};
 pub use state::{EqualisationResult, PollAccount, StateAccount, UserDeposit};
-pub use utils::{DepositEvent, EqualisationEvent, PollCreatedEvent, VotingError};
+pub use utils::{DepositEvent, EqualisationEvent, PollCreatedEvent, PredictError};
