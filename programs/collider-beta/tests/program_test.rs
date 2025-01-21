@@ -1,6 +1,6 @@
-use anchor_lang::{prelude::*, InstructionData, ToAccountMetas};
+use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
-use solana_collider::{self, instructions::*}; // Using the public instructions module
+use solana_collider::{self, instructions::*};
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,

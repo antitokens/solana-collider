@@ -9,53 +9,12 @@
 
 // instructions/deposit.rs
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Transfer};
 use crate::state::*;
 use crate::utils::*;
+use crate::DepositTokens;
 
-#[derive(Accounts)]
-#[instruction(poll_index: u64)]
-pub struct DepositTokens<'info> {
-    #[account(
-        mut,
-        seeds = [b"poll", poll_index.to_le_bytes().as_ref()],
-        bump
-    )]
-    pub poll: Account<'info, PollAccount>,
-    
-    #[account(mut)]
-    pub authority: Signer<'info>,
-    
-    #[account(
-        mut,
-        constraint = user_anti_token.owner == authority.key() @ PredictError::InvalidTokenAccount,
-        constraint = user_anti_token.mint == poll_anti_token.mint @ PredictError::InvalidTokenAccount
-    )]
-    pub user_anti_token: Account<'info, TokenAccount>,
-    
-    #[account(
-        mut,
-        constraint = user_pro_token.owner == authority.key() @ PredictError::InvalidTokenAccount,
-        constraint = user_pro_token.mint == poll_pro_token.mint @ PredictError::InvalidTokenAccount
-    )]
-    pub user_pro_token: Account<'info, TokenAccount>,
-    
-    #[account(
-        mut,
-        constraint = poll_anti_token.owner == poll.key() @ PredictError::InvalidTokenAccount
-    )]
-    pub poll_anti_token: Account<'info, TokenAccount>,
-    
-    #[account(
-        mut,
-        constraint = poll_pro_token.owner == poll.key() @ PredictError::InvalidTokenAccount
-    )]
-    pub poll_pro_token: Account<'info, TokenAccount>,
-    
-    pub token_program: Program<'info, Token>,
-}
-
-pub fn handler(
+pub fn depositor(
     ctx: Context<DepositTokens>,
     poll_index: u64,
     anti_amount: u64,

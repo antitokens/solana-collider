@@ -7,46 +7,12 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
-use crate::state::*;
 use crate::utils::*;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Transfer};
+use crate::WithdrawTokens;
 
-#[derive(Accounts)]
-#[instruction(poll_index: u64)]
-pub struct WithdrawTokens<'info> {
-    #[account(
-        mut,
-        seeds = [b"poll", poll_index.to_le_bytes().as_ref()],
-        bump
-    )]
-    pub poll: Account<'info, PollAccount>,
-    #[account(mut)]
-    pub authority: Signer<'info>,
-    #[account(
-        mut,
-        constraint = user_anti_token.owner == authority.key() @ PredictError::InvalidTokenAccount
-    )]
-    pub user_anti_token: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        constraint = user_pro_token.owner == authority.key() @ PredictError::InvalidTokenAccount
-    )]
-    pub user_pro_token: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        constraint = poll_anti_token.owner == poll.key() @ PredictError::InvalidTokenAccount
-    )]
-    pub poll_anti_token: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        constraint = poll_pro_token.owner == poll.key() @ PredictError::InvalidTokenAccount
-    )]
-    pub poll_pro_token: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-}
-
-pub fn handler(ctx: Context<WithdrawTokens>, poll_index: u64) -> Result<()> {
+pub fn withdrawer(ctx: Context<WithdrawTokens>, poll_index: u64) -> Result<()> {
     // First, get all the values we need
     let poll = &ctx.accounts.poll;
 

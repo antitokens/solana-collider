@@ -8,32 +8,11 @@
 //! Contact: dev@antitoken.pro
 
 // instructions/create_poll.rs
-use crate::state::*;
 use crate::utils::*;
+use crate::CreatePoll;
 use anchor_lang::prelude::*;
 
-#[derive(Accounts)]
-#[instruction(title: String, description: String, start_time: String, end_time: String)]
-pub struct CreatePoll<'info> {
-    #[account(mut)]
-    pub state: Account<'info, StateAccount>,
-    #[account(
-        init,
-        payer = authority,
-        space = 8 + PollAccount::LEN,
-        seeds = [b"poll", state.poll_count.to_le_bytes().as_ref()],
-        bump
-    )]
-    pub poll: Account<'info, PollAccount>,
-    #[account(mut)]
-    pub authority: Signer<'info>,
-    /// CHECK: Payment account
-    #[account(mut)]
-    pub payment: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-pub fn handler(
+pub fn creator(
     ctx: Context<CreatePoll>,
     title: String,
     description: String,

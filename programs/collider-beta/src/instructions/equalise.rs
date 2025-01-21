@@ -10,26 +10,9 @@
 use crate::state::*;
 use crate::utils::*;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use crate::EqualiseTokens;
 
-#[derive(Accounts)]
-pub struct EqualiseTokens<'info> {
-    #[account(mut)]
-    pub poll: Account<'info, PollAccount>,
-    #[account(mut)]
-    pub authority: Signer<'info>,
-    #[account(mut)]
-    pub user_anti_token: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub user_pro_token: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub poll_anti_token: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub poll_pro_token: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-}
-
-pub fn handler(
+pub fn equaliser(
     ctx: Context<EqualiseTokens>,
     poll_index: u64,
     truth_values: Vec<u64>,
