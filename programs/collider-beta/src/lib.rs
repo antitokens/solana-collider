@@ -16,17 +16,11 @@ pub mod utils;
 
 declare_id!("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G");
 
-#[constant]
-pub const BASIS_POINTS: u64 = 10000; // For fixed-point arithmetic
-pub const MAX_TITLE_LENGTH: usize = 100;
-pub const MAX_DESC_LENGTH: usize = 500;
-pub const MIN_DEPOSIT_AMOUNT: u64 = 1000; // 0.001 tokens minimum deposit
-
 #[program]
 pub mod collider_beta {
     use super::*;
 
-    pub fn initialise(ctx: Context<Initialise>) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialise>) -> Result<()> {
         instructions::initialise::handler(ctx)
     }
 

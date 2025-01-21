@@ -1,5 +1,5 @@
 //! Program Author: sshmatrix, for Antitoken
-//! Program Description: Collider's instruction set
+//! Program Description: Collider's initialisation
 //! Version: 0.0.1
 //! License: MIT
 //! Created: 20 Jan 2025

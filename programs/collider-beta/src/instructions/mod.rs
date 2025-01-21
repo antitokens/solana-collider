@@ -7,14 +7,30 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
+// instructions/mod.rs
+use anchor_lang::prelude::*;
+
 pub mod create_poll;
 pub mod deposit;
 pub mod equalise;
 pub mod initialise;
 pub mod withdraw;
 
-pub use create_poll::*;
-pub use deposit::*;
-pub use equalise::*;
-pub use initialise::*;
-pub use withdraw::*;
+// Re-export the instruction structs
+pub use create_poll::CreatePoll;
+pub use deposit::DepositTokens;
+pub use equalise::EqualiseTokens;
+pub use initialise::Initialise;
+pub use withdraw::WithdrawTokens;
+
+// Add instruction data structs
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct CreatePollArgs {
+    pub title: String,
+    pub description: String,
+    pub start_time: String,
+    pub end_time: String,
+    pub etc: Option<Vec<u8>>,
+}
+
+// Add other instruction args structs as needed
