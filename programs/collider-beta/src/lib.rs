@@ -1,3 +1,11 @@
+//! Program Author: sshmatrix, for Antitoken
+//! Program Description: Collider core
+//! License: MIT
+//! Created: 20 Jan 2025
+//! Last Modified: 20 Jan 2025
+//! Repository: https://github.com/antitokens/solana-collider
+//! Contact: dev@antitoken.pro
+
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 

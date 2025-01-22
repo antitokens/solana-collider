@@ -1,4 +1,6 @@
 {
+  "name": "solana-collider-beta",
+  "version": "v0.0.1",
   "license": "MIT",
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
@@ -13,7 +15,14 @@
     "typescript": "^5.7.3"
   },
   "scripts": {
-    "build": "RUST_LOG=trace RUST_BACKTRACE=full anchor build",
-    "test": "RUST_LOG=trace RUST_BACKTRACE=full anchor test --skip-build --skip-deploy"
+    "buildAnchor": "anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "buildAnchorFull": "RUST_LOG=trace RUST_BACKTRACE=full anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "testAnchor": "anchor test",
+    "testAnchorFull": "RUST_LOG=trace RUST_BACKTRACE=full anchor test",
+    "testAnchorFast": "RUST_LOG=trace RUST_BACKTRACE=full anchor test --skip-build --skip-deploy",
+    "buildCargo": "cargo build-bpf",
+    "buildCargoFull": "RUST_LOG=trace RUST_BACKTRACE=full cargo build-bpf",
+    "testCargo": "cargo test-sbf",
+    "testCargoFull": "RUST_LOG=trace RUST_BACKTRACE=full cargo test-sbf"
   }
 }

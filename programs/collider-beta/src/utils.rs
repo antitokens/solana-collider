@@ -345,7 +345,7 @@ mod tests {
     fn test_calculate_metrics() {
         let (u, s) = calculate_metrics(100, 50, false).unwrap();
         assert_eq!(u, 50); // |100 - 50|
-        assert_eq!(s, 150); // 100 + 50
+        assert_eq!(s, 3); // (100 + 50) / |100 - 50|
 
         let (u, s) = calculate_metrics(50, 50, false).unwrap();
         assert_eq!(u, 0);

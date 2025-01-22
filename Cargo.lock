@@ -936,6 +936,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "collider-beta"
+version = "0.0.1"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "borsh 0.10.4",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token-2022",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "combine"
 version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3790,21 +3805,6 @@ dependencies = [
  "solana-thin-client",
  "solana-tpu-client",
  "solana-udp-client",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "solana-collider"
-version = "0.0.1"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "borsh 0.10.4",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "spl-token-2022",
  "thiserror",
  "tokio",
 ]

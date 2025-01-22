@@ -10,8 +10,9 @@ out/
 # Docs
 docs/
 
-# Dotenv file
+# Dotenv
 .env
+.config
 
 # Packages
 node_modules

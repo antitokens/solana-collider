@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, TokenAccount};
-use solana_collider::{self, instructions::*};
+use collider_beta::{self, instructions::*};
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
@@ -13,7 +13,7 @@ use spl_token_2022::instruction as token_instruction;
 
 #[tokio::test]
 async fn test_full_collider_flow() {
-    let program_id = Pubkey::new_unique();
+    let program_id = collider_beta::ID;
     let mut program_test = ProgramTest::default();
     program_test.add_program("collider_beta", program_id, None);
 
