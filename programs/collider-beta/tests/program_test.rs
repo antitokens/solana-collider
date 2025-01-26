@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::InstructionData;
 use anchor_spl::token::{self, Mint, TokenAccount};
 use collider_beta::{self, instructions::*};
 use solana_program_test::*;
@@ -102,10 +103,10 @@ async fn test_full_collider_flow() {
         program_id,
         accounts: vec![
             AccountMeta::new(state_pda, false),
-            AccountMeta::new_readonly(authority.pubkey(), true),
+            AccountMeta::new_readonly(authority.pubkey(), true), 
             AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
         ],
-        data: AnchorSerialize::try_to_vec(&()).unwrap(), // Initialise takes no args
+        data: collider_beta::instruction::Initialise {}.data(),
     };
 
     let tx = Transaction::new_signed_with_payer(

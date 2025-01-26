@@ -5,10 +5,8 @@ import { ColliderBeta } from "../target/types/collider_beta";
 describe("Initialises the program", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
-
   const program = anchor.workspace.ColliderBeta as Program<ColliderBeta & Idl>;
-
+  
   it("Program is initialised!", async () => {
     // Create a keypair for the new state account
     const stateAccount = anchor.web3.Keypair.generate();
