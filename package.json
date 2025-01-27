@@ -1,6 +1,6 @@
 {
   "name": "solana-collider-beta",
-  "version": "v0.0.1",
+  "version": "1.0.0-beta",
   "license": "MIT",
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",

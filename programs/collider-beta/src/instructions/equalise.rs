@@ -1,6 +1,6 @@
 //! Program Author: sshmatrix, for Antitoken
 //! Program Description: Collider's instruction set
-//! Version: 0.0.1
+//! Version: 1.0.0-beta
 //! License: MIT
 //! Created: 20 Jan 2025
 //! Last Modified: 20 Jan 2025
@@ -27,7 +27,7 @@ pub fn equalise(ctx: Context<EqualiseTokens>, poll_index: u64, truth: Vec<u64>) 
     );
 
     // Calculate distributions and returns
-    let (anti, pro) = calculate_equalisation(&poll.deposits, poll.anti, poll.pro, &truth)?;
+    let (anti, pro) = equalise_with_truth(&poll.deposits, poll.anti, poll.pro, &truth)?;
 
     // Update poll state with equalisation results
     poll.equalised = true;

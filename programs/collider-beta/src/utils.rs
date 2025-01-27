@@ -238,8 +238,8 @@ pub fn validate_poll_params(
     Ok(())
 }
 
-// Add this to utils.rs
-pub fn calculate_equalisation(
+// Calculates equalisation in the pool given some truth
+pub fn equalise_with_truth(
     deposits: &[UserDeposit],
     total_anti: u64,
     total_pro: u64,
@@ -256,13 +256,7 @@ pub fn calculate_equalisation(
     // Calculate normalised overlap with truth
     let mut overlap_values = Vec::with_capacity(deposits.len());
     for deposit in deposits {
-        let sign = if truth[0] > truth[1] && deposit.anti > deposit.pro {
-            1i64
-        } else if truth[0] < truth[1] && deposit.anti > deposit.pro {
-            -1i64
-        } else if truth[0] > truth[1] && deposit.anti < deposit.pro {
-            -1i64
-        } else if truth[0] < truth[1] && deposit.anti < deposit.pro {
+        let parity = if (truth[0] > truth[1]) == (deposit.anti > deposit.pro) {
             1i64
         } else {
             -1i64
@@ -272,7 +266,7 @@ pub fn calculate_equalisation(
         let photon = deposit.s;
 
         // Calculate overlap value
-        let overlap = calculate_overlap(baryon, photon, sign)?;
+        let overlap = calculate_overlap(baryon, photon, parity)?;
         overlap_values.push(overlap);
     }
 
@@ -317,8 +311,8 @@ pub fn calculate_equalisation(
     Ok((anti_returns, pro_returns))
 }
 
-// Helper function for calculate_equalisation
-fn calculate_overlap(baryon: u64, photon: u64, sign: i64) -> Result<u64> {
+// Helper function for equalise_with_truth
+fn calculate_overlap(baryon: u64, photon: u64, parity: i64) -> Result<u64> {
     const TWO_E9: u64 = 2_000_000_000;
 
     if baryon >= TWO_E9 {
@@ -334,7 +328,7 @@ fn calculate_overlap(baryon: u64, photon: u64, sign: i64) -> Result<u64> {
         BASIS_POINTS + (BASIS_POINTS * photon.ilog2() as u64) / 10
     };
 
-    let result = if sign > 0 {
+    let result = if parity > 0 {
         (BASIS_POINTS * BASIS_POINTS) / (BASIS_POINTS + log_x / photon_term)
     } else {
         (log_x * photon_term) / BASIS_POINTS
