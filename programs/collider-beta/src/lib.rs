@@ -24,8 +24,8 @@ pub mod collider_beta {
     use instructions::equalise;
     use instructions::withdraw;
 
-    pub fn initialise(ctx: Context<Initialise>) -> Result<()> {
-        initialise::initialiser(ctx)
+    pub fn initialiser(ctx: Context<Initialise>) -> Result<()> {
+        initialise::initialise(ctx)
     }
 
     pub fn create_poll(
@@ -36,7 +36,7 @@ pub mod collider_beta {
         end_time: String,
         etc: Option<Vec<u8>>,
     ) -> Result<()> {
-        create_poll::creator(ctx, title, description, start_time, end_time, etc)
+        create_poll::create(ctx, title, description, start_time, end_time, etc)
     }
 
     pub fn deposit_tokens(
@@ -45,7 +45,7 @@ pub mod collider_beta {
         anti_amount: u64,
         pro_amount: u64,
     ) -> Result<()> {
-        deposit::depositor(ctx, poll_index, anti_amount, pro_amount)
+        deposit::deposit(ctx, poll_index, anti_amount, pro_amount)
     }
 
     pub fn equalise_tokens(
@@ -53,11 +53,11 @@ pub mod collider_beta {
         poll_index: u64,
         truth_values: Vec<u64>,
     ) -> Result<()> {
-        equalise::equaliser(ctx, poll_index, truth_values)
+        equalise::equalise(ctx, poll_index, truth_values)
     }
 
     pub fn withdraw_tokens(ctx: Context<WithdrawTokens>, poll_index: u64) -> Result<()> {
-        withdraw::withdrawer(ctx, poll_index)
+        withdraw::withdraw(ctx, poll_index)
     }
 }
 
@@ -79,7 +79,7 @@ pub struct CreatePoll<'info> {
         init,
         payer = authority,
         space = 8 + PollAccount::LEN,
-        seeds = [b"poll", state.poll_count.to_le_bytes().as_ref()],
+        seeds = [b"poll", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
     pub poll: Account<'info, PollAccount>,

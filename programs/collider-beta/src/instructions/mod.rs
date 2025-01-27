@@ -17,11 +17,11 @@ pub mod initialise;
 pub mod withdraw;
 
 // Re-export the instruction structs
-pub use create_poll::creator;
-pub use deposit::depositor;
-pub use equalise::equaliser;
-pub use initialise::initialiser;
-pub use withdraw::withdrawer;
+pub use create_poll::create;
+pub use deposit::deposit;
+pub use equalise::equalise;
+pub use initialise::initialise;
+pub use withdraw::withdraw;
 
 // Add instruction data structs
 #[derive(AnchorSerialize, AnchorDeserialize)]

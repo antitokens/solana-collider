@@ -103,10 +103,10 @@ async fn test_full_collider_flow() {
         program_id,
         accounts: vec![
             AccountMeta::new(state_pda, false),
-            AccountMeta::new_readonly(authority.pubkey(), true), 
+            AccountMeta::new_readonly(authority.pubkey(), true),
             AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
         ],
-        data: collider_beta::instruction::Initialise {}.data(),
+        data: collider_beta::instruction::Initialiser {}.data(),
     };
 
     let tx = Transaction::new_signed_with_payer(

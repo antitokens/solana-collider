@@ -39,7 +39,9 @@ pub enum PredictError {
     #[msg("Invalid token account ownership")]
     InvalidTokenAccount,
     #[msg("Unauthorised operation")]
-    Unauthorized,
+    Unauthorised,
+    #[msg("Already initialised")]
+    AlreadyInitialised,
     #[msg("Invalid truth values provided")]
     InvalidTruthValues,
     #[msg("Arithmetic operation failed")]
@@ -56,13 +58,17 @@ pub enum PredictError {
     AlreadyWithdrawn,
     #[msg("Invalid equalisation calculation")]
     InvalidEqualisation,
+    #[msg("Prediction already equalised")]
+    AlreadyEqualised,
+    #[msg("No deposits in prediction pool")]
+    NoDeposits,
 }
 
 // Event emitted when a new poll is created
 #[event]
 pub struct PollCreatedEvent {
     pub poll_index: u64,
-    pub creator: Pubkey,
+    pub address: Pubkey,
     pub title: String,
     pub start_time: String,
     pub end_time: String,
@@ -73,11 +79,11 @@ pub struct PollCreatedEvent {
 #[event]
 pub struct DepositEvent {
     pub poll_index: u64,
-    pub depositor: Pubkey,
-    pub anti_amount: u64,
-    pub pro_amount: u64,
-    pub u_value: u64,
-    pub s_value: u64,
+    pub address: Pubkey,
+    pub anti: u64,
+    pub pro: u64,
+    pub u: u64,
+    pub s: u64,
     pub timestamp: i64,
 }
 
@@ -85,9 +91,9 @@ pub struct DepositEvent {
 #[event]
 pub struct EqualisationEvent {
     pub poll_index: u64,
-    pub truth_values: Vec<u64>,
-    pub total_anti: u64,
-    pub total_pro: u64,
+    pub truth: Vec<u64>,
+    pub anti: u64,
+    pub pro: u64,
     pub timestamp: i64,
 }
 
@@ -95,9 +101,9 @@ pub struct EqualisationEvent {
 #[event]
 pub struct WithdrawEvent {
     pub poll_index: u64,
-    pub user: Pubkey,
-    pub anti_amount: u64,
-    pub pro_amount: u64,
+    pub address: Pubkey,
+    pub anti: u64,
+    pub pro: u64,
     pub timestamp: i64,
 }
 
@@ -242,28 +248,28 @@ pub fn calculate_equalisation(
     const NUM_BINS: usize = 100;
     let bin_size = BASIS_POINTS / NUM_BINS as u64;
 
-    // Initialize bins
+    // Initialise bins
     let mut bins = vec![0u64; NUM_BINS];
     let mut items_in_bins = vec![Vec::new(); NUM_BINS];
     let mut value_sums = vec![(0u64, 0u64); NUM_BINS];
 
-    // Calculate normalized overlap with truth
+    // Calculate normalised overlap with truth
     let mut overlap_values = Vec::with_capacity(deposits.len());
     for deposit in deposits {
-        let sign = if truth[0] > truth[1] && deposit.anti_amount > deposit.pro_amount {
+        let sign = if truth[0] > truth[1] && deposit.anti > deposit.pro {
             1i64
-        } else if truth[0] < truth[1] && deposit.anti_amount > deposit.pro_amount {
+        } else if truth[0] < truth[1] && deposit.anti > deposit.pro {
             -1i64
-        } else if truth[0] > truth[1] && deposit.anti_amount < deposit.pro_amount {
+        } else if truth[0] > truth[1] && deposit.anti < deposit.pro {
             -1i64
-        } else if truth[0] < truth[1] && deposit.anti_amount < deposit.pro_amount {
+        } else if truth[0] < truth[1] && deposit.anti < deposit.pro {
             1i64
         } else {
             -1i64
         };
 
-        let baryon = deposit.u_value;
-        let photon = deposit.s_value;
+        let baryon = deposit.u;
+        let photon = deposit.s;
 
         // Calculate overlap value
         let overlap = calculate_overlap(baryon, photon, sign)?;
@@ -278,8 +284,8 @@ pub fn calculate_equalisation(
 
             bins[bin_index] += 1;
             items_in_bins[bin_index].push(i);
-            value_sums[bin_index].0 += deposits[i].anti_amount;
-            value_sums[bin_index].1 += deposits[i].pro_amount;
+            value_sums[bin_index].0 += deposits[i].anti;
+            value_sums[bin_index].1 += deposits[i].pro;
         }
     }
 
@@ -300,10 +306,10 @@ pub fn calculate_equalisation(
 
             // Calculate proportional returns
             if bin_anti_total > 0 {
-                anti_returns[deposit_idx] = (deposit.anti_amount * total_anti) / bin_anti_total;
+                anti_returns[deposit_idx] = (deposit.anti * total_anti) / bin_anti_total;
             }
             if bin_pro_total > 0 {
-                pro_returns[deposit_idx] = (deposit.pro_amount * total_pro) / bin_pro_total;
+                pro_returns[deposit_idx] = (deposit.pro * total_pro) / bin_pro_total;
             }
         }
     }
