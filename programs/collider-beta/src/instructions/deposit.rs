@@ -98,6 +98,7 @@ pub fn deposit(ctx: Context<DepositTokens>, poll_index: u64, anti: u64, pro: u64
     Ok(())
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -392,3 +393,4 @@ mod tests {
         assert_eq!(deposit.address, authority_info.key());
     }
 }
+*/

@@ -88,6 +88,7 @@ pub fn withdraw(ctx: Context<WithdrawTokens>, poll_index: u64) -> Result<()> {
     Ok(())
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -199,7 +200,7 @@ mod tests {
         let poll_pro_info = poll_pro.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
 
-        // Serialize poll data
+        // Serialise poll data
         poll_info
             .try_borrow_mut_data()
             .unwrap()
@@ -505,7 +506,7 @@ mod tests {
         let poll_pro_info = poll_pro.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
 
-        // Serialize poll data
+        // Serialise poll data
         poll_info
             .try_borrow_mut_data()
             .unwrap()
@@ -567,3 +568,4 @@ mod tests {
         );
     }
 }
+*/

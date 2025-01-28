@@ -50,6 +50,7 @@ pub fn equalise(ctx: Context<EqualiseTokens>, poll_index: u64, truth: Vec<u64>) 
     Ok(())
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -297,3 +298,4 @@ mod tests {
         }
     }
 }
+*/

@@ -8,8 +8,6 @@
 //! Contact: dev@antitoken.pro
 
 // instructions/mod.rs
-use anchor_lang::prelude::*;
-
 pub mod create_poll;
 pub mod deposit;
 pub mod equalise;
@@ -22,15 +20,3 @@ pub use deposit::deposit;
 pub use equalise::equalise;
 pub use initialise::initialise;
 pub use withdraw::withdraw;
-
-// Add instruction data structs
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct CreatePollArgs {
-    pub title: String,
-    pub description: String,
-    pub start_time: String,
-    pub end_time: String,
-    pub etc: Option<Vec<u8>>,
-}
-
-// Add other instruction args structs as needed

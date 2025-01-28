@@ -17,7 +17,9 @@ pub struct StateAccount {
 }
 
 impl StateAccount {
-    pub const LEN: usize = 8 + 32; // Discriminator + Pubkey
+    pub const LEN: usize = 8  // Discriminator
+        + 8   // poll_index
+        + 32; // authority (Pubkey)
 }
 
 #[account]
@@ -43,8 +45,8 @@ impl PollAccount {
         64 + // start_time
         64 + // end_time
         1024 + // etc max length
-        8 + // anti in pool
-        8 + // pro in pool
+        8 + // $ANTI in pool
+        8 + // $PRO in pool
         1024 + // deposits vector space
         1 + // equalised
         1024; // equalisation_results
@@ -71,4 +73,9 @@ pub struct EqualisationResult {
     pub pro: Vec<u64>,
     pub truth: Vec<u64>,
     pub timestamp: i64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct CreatePollBumps {
+    pub poll: u8,
 }

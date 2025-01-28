@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::InstructionData;
 use anchor_spl::token::{self, Mint, TokenAccount};
-use collider_beta::{self, instructions::*};
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
@@ -21,6 +20,16 @@ async fn test_full_collider_flow() {
     // Create test accounts
     let authority = Keypair::new();
     let user = Keypair::new();
+
+    // Add instruction data structs
+    #[derive(AnchorSerialize, AnchorDeserialize)]
+    pub struct CreatePollArgs {
+        pub title: String,
+        pub description: String,
+        pub start_time: String,
+        pub end_time: String,
+        pub etc: Option<Vec<u8>>,
+    }
 
     // Add SOL accounts
     program_test.add_account(

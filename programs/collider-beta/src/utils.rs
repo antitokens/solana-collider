@@ -12,8 +12,8 @@ use crate::state::*;
 use anchor_lang::prelude::*;
 
 pub const BASIS_POINTS: u64 = 10000; // For fixed-point arithmetic
-pub const MAX_TITLE_LENGTH: usize = 100;
-pub const MAX_DESC_LENGTH: usize = 500;
+pub const MAX_TITLE_LENGTH: usize = 256;
+pub const MAX_DESCRIPTION_LENGTH: usize = 1000;
 pub const MIN_DEPOSIT_AMOUNT: u64 = 1000; // 0.001 tokens minimum deposit
 
 #[error_code]
@@ -224,7 +224,7 @@ pub fn validate_poll_params(
 ) -> Result<()> {
     require!(title.len() <= MAX_TITLE_LENGTH, PredictError::TitleTooLong);
     require!(
-        description.len() <= MAX_DESC_LENGTH,
+        description.len() <= MAX_DESCRIPTION_LENGTH,
         PredictError::DescriptionTooLong
     );
 
@@ -250,11 +250,11 @@ pub fn equalise_with_truth(
 
     // Initialise bins
     let mut bins = vec![0u64; NUM_BINS];
-    let mut items_in_bins = vec![Vec::new(); NUM_BINS];
-    let mut value_sums = vec![(0u64, 0u64); NUM_BINS];
+    let mut item = vec![Vec::new(); NUM_BINS];
+    let mut sums = vec![(0u64, 0u64); NUM_BINS];
 
     // Calculate normalised overlap with truth
-    let mut overlap_values = Vec::with_capacity(deposits.len());
+    let mut overlaps = Vec::with_capacity(deposits.len());
     for deposit in deposits {
         let parity = if (truth[0] > truth[1]) == (deposit.anti > deposit.pro) {
             1i64
@@ -266,53 +266,53 @@ pub fn equalise_with_truth(
         let photon = deposit.s;
 
         // Calculate overlap value
-        let overlap = calculate_overlap(baryon, photon, parity)?;
-        overlap_values.push(overlap);
+        let overlap = overlap(baryon, photon, parity)?;
+        overlaps.push(overlap);
     }
 
     // Populate bins
-    for (i, &overlap) in overlap_values.iter().enumerate() {
+    for (i, &overlap) in overlaps.iter().enumerate() {
         if overlap <= BASIS_POINTS {
             let bin_index = (overlap / bin_size) as usize;
             let bin_index = bin_index.min(NUM_BINS - 1);
 
             bins[bin_index] += 1;
-            items_in_bins[bin_index].push(i);
-            value_sums[bin_index].0 += deposits[i].anti;
-            value_sums[bin_index].1 += deposits[i].pro;
+            item[bin_index].push(i);
+            sums[bin_index].0 += deposits[i].anti;
+            sums[bin_index].1 += deposits[i].pro;
         }
     }
 
     // Calculate distribution and returns
-    let mut anti_returns = vec![0u64; deposits.len()];
-    let mut pro_returns = vec![0u64; deposits.len()];
+    let mut anti = vec![0u64; deposits.len()];
+    let mut pro = vec![0u64; deposits.len()];
 
-    for (bin_idx, indices) in items_in_bins.iter().enumerate() {
+    for (bin_idx, indices) in item.iter().enumerate() {
         if indices.is_empty() {
             continue;
         }
 
-        let bin_anti_total = value_sums[bin_idx].0;
-        let bin_pro_total = value_sums[bin_idx].1;
+        let bin_anti = sums[bin_idx].0;
+        let bin_pro = sums[bin_idx].1;
 
         for &deposit_idx in indices {
             let deposit = &deposits[deposit_idx];
 
             // Calculate proportional returns
-            if bin_anti_total > 0 {
-                anti_returns[deposit_idx] = (deposit.anti * total_anti) / bin_anti_total;
+            if bin_anti > 0 {
+                anti[deposit_idx] = (deposit.anti * total_anti) / bin_anti;
             }
-            if bin_pro_total > 0 {
-                pro_returns[deposit_idx] = (deposit.pro * total_pro) / bin_pro_total;
+            if bin_pro > 0 {
+                pro[deposit_idx] = (deposit.pro * total_pro) / bin_pro;
             }
         }
     }
 
-    Ok((anti_returns, pro_returns))
+    Ok((anti, pro))
 }
 
 // Helper function for equalise_with_truth
-fn calculate_overlap(baryon: u64, photon: u64, parity: i64) -> Result<u64> {
+fn overlap(baryon: u64, photon: u64, parity: i64) -> Result<u64> {
     const TWO_E9: u64 = 2_000_000_000;
 
     if baryon >= TWO_E9 {
