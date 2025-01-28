@@ -8,10 +8,14 @@
 //! Contact: dev@antitoken.pro
 
 use crate::Initialise;
+use crate::PredictError;
 use anchor_lang::prelude::*;
 
 pub fn initialise(ctx: Context<Initialise>) -> Result<()> {
     let state = &mut ctx.accounts.state;
+    if state.poll_index > 0 {
+        return Err(PredictError::AlreadyInitialised.into());
+    }
     state.poll_index = 0;
     state.authority = ctx.accounts.authority.key();
     Ok(())
@@ -25,6 +29,8 @@ mod tests {
     use crate::StateAccount;
     use anchor_lang::prelude::AccountInfo;
     use anchor_lang::solana_program::system_program;
+    use anchor_lang::Discriminator;
+    use std::str::FromStr;
 
     struct TestAccountData {
         key: Pubkey,
@@ -36,13 +42,24 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_owned(owner: Pubkey) -> Self {
+        fn new_owned<T: AccountSerialize + AccountDeserialize + Clone>(owner: Pubkey) -> Self {
             Self {
-                key: Pubkey::new_unique(),
+                key: system_program::ID,
                 lamports: 1_000_000,
-                data: vec![0; StateAccount::LEN],
+                data: vec![0; 8 + std::mem::size_of::<T>()], // Account for the 8-byte discriminator that Anchor adds
                 owner,
                 executable: false,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_system_account() -> Self {
+            Self {
+                key: system_program::ID,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: system_program::ID,
+                executable: true,
                 rent_epoch: 0,
             }
         }
@@ -59,141 +76,196 @@ mod tests {
                 self.rent_epoch,
             )
         }
-    }
 
-    struct TestContext {
-        program_id: Pubkey,
-        state_data: TestAccountData,
-        authority_data: TestAccountData,
-        system_program_data: TestAccountData,
-    }
+        fn init_state_data(&mut self, state: &StateAccount) -> Result<()> {
+            let data = self.data.as_mut_slice();
 
-    impl TestContext {
-        fn new() -> Self {
-            let program_id = Pubkey::new_unique();
+            // Write discriminator
+            let disc = StateAccount::discriminator();
+            data[..8].copy_from_slice(&disc);
 
-            TestContext {
-                program_id: program_id.clone(),
-                state_data: TestAccountData::new_owned(program_id),
-                authority_data: TestAccountData::new_owned(program_id),
-                system_program_data: TestAccountData::new_owned(system_program::ID),
-            }
+            // Write account data
+            let account_data = state.try_to_vec()?;
+            data[8..8 + account_data.len()].copy_from_slice(&account_data);
+
+            Ok(())
         }
     }
 
     #[test]
-    fn test_successful_initialization() {
-        let mut ctx = TestContext::new();
+    fn test_successful_initialisation() {
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+
+        // Create test accounts with correct sizes
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
+        let mut authority = TestAccountData::new_system_account();
+        let mut system = TestAccountData::new_system_account();
+
+        // Initialise state account
+        let state_data = StateAccount {
+            poll_index: 0,
+            authority: authority.key,
+        };
+        state.init_state_data(&state_data).unwrap();
 
         // Get account infos
-        let state_info = ctx.state_data.to_account_info(false);
-        let authority_info = ctx.authority_data.to_account_info(true);
-        let system_program_info = ctx.system_program_data.to_account_info(false);
+        let state_info = state.to_account_info(false);
+        let authority_info = authority.to_account_info(true);
+        let system_info = system.to_account_info(false);
 
         let mut accounts = Initialise {
             state: Account::try_from(&state_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            system_program: Program::try_from(&system_program_info).unwrap(),
+            system_program: Program::try_from(&system_info).unwrap(),
         };
 
         let result = initialise(Context::new(
-            &ctx.program_id,
+            &program_id,
             &mut accounts,
             &[],
             InitialiseBumps {},
         ));
 
         assert!(result.is_ok());
-
-        // Verify state initialization by deserializing the account data
-        let state: StateAccount =
-            StateAccount::try_deserialize(&mut state_info.try_borrow_data().unwrap().as_ref())
-                .unwrap();
-
-        assert_eq!(state.poll_index, 0);
-        assert_eq!(state.authority, authority_info.key());
     }
 
     #[test]
-    fn test_double_initialization() {
-        let mut ctx = TestContext::new();
+    fn test_double_initialisation() {
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
 
-        // Get account infos
-        let state_info = ctx.state_data.to_account_info(false);
-        let authority_info = ctx.authority_data.to_account_info(true);
-        let system_program_info = ctx.system_program_data.to_account_info(false);
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
+        let mut authority = TestAccountData::new_system_account();
+        let mut system = TestAccountData::new_system_account();
 
-        let mut accounts = Initialise {
-            state: Account::try_from(&state_info).unwrap(),
-            authority: Signer::try_from(&authority_info).unwrap(),
-            system_program: Program::try_from(&system_program_info).unwrap(),
+        let authority_key = authority.key;
+
+        // Initialise state account
+        let state_data = StateAccount {
+            poll_index: 0,
+            authority: authority_key,
         };
+        state.init_state_data(&state_data).unwrap();
 
-        // First initialization
-        let result1 = initialise(Context::new(
-            &ctx.program_id,
-            &mut accounts,
-            &[],
-            InitialiseBumps {},
-        ));
-        assert!(result1.is_ok());
+        // First initialisation
+        {
+            let state_info = state.to_account_info(false);
+            let authority_info = authority.to_account_info(true);
+            let system_info = system.to_account_info(false);
 
-        // Try to initialize again
-        let result2 = initialise(Context::new(
-            &ctx.program_id,
-            &mut accounts,
-            &[],
-            InitialiseBumps {},
-        ));
+            let mut accounts = Initialise {
+                state: Account::try_from(&state_info).unwrap(),
+                authority: Signer::try_from(&authority_info).unwrap(),
+                system_program: Program::try_from(&system_info).unwrap(),
+            };
 
-        match result2 {
-            Err(err) => assert_eq!(err, PredictError::AlreadyInitialised.into()),
-            _ => panic!("Expected already initialised error"),
+            let result1 = initialise(Context::new(
+                &program_id,
+                &mut accounts,
+                &[],
+                InitialiseBumps {},
+            ));
+            assert!(result1.is_ok());
+        }
+
+        // Update state
+        let updated_state = StateAccount {
+            poll_index: 1,
+            authority: authority_key,
+        };
+        state.init_state_data(&updated_state).unwrap();
+
+        // Second initialisation attempt
+        {
+            let state_info = state.to_account_info(false);
+            let authority_info = authority.to_account_info(true);
+            let system_info = system.to_account_info(false);
+
+            let mut accounts = Initialise {
+                state: Account::try_from(&state_info).unwrap(),
+                authority: Signer::try_from(&authority_info).unwrap(),
+                system_program: Program::try_from(&system_info).unwrap(),
+            };
+
+            let result2 = initialise(Context::new(
+                &program_id,
+                &mut accounts,
+                &[],
+                InitialiseBumps {},
+            ));
+
+            assert_eq!(
+                result2.unwrap_err(),
+                Error::from(PredictError::AlreadyInitialised)
+            );
         }
     }
 
     #[test]
-    fn test_initialization_with_different_authority() {
-        let mut ctx = TestContext::new();
-        ctx.authority_data.key = Pubkey::new_unique(); // Set different authority
+    fn test_initialisation_with_different_authority() {
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
 
-        // Get account infos
-        let state_info = ctx.state_data.to_account_info(false);
-        let authority_info = ctx.authority_data.to_account_info(true);
-        let system_program_info = ctx.system_program_data.to_account_info(false);
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
+        let mut authority = TestAccountData::new_system_account();
+        let mut system = TestAccountData::new_system_account();
 
-        let mut accounts = Initialise {
-            state: Account::try_from(&state_info).unwrap(),
-            authority: Signer::try_from(&authority_info).unwrap(),
-            system_program: Program::try_from(&system_program_info).unwrap(),
+        // Derive new authority
+        let different_authority = Pubkey::new_unique();
+
+        let state_data = StateAccount {
+            poll_index: 0,
+            authority: different_authority,
         };
+        state.init_state_data(&state_data).unwrap();
 
-        let result = initialise(Context::new(
-            &ctx.program_id,
-            &mut accounts,
-            &[],
-            InitialiseBumps {},
-        ));
+        {
+            let state_info = state.to_account_info(false);
+            let authority_info = authority.to_account_info(true);
+            let system_info = system.to_account_info(false);
 
-        assert!(result.is_ok());
+            let mut accounts = Initialise {
+                state: Account::try_from(&state_info).unwrap(),
+                authority: Signer::try_from(&authority_info).unwrap(),
+                system_program: Program::try_from(&system_info).unwrap(),
+            };
 
-        // Verify state initialization
-        let state: StateAccount =
-            StateAccount::try_deserialize(&mut state_info.try_borrow_data().unwrap().as_ref())
-                .unwrap();
+            let result = initialise(Context::new(
+                &program_id,
+                &mut accounts,
+                &[],
+                InitialiseBumps {},
+            ));
 
-        assert_eq!(state.authority, authority_info.key());
-        assert_ne!(state.authority, ctx.program_id);
+            assert!(result.is_ok());
+
+            let state_account: StateAccount =
+                StateAccount::try_deserialize(&mut state_info.try_borrow_data().unwrap().as_ref())
+                    .unwrap();
+
+            assert_eq!(state_account.authority, different_authority);
+            assert_ne!(state_account.authority, program_id);
+        }
     }
 
     #[test]
-    fn test_initialization_state_validation() {
-        let mut ctx = TestContext::new();
+    fn test_initialisation_state_validation() {
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
+        let mut authority = TestAccountData::new_system_account();
+        let mut system = TestAccountData::new_system_account();
+
+        let state_data = StateAccount {
+            poll_index: 0,
+            authority: authority.key,
+        };
+
+        // Initialise state account data before running the test
+        state.init_state_data(&state_data).unwrap();
 
         // Get account infos
-        let state_info = ctx.state_data.to_account_info(false);
-        let authority_info = ctx.authority_data.to_account_info(true);
-        let system_program_info = ctx.system_program_data.to_account_info(false);
+        let state_info = state.to_account_info(false);
+        let authority_info = authority.to_account_info(true);
+        let system_program_info = system.to_account_info(false);
 
         let mut accounts = Initialise {
             state: Account::try_from(&state_info).unwrap(),
@@ -202,7 +274,7 @@ mod tests {
         };
 
         let result = initialise(Context::new(
-            &ctx.program_id,
+            &program_id,
             &mut accounts,
             &[],
             InitialiseBumps {},
@@ -210,7 +282,7 @@ mod tests {
 
         assert!(result.is_ok());
 
-        // Verify state initialization
+        // Verify state initialisation
         let state: StateAccount =
             StateAccount::try_deserialize(&mut state_info.try_borrow_data().unwrap().as_ref())
                 .unwrap();

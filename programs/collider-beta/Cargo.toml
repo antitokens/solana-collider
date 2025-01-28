@@ -1,6 +1,6 @@
 [package]
 name = "collider-beta"
-version = "0.0.1"
+version = "1.0.0-beta"
 edition = "2021"
 
 [lib]

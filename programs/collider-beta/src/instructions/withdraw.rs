@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_successful_withdrawal() {
-        let program_id = Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
         let authority = Pubkey::new_unique();
 
         // Create test accounts
@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_withdrawal_validation() {
-        let program_id = Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
         let authority = Pubkey::new_unique();
 
         // Create test accounts
@@ -457,7 +457,7 @@ mod tests {
 
     #[test]
     fn test_withdrawal_amounts() {
-        let program_id = Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
         let authority = Pubkey::new_unique();
 
         // Create test accounts

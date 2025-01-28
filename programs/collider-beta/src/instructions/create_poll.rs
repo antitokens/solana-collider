@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_create_poll_success() {
-        let program_id = Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
 
         // Create test accounts
         let mut state = TestAccountData::new_owned(program_id, 1_000_000);
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_create_poll_validation_failures() {
-        let program_id = Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
+        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
 
         // Create test accounts
         let mut state = TestAccountData::new_owned(program_id, 1_000_000);

@@ -937,7 +937,7 @@ dependencies = [
 
 [[package]]
 name = "collider-beta"
-version = "0.0.1"
+version = "1.0.0-beta"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
