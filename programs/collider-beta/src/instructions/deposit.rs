@@ -123,11 +123,11 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_owned(owner: Pubkey) -> Self {
+        fn new_owned<T: AccountSerialize + AccountDeserialize + Clone>(owner: Pubkey) -> Self {
             Self {
-                key: Pubkey::new_unique(),
+                key: system_program::ID,
                 lamports: 1_000_000,
-                data: vec![0; 1000],
+                data: vec![0; 8 + std::mem::size_of::<T>()], // Account for the 8-byte discriminator that Anchor adds
                 owner,
                 executable: false,
                 rent_epoch: 0,
@@ -147,11 +147,23 @@ mod tests {
             )
         }
 
+        fn new_token() -> Self {
+            Self {
+                key: Pubkey::new_unique(),
+                lamports: 1_000_000,
+                data: vec![0; 165], // Size of TokenAccount
+                owner: spl_token::ID,
+                executable: false,
+                rent_epoch: 0,
+            }
+        }
+
         fn into_token_account<'a>(account_info: &'a AccountInfo<'a>) -> Account<'a, TokenAccount> {
             Account::try_from(account_info).unwrap()
         }
     }
 
+    // Struct to hold all test accounts
     struct TestAccounts {
         pub poll_data: TestAccountData,
         pub authority: TestAccountData,
@@ -164,13 +176,30 @@ mod tests {
 
     fn create_test_accounts(program_id: Pubkey) -> TestAccounts {
         TestAccounts {
-            poll_data: TestAccountData::new_owned(program_id),
-            authority: TestAccountData::new_owned(system_program::ID),
-            user_anti_token: TestAccountData::new_owned(program_id),
-            user_pro_token: TestAccountData::new_owned(program_id),
-            poll_anti_token: TestAccountData::new_owned(program_id),
-            poll_pro_token: TestAccountData::new_owned(program_id),
-            token_program: TestAccountData::new_owned(spl_token::ID),
+            poll_data: TestAccountData::new_owned::<PollAccount>(program_id),
+            authority: TestAccountData::new_owned::<StateAccount>(system_program::ID),
+            user_anti_token: TestAccountData::new_token(),
+            user_pro_token: TestAccountData::new_token(),
+            poll_anti_token: TestAccountData::new_token(),
+            poll_pro_token: TestAccountData::new_token(),
+            token_program: TestAccountData::new_owned::<StateAccount>(spl_token::ID),
+        }
+    }
+
+    // Reusable method to create a test poll
+    fn create_test_poll(start_time: &str, end_time: &str) -> PollAccount {
+        PollAccount {
+            index: 0,
+            title: "Test Poll".to_string(),
+            description: "Test Description".to_string(),
+            start_time: start_time.to_string(),
+            end_time: end_time.to_string(),
+            etc: None,
+            anti: 0,
+            pro: 0,
+            deposits: vec![],
+            equalised: false,
+            equalisation_results: None,
         }
     }
 
@@ -179,23 +208,7 @@ mod tests {
         let program_id = program_id();
         let mut accounts = create_test_accounts(program_id);
 
-        // Create PollAccount data
-        let poll = PollAccount {
-            index: 0,
-            title: "Test Poll".to_string(),
-            description: "Test Description".to_string(),
-            start_time: "2025-01-20T00:00:00Z".to_string(),
-            end_time: "2025-01-21T00:00:00Z".to_string(),
-            etc: None,
-            anti: 0,
-            pro: 0,
-            deposits: vec![],
-            equalised: false,
-            equalisation_results: None,
-        };
-
         // Get account infos
-        let poll_account_info = accounts.poll_data.to_account_info(false);
         let authority_info = accounts.authority.to_account_info(true);
         let user_anti_info = accounts.user_anti_token.to_account_info(false);
         let user_pro_info = accounts.user_pro_token.to_account_info(false);
@@ -203,7 +216,9 @@ mod tests {
         let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        // Serialize poll data
+        // Create poll accounts and serialize
+        let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        let poll_account_info = accounts.poll_data.to_account_info(false);
         poll_account_info
             .try_borrow_mut_data()
             .unwrap()
@@ -237,23 +252,7 @@ mod tests {
         let program_id = program_id();
         let mut accounts = create_test_accounts(program_id);
 
-        // Create inactive poll
-        let poll = PollAccount {
-            index: 0,
-            title: "Test Poll".to_string(),
-            description: "Test Description".to_string(),
-            start_time: "2024-01-01T00:00:00Z".to_string(), // Past date
-            end_time: "2024-01-02T00:00:00Z".to_string(),   // Past date
-            etc: None,
-            anti: 0,
-            pro: 0,
-            deposits: vec![],
-            equalised: false,
-            equalisation_results: None,
-        };
-
         // Get account infos
-        let poll_account_info = accounts.poll_data.to_account_info(false);
         let authority_info = accounts.authority.to_account_info(true);
         let user_anti_info = accounts.user_anti_token.to_account_info(false);
         let user_pro_info = accounts.user_pro_token.to_account_info(false);
@@ -261,7 +260,9 @@ mod tests {
         let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        // Serialize poll data
+        // Create poll accounts and serialize
+        let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        let poll_account_info = accounts.poll_data.to_account_info(false);
         poll_account_info
             .try_borrow_mut_data()
             .unwrap()
@@ -332,23 +333,7 @@ mod tests {
         let program_id = program_id();
         let mut accounts = create_test_accounts(program_id);
 
-        // Create active poll
-        let poll = PollAccount {
-            index: 0,
-            title: "Test Poll".to_string(),
-            description: "Test Description".to_string(),
-            start_time: "2025-01-20T00:00:00Z".to_string(),
-            end_time: "2025-01-21T00:00:00Z".to_string(),
-            etc: None,
-            anti: 0,
-            pro: 0,
-            deposits: vec![],
-            equalised: false,
-            equalisation_results: None,
-        };
-
         // Get account infos
-        let poll_account_info = accounts.poll_data.to_account_info(false);
         let authority_info = accounts.authority.to_account_info(true);
         let user_anti_info = accounts.user_anti_token.to_account_info(false);
         let user_pro_info = accounts.user_pro_token.to_account_info(false);
@@ -356,7 +341,9 @@ mod tests {
         let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        // Serialize poll data
+        // Create poll accounts and serialize
+        let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        let poll_account_info = accounts.poll_data.to_account_info(false);
         poll_account_info
             .try_borrow_mut_data()
             .unwrap()

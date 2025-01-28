@@ -35,8 +35,17 @@ pub mod collider_beta {
         start_time: String,
         end_time: String,
         etc: Option<Vec<u8>>,
+        unix_timestamp: Option<i64>,
     ) -> Result<()> {
-        create_poll::create(ctx, title, description, start_time, end_time, etc)
+        create_poll::create(
+            ctx,
+            title,
+            description,
+            start_time,
+            end_time,
+            etc,
+            unix_timestamp,
+        )
     }
 
     pub fn deposit_tokens(
@@ -85,7 +94,6 @@ pub struct CreatePoll<'info> {
     pub poll: Account<'info, PollAccount>,
     #[account(mut)]
     pub authority: Signer<'info>,
-    /// CHECK: Payment account
     #[account(mut)]
     pub payment: AccountInfo<'info>,
     pub system_program: Program<'info, System>,

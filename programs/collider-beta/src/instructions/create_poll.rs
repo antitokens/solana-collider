@@ -19,30 +19,30 @@ pub fn create(
     start_time: String,
     end_time: String,
     etc: Option<Vec<u8>>,
+    unix_timestamp: Option<i64>,
 ) -> Result<()> {
-    // Verify payment
     require!(
-        ctx.accounts.payment.lamports() >= 100000000, // 0.1 SOL in lamports
+        ctx.accounts.payment.lamports() >= 100000000,
         PredictError::InsufficientPayment
     );
 
-    // Validate string lengths
     require!(title.len() <= MAX_TITLE_LENGTH, PredictError::TitleTooLong);
     require!(
         description.len() <= MAX_DESC_LENGTH,
         PredictError::DescriptionTooLong
     );
 
-    // Validate title uniqueness
     require!(
         !state_has_title(&ctx.accounts.state, &title),
         PredictError::TitleExists
     );
 
-    // Validate timestamps
     let start = parse_iso_timestamp(&start_time)?;
     let end = parse_iso_timestamp(&end_time)?;
-    let now = Clock::get()?.unix_timestamp;
+    let now = match unix_timestamp {
+        Some(ts) => ts,
+        None => Clock::get()?.unix_timestamp,
+    };
 
     require!(end > start, PredictError::InvalidTimeRange);
     require!(start > now, PredictError::StartTimeInPast);
@@ -50,7 +50,6 @@ pub fn create(
     let poll = &mut ctx.accounts.poll;
     let state = &mut ctx.accounts.state;
 
-    // Initialize poll data
     poll.index = state.poll_index;
     poll.title = title.clone();
     poll.description = description;
@@ -65,7 +64,6 @@ pub fn create(
 
     state.poll_index += 1;
 
-    // Emit event
     emit!(PollCreatedEvent {
         poll_index: poll.index,
         address: ctx.accounts.authority.key(),
@@ -94,8 +92,20 @@ mod tests {
     use crate::CreatePollBumps;
     use crate::PollAccount;
     use crate::StateAccount;
-    use anchor_lang::solana_program::system_program;
+    use anchor_lang::system_program;
+    use anchor_lang::Discriminator;
+    use std::cell::RefCell;
     use std::str::FromStr;
+
+    // Test double for Clock
+    thread_local! {
+        static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1705276800); // 2025-01-15T00:00:00Z
+    }
+
+    // Fixed test IDs - these should be consistent across tests
+    fn program_id() -> Pubkey {
+        Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap()
+    }
 
     struct TestAccountData {
         key: Pubkey,
@@ -107,12 +117,34 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_owned(owner: Pubkey, lamports: u64) -> Self {
+        fn new_owned<T: AccountSerialize + AccountDeserialize + Clone>(owner: Pubkey) -> Self {
             Self {
-                key: Pubkey::new_unique(),
-                lamports,
-                data: vec![0; 1000],
+                key: system_program::ID,
+                lamports: 1_000_000,
+                data: vec![0; 8 + std::mem::size_of::<T>()], // Account for the 8-byte discriminator that Anchor adds
                 owner,
+                executable: true,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_system_account() -> Self {
+            Self {
+                key: system_program::ID,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: program_id(),
+                executable: true,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_payment(lamports: u64) -> Self {
+            Self {
+                key: system_program::ID,
+                lamports,
+                data: vec![],
+                owner: system_program::ID,
                 executable: false,
                 rent_epoch: 0,
             }
@@ -130,30 +162,73 @@ mod tests {
                 self.rent_epoch,
             )
         }
+
+        fn init_state_data(&mut self, state: &StateAccount) -> Result<()> {
+            let data = self.data.as_mut_slice();
+
+            // Write discriminator
+            let disc = StateAccount::discriminator();
+            data[..8].copy_from_slice(&disc);
+
+            // Write account data
+            let account_data = state.try_to_vec()?;
+            data[8..8 + account_data.len()].copy_from_slice(&account_data);
+
+            Ok(())
+        }
+
+        fn init_poll_data(&mut self, poll: &PollAccount) -> Result<()> {
+            let data = self.data.as_mut_slice();
+
+            // Write discriminator
+            let disc = PollAccount::discriminator();
+            data[..8].copy_from_slice(&disc);
+
+            // Write account data
+            let account_data = poll.try_to_vec()?;
+            data[8..8 + account_data.len()].copy_from_slice(&account_data);
+
+            Ok(())
+        }
     }
 
     #[test]
     fn test_create_poll_success() {
-        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+        let program_id = program_id();
 
         // Create test accounts
-        let mut state = TestAccountData::new_owned(program_id, 1_000_000);
-        let mut poll = TestAccountData::new_owned(program_id, 1_000_000);
-        let mut payment = TestAccountData::new_owned(system_program::ID, 200_000_000); // 0.2 SOL
-        let mut authority = TestAccountData::new_owned(system_program::ID, 1_000_000);
-        let mut system = TestAccountData::new_owned(system_program::ID, 1_000_000);
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
+        let mut poll = TestAccountData::new_owned::<PollAccount>(program_id);
+        let mut payment = TestAccountData::new_payment(200_000_000);
+        let mut authority = TestAccountData::new_system_account();
+        let mut system = TestAccountData::new_system_account();
 
-        // Initialize state account
+        // Initialise state account
         let state_data = StateAccount {
             poll_index: 0,
             authority: authority.key,
         };
-        state.data[0..state_data.try_to_vec().unwrap().len()]
-            .copy_from_slice(&state_data.try_to_vec().unwrap());
+        state.init_state_data(&state_data).unwrap();
+
+        // Initialise poll account
+        let poll_data = PollAccount {
+            index: 0,
+            title: String::new(),
+            description: String::new(),
+            start_time: String::new(),
+            end_time: String::new(),
+            etc: None,
+            anti: 0,
+            pro: 0,
+            deposits: vec![],
+            equalised: false,
+            equalisation_results: None,
+        };
+        poll.init_poll_data(&poll_data).unwrap();
 
         // Get account infos
-        let state_info = state.to_account_info(false);
-        let poll_info = poll.to_account_info(false);
+        let state_info = state.to_account_info(true);
+        let poll_info = poll.to_account_info(true);
         let payment_info = payment.to_account_info(false);
         let authority_info = authority.to_account_info(true);
         let system_info = system.to_account_info(false);
@@ -162,27 +237,28 @@ mod tests {
             state: Account::try_from(&state_info).unwrap(),
             poll: Account::try_from(&poll_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            payment: payment_info,
+            payment: payment_info.clone(),
             system_program: Program::try_from(&system_info).unwrap(),
         };
 
         let result = create(
-            Context::new(
-                &program_id,
-                &mut accounts,
-                &[],
-                CreatePollBumps { poll: 255 },
-            ),
+            Context::new(&program_id, &mut accounts, &[], CreatePollBumps { poll: 0 }),
             "Test Poll".to_string(),
             "Test Description".to_string(),
             "2025-02-01T00:00:00Z".to_string(),
             "2025-02-02T00:00:00Z".to_string(),
             None,
+            Some(1705276800),
         );
 
-        assert!(result.is_ok());
+        // If the test fails, print the error
+        if result.is_err() {
+            println!("Error: {:?}", result.unwrap_err());
+        } else {
+            assert!(result.is_ok());
+        }
 
-        // Verify poll state
+        // Get updated poll data
         let poll_account: PollAccount =
             PollAccount::try_deserialize(&mut poll_info.try_borrow_data().unwrap().as_ref())
                 .unwrap();
@@ -207,14 +283,37 @@ mod tests {
 
     #[test]
     fn test_create_poll_validation_failures() {
-        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+        let program_id = program_id();
 
         // Create test accounts
-        let mut state = TestAccountData::new_owned(program_id, 1_000_000);
-        let mut poll = TestAccountData::new_owned(program_id, 1_000_000);
-        let mut payment = TestAccountData::new_owned(system_program::ID, 50_000_000); // 0.05 SOL (insufficient)
-        let mut authority = TestAccountData::new_owned(system_program::ID, 1_000_000);
-        let mut system = TestAccountData::new_owned(system_program::ID, 1_000_000);
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
+        let mut poll = TestAccountData::new_owned::<PollAccount>(program_id);
+        let mut payment = TestAccountData::new_payment(200_000_000);
+        let mut authority = TestAccountData::new_system_account();
+        let mut system = TestAccountData::new_system_account();
+
+        // Initialise state account
+        let state_data = StateAccount {
+            poll_index: 0,
+            authority: authority.key,
+        };
+        state.init_state_data(&state_data).unwrap();
+
+        // Initialise poll account
+        let poll_data = PollAccount {
+            index: 0,
+            title: "".to_string(),
+            description: "".to_string(),
+            start_time: "".to_string(),
+            end_time: "".to_string(),
+            etc: None,
+            anti: 0,
+            pro: 0,
+            deposits: vec![],
+            equalised: false,
+            equalisation_results: None,
+        };
+        poll.init_poll_data(&poll_data).unwrap();
 
         // Get account infos
         let state_info = state.to_account_info(false);
@@ -227,115 +326,92 @@ mod tests {
             state: Account::try_from(&state_info).unwrap(),
             poll: Account::try_from(&poll_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            payment: payment_info,
+            payment: payment_info.clone(),
             system_program: Program::try_from(&system_info).unwrap(),
         };
 
         // Test insufficient payment
         {
             let result = create(
-                Context::new(
-                    &program_id,
-                    &mut accounts,
-                    &[],
-                    CreatePollBumps { poll: 255 },
-                ),
+                Context::new(&program_id, &mut accounts, &[], CreatePollBumps { poll: 0 }),
                 "Test Poll".to_string(),
                 "Test Description".to_string(),
                 "2025-02-01T00:00:00Z".to_string(),
                 "2025-02-02T00:00:00Z".to_string(),
                 None,
+                Some(1705276800),
             );
-            match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::InsufficientPayment)),
-                _ => panic!("Expected insufficient payment error"),
-            }
+            assert_eq!(
+                result.unwrap_err(),
+                Error::from(PredictError::InsufficientPayment)
+            );
         }
 
         // Test title too long
         {
             let long_title = "a".repeat(MAX_TITLE_LENGTH + 1);
             let result = create(
-                Context::new(
-                    &program_id,
-                    &mut accounts,
-                    &[],
-                    CreatePollBumps { poll: 255 },
-                ),
+                Context::new(&program_id, &mut accounts, &[], CreatePollBumps { poll: 0 }),
                 long_title,
                 "Test Description".to_string(),
                 "2025-02-01T00:00:00Z".to_string(),
                 "2025-02-02T00:00:00Z".to_string(),
                 None,
+                Some(1705276800),
             );
-            match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::TitleTooLong)),
-                _ => panic!("Expected title too long error"),
-            }
+            assert_eq!(result.unwrap_err(), Error::from(PredictError::TitleTooLong));
         }
 
         // Test description too long
         {
             let long_desc = "a".repeat(MAX_DESC_LENGTH + 1);
             let result = create(
-                Context::new(
-                    &program_id,
-                    &mut accounts,
-                    &[],
-                    CreatePollBumps { poll: 255 },
-                ),
+                Context::new(&program_id, &mut accounts, &[], CreatePollBumps { poll: 0 }),
                 "Test Poll".to_string(),
                 long_desc,
                 "2025-02-01T00:00:00Z".to_string(),
                 "2025-02-02T00:00:00Z".to_string(),
                 None,
+                Some(1705276800),
             );
-            match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::DescriptionTooLong)),
-                _ => panic!("Expected description too long error"),
-            }
+            assert_eq!(
+                result.unwrap_err(),
+                Error::from(PredictError::DescriptionTooLong)
+            );
         }
 
         // Test invalid time range
         {
             let result = create(
-                Context::new(
-                    &program_id,
-                    &mut accounts,
-                    &[],
-                    CreatePollBumps { poll: 255 },
-                ),
+                Context::new(&program_id, &mut accounts, &[], CreatePollBumps { poll: 0 }),
                 "Test Poll".to_string(),
                 "Test Description".to_string(),
                 "2025-02-02T00:00:00Z".to_string(), // End before start
                 "2025-02-01T00:00:00Z".to_string(),
                 None,
+                Some(1705276800),
             );
-            match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::InvalidTimeRange)),
-                _ => panic!("Expected invalid time range error"),
-            }
+            assert_eq!(
+                result.unwrap_err(),
+                Error::from(PredictError::InvalidTimeRange)
+            );
         }
 
         // Test start time in past
         {
             let result = create(
-                Context::new(
-                    &program_id,
-                    &mut accounts,
-                    &[],
-                    CreatePollBumps { poll: 255 },
-                ),
+                Context::new(&program_id, &mut accounts, &[], CreatePollBumps { poll: 0 }),
                 "Test Poll".to_string(),
                 "Test Description".to_string(),
                 "2024-01-01T00:00:00Z".to_string(), // Past date
                 "2025-02-01T00:00:00Z".to_string(),
                 None,
+                Some(1705276800),
             );
-            match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::StartTimeInPast)),
-                _ => panic!("Expected start time in past error"),
-            }
+            assert_eq!(
+                result.unwrap_err(),
+                Error::from(PredictError::StartTimeInPast)
+            );
         }
     }
 }

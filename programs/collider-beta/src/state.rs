@@ -17,7 +17,7 @@ pub struct StateAccount {
 }
 
 impl StateAccount {
-    pub const LEN: usize = 8 + 32; // u64 + Pubkey
+    pub const LEN: usize = 8 + 32; // Discriminator + Pubkey
 }
 
 #[account]
@@ -43,8 +43,8 @@ impl PollAccount {
         64 + // start_time
         64 + // end_time
         1024 + // etc max length
-        8 + // total_anti
-        8 + // total_pro
+        8 + // anti in pool
+        8 + // pro in pool
         1024 + // deposits vector space
         1 + // equalised
         1024; // equalisation_results

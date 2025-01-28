@@ -32,6 +32,11 @@ mod tests {
     use anchor_lang::Discriminator;
     use std::str::FromStr;
 
+    // Fixed test IDs - these should be consistent across tests
+    fn program_id() -> Pubkey {
+        Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap()
+    }
+
     struct TestAccountData {
         key: Pubkey,
         lamports: u64,
@@ -94,9 +99,9 @@ mod tests {
 
     #[test]
     fn test_successful_initialisation() {
-        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+        let program_id = program_id();
 
-        // Create test accounts with correct sizes
+        // Create test accounts
         let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
         let mut authority = TestAccountData::new_system_account();
         let mut system = TestAccountData::new_system_account();
@@ -131,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_double_initialisation() {
-        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+        let program_id = program_id();
 
         let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
         let mut authority = TestAccountData::new_system_account();
@@ -202,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_initialisation_with_different_authority() {
-        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+        let program_id = program_id();
 
         let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
         let mut authority = TestAccountData::new_system_account();
@@ -248,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_initialisation_state_validation() {
-        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+        let program_id = program_id();
 
         let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
         let mut authority = TestAccountData::new_system_account();
