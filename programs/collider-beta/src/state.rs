@@ -52,7 +52,7 @@ impl PollAccount {
         1024; // equalisation_results
 
     pub fn is_active(&self, _current_time: i64) -> bool {
-        // Implementation from utils
+        // TODO: Fix activity to [start, end]
         true
     }
 }

@@ -180,7 +180,7 @@ mod tests {
 
         // Test double for Clock
         thread_local! {
-            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1705276800); // 2025-01-15T00:00:00Z
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
         }
 
         // Initialise state account
@@ -245,7 +245,7 @@ mod tests {
             "2025-02-01T00:00:00Z".to_string(),
             "2025-02-02T00:00:00Z".to_string(),
             None,
-            Some(1705276800),
+            Some(1736899200),
         );
 
         // If the test fails, print the error
@@ -283,7 +283,7 @@ mod tests {
 
         // Test double for Clock
         thread_local! {
-            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1705276800); // 2025-01-15T00:00:00Z
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
         }
 
         // Initialise state account
@@ -347,7 +347,7 @@ mod tests {
                 "2025-02-01T00:00:00Z".to_string(),
                 "2025-02-02T00:00:00Z".to_string(),
                 None,
-                Some(1705276800),
+                Some(1736899200),
             );
             assert_eq!(
                 result.unwrap_err(),
@@ -363,7 +363,7 @@ mod tests {
 
         // Test double for Clock
         thread_local! {
-            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1705276800); // 2025-01-15T00:00:00Z
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
         }
 
         // Initialise state account
@@ -428,7 +428,7 @@ mod tests {
                 "2025-02-01T00:00:00Z".to_string(),
                 "2025-02-02T00:00:00Z".to_string(),
                 None,
-                Some(1705276800),
+                Some(1736899200),
             );
             assert_eq!(result.unwrap_err(), Error::from(PredictError::TitleTooLong));
         }
@@ -444,7 +444,7 @@ mod tests {
                 "2025-02-01T00:00:00Z".to_string(),
                 "2025-02-02T00:00:00Z".to_string(),
                 None,
-                Some(1705276800),
+                Some(1736899200),
             );
             assert_eq!(
                 result.unwrap_err(),
@@ -461,7 +461,7 @@ mod tests {
 
         // Test double for Clock
         thread_local! {
-            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1705276800); // 2025-01-15T00:00:00Z
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
         }
 
         // Initialise state account
@@ -525,7 +525,7 @@ mod tests {
                 "2025-02-02T00:00:00Z".to_string(), // End before start
                 "2025-02-01T00:00:00Z".to_string(),
                 None,
-                Some(1705276800),
+                Some(1736899200),
             );
             assert_eq!(
                 result.unwrap_err(),
@@ -543,7 +543,7 @@ mod tests {
                 "2024-01-01T00:00:00Z".to_string(), // Past date
                 "2025-02-01T00:00:00Z".to_string(),
                 None,
-                Some(1705276800),
+                Some(1736899200),
             );
             assert_eq!(
                 result.unwrap_err(),

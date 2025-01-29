@@ -28,13 +28,16 @@ pub fn equalise(
     }; // CRITICAL: Remove in production
        //let now = Clock::get()?.unix_timestamp;
     let end_time = parse_iso_timestamp(&poll.end_time)?;
-    require!(now >= end_time, PredictError::PollEnded);
+    require!(now >= end_time, PredictError::PollActive);
 
     // Validate truth values
     require!(
-        truth.len() == 2 && truth.iter().all(|v| *v <= BASIS_POINTS),
+        truth.len() == 2 && truth.iter().all(|v| *v <= TRUTH_LIMIT),
         PredictError::InvalidTruthValues
     );
+
+    // Check if poll not already equalised
+    require!(!poll.equalised, PredictError::AlreadyEqualised);
 
     // Calculate distributions and returns
     let (anti, pro) = equalise_with_truth(&poll.deposits, poll.anti, poll.pro, &truth)?;
@@ -77,6 +80,11 @@ mod tests {
     use solana_sdk::program_pack::Pack;
     use std::cell::RefCell;
     use std::str::FromStr;
+
+    // Fixed test IDs - these should be consistent across tests
+    fn program_id() -> Pubkey {
+        Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap()
+    }
 
     struct TestAccountData {
         key: Pubkey,
@@ -156,11 +164,11 @@ mod tests {
 
     #[test]
     fn test_equalise_success() {
-        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+        let program_id = program_id();
 
         // Test double for Clock
         thread_local! {
-            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1705276800); // 2025-01-15T00:00:00Z
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
         }
 
         // Create test accounts
@@ -269,122 +277,226 @@ mod tests {
         assert!(!results.pro.is_empty());
     }
 
-    /*
     #[test]
     fn test_equalise_validation_failures() {
-        let program_id = Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap();
+        let program_id = program_id();
+
+        // Test double for Clock
+        thread_local! {
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
+        }
 
         // Create test accounts
-        let mut poll = TestAccountData::new_owned(program_id);
-        let mut authority = TestAccountData::new_owned(system_program::ID);
-        let mut user_anti = TestAccountData::new_owned(program_id);
-        let mut user_pro = TestAccountData::new_owned(program_id);
-        let mut poll_anti = TestAccountData::new_owned(program_id);
-        let mut poll_pro = TestAccountData::new_owned(program_id);
-        let mut token_program = TestAccountData::new_owned(spl_token::ID);
+        let mut poll =
+            TestAccountData::new_with_key::<PollAccount>(Pubkey::new_unique(), program_id);
+        let mut authority =
+            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
 
-        // Create active poll
-        let poll_data = PollAccount {
-            index: 0,
-            title: "Test Poll".to_string(),
-            description: "Test Description".to_string(),
-            start_time: "2025-01-01T00:00:00Z".to_string(),
-            end_time: "2025-12-31T00:00:00Z".to_string(), // Not ended yet
-            etc: None,
-            anti: 7000,
-            pro: 3000,
-            deposits: vec![],
-            equalised: false,
-            equalisation_results: None,
-        };
+        // Initialise token accounts
+        let mint_key = Pubkey::new_unique();
+        let authority_key = Pubkey::new_unique();
 
-        // Get account infos
-        let poll_info = poll.to_account_info(false);
-        let authority_info = authority.to_account_info(true);
-        let user_anti_info = user_anti.to_account_info(false);
-        let user_pro_info = user_pro.to_account_info(false);
-        let poll_anti_info = poll_anti.to_account_info(false);
-        let poll_pro_info = poll_pro.to_account_info(false);
-        let token_program_info = token_program.to_account_info(false);
+        let mut user_anti = TestAccountData::new_token();
+        let mut user_pro = TestAccountData::new_token();
+        let mut poll_anti = TestAccountData::new_token();
+        let mut poll_pro = TestAccountData::new_token();
 
-        // Serialize poll data
-        poll_info
-            .try_borrow_mut_data()
-            .unwrap()
-            .copy_from_slice(&poll_data.try_to_vec().unwrap());
+        user_anti
+            .init_token_account(authority_key, mint_key)
+            .unwrap();
+        user_pro
+            .init_token_account(authority_key, mint_key)
+            .unwrap();
+        poll_anti
+            .init_token_account(Pubkey::new_unique(), mint_key)
+            .unwrap();
+        poll_pro
+            .init_token_account(Pubkey::new_unique(), mint_key)
+            .unwrap();
 
-        let mut accounts = EqualiseTokens {
-            poll: Account::try_from(&poll_info).unwrap(),
-            authority: Signer::try_from(&authority_info).unwrap(),
-            user_anti_token: TestAccountData::into_token_account(&user_anti_info),
-            user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-            poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-            poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
-            token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
-        };
+        let mut token_program =
+            TestAccountData::new_with_key::<StateAccount>(spl_token::ID, spl_token::ID);
 
         // Test active poll (should fail)
         {
-            let ctx = Context::new(&program_id, &mut accounts, &[], EqualiseTokensBumps {});
+            // Create poll with deposits
+            let poll_data = PollAccount {
+                index: 0,
+                title: "Test Poll".to_string(),
+                description: "Test Description".to_string(),
+                start_time: "2025-01-01T00:00:00Z".to_string(),
+                end_time: "2025-02-01T00:00:00Z".to_string(), // Still active
+                etc: None,
+                anti: 7000,
+                pro: 3000,
+                deposits: vec![UserDeposit {
+                    address: authority.key,
+                    anti: 7000,
+                    pro: 3000,
+                    u: 4000,
+                    s: 10000,
+                    withdrawn: false,
+                }],
+                equalised: false,
+                equalisation_results: None,
+            };
 
+            // Write discriminator
+            poll.data[..8].copy_from_slice(&PollAccount::discriminator());
+
+            // Serialise initial poll data
+            let serialised_poll = poll_data.try_to_vec().unwrap();
+            poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+
+            // Get account infos
+            let poll_info = poll.to_account_info(false);
+            let authority_info = authority.to_account_info(true);
+            let user_anti_info = user_anti.to_account_info(false);
+            let user_pro_info = user_pro.to_account_info(false);
+            let poll_anti_info = poll_anti.to_account_info(false);
+            let poll_pro_info = poll_pro.to_account_info(false);
+            let token_program_info = token_program.to_account_info(false);
+
+            let mut accounts = EqualiseTokens {
+                poll: Account::try_from(&poll_info).unwrap(),
+                authority: Signer::try_from(&authority_info).unwrap(),
+                user_anti_token: TestAccountData::into_token_account(&user_anti_info),
+                user_pro_token: TestAccountData::into_token_account(&user_pro_info),
+                poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
+                poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+                token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
+            };
+
+            let ctx = Context::new(&program_id, &mut accounts, &[], EqualiseTokensBumps {});
             let truth = vec![6000, 4000];
-            let result = equalise(ctx, 0, truth);
+            let result = equalise(ctx, 0, truth, Some(1736899200));
             match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::PollInactive)),
+                Err(err) => assert_eq!(err, PredictError::PollActive.into()),
                 _ => panic!("Expected poll active error"),
-            }
-        }
-
-        // Test empty deposits
-        {
-            let ctx = Context::new(&program_id, &mut accounts, &[], EqualiseTokensBumps {});
-
-            let truth = vec![6000, 4000];
-            let result = equalise(ctx, 0, truth);
-            match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::NoDeposits)),
-                _ => panic!("Expected no deposits error"),
             }
         }
 
         // Test invalid truth values
         {
-            let ctx = Context::new(&program_id, &mut accounts, &[], EqualiseTokensBumps {});
+            // Create poll with deposits
+            let poll_data = PollAccount {
+                index: 0,
+                title: "Test Poll".to_string(),
+                description: "Test Description".to_string(),
+                start_time: "2025-01-01T00:00:00Z".to_string(),
+                end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
+                etc: None,
+                anti: 7000,
+                pro: 3000,
+                deposits: vec![UserDeposit {
+                    address: authority.key,
+                    anti: 7000,
+                    pro: 3000,
+                    u: 4000,
+                    s: 10000,
+                    withdrawn: false,
+                }],
+                equalised: false,
+                equalisation_results: None,
+            };
 
-            let invalid_truth = vec![5000, 5000];
-            let result = equalise(ctx, 0, invalid_truth);
+            // Write discriminator
+            poll.data[..8].copy_from_slice(&PollAccount::discriminator());
+
+            // Serialise initial poll data
+            let serialised_poll = poll_data.try_to_vec().unwrap();
+            poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+
+            // Get account infos
+            let poll_info = poll.to_account_info(false);
+            let authority_info = authority.to_account_info(true);
+            let user_anti_info = user_anti.to_account_info(false);
+            let user_pro_info = user_pro.to_account_info(false);
+            let poll_anti_info = poll_anti.to_account_info(false);
+            let poll_pro_info = poll_pro.to_account_info(false);
+            let token_program_info = token_program.to_account_info(false);
+
+            let mut accounts = EqualiseTokens {
+                poll: Account::try_from(&poll_info).unwrap(),
+                authority: Signer::try_from(&authority_info).unwrap(),
+                user_anti_token: TestAccountData::into_token_account(&user_anti_info),
+                user_pro_token: TestAccountData::into_token_account(&user_pro_info),
+                poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
+                poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+                token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
+            };
+
+            let ctx = Context::new(&program_id, &mut accounts, &[], EqualiseTokensBumps {});
+            let invalid_truth = vec![50_000_000, 5_000_000_000];
+            let result = equalise(ctx, 0, invalid_truth, Some(1736899200));
             match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::InvalidTruthValues)),
+                Err(err) => assert_eq!(err, PredictError::InvalidTruthValues.into()),
                 _ => panic!("Expected invalid truth values error"),
             }
         }
 
         // Test already equalised poll
         {
-            // Update poll data to be equalised
-            let mut equalised_poll_data = poll_data.clone();
-            equalised_poll_data.equalised = true;
-            equalised_poll_data.equalisation_results = Some(EqualisationResult {
-                truth: vec![6000, 4000],
-                anti: vec![],
-                pro: vec![],
-                timestamp: 0,
-            });
+            // Create poll with deposits
+            let poll_data = PollAccount {
+                index: 0,
+                title: "Test Poll".to_string(),
+                description: "Test Description".to_string(),
+                start_time: "2025-01-01T00:00:00Z".to_string(),
+                end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
+                etc: None,
+                anti: 7000,
+                pro: 3000,
+                deposits: vec![UserDeposit {
+                    address: authority.key,
+                    anti: 7000,
+                    pro: 3000,
+                    u: 4000,
+                    s: 10000,
+                    withdrawn: false,
+                }],
+                equalised: true,
+                equalisation_results: Some(EqualisationResult {
+                    truth: vec![6000, 4000],
+                    anti: vec![],
+                    pro: vec![],
+                    timestamp: 0,
+                }),
+            };
 
-            poll_info
-                .try_borrow_mut_data()
-                .unwrap()
-                .copy_from_slice(&equalised_poll_data.try_to_vec().unwrap());
+            // Write discriminator
+            poll.data[..8].copy_from_slice(&PollAccount::discriminator());
+
+            // Serialise initial poll data
+            let serialised_poll = poll_data.try_to_vec().unwrap();
+            poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+
+            // Get account infos
+            let poll_info = poll.to_account_info(false);
+            let authority_info = authority.to_account_info(true);
+            let user_anti_info = user_anti.to_account_info(false);
+            let user_pro_info = user_pro.to_account_info(false);
+            let poll_anti_info = poll_anti.to_account_info(false);
+            let poll_pro_info = poll_pro.to_account_info(false);
+            let token_program_info = token_program.to_account_info(false);
+
+            let mut accounts = EqualiseTokens {
+                poll: Account::try_from(&poll_info).unwrap(),
+                authority: Signer::try_from(&authority_info).unwrap(),
+                user_anti_token: TestAccountData::into_token_account(&user_anti_info),
+                user_pro_token: TestAccountData::into_token_account(&user_pro_info),
+                poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
+                poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+                token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
+            };
 
             let ctx = Context::new(&program_id, &mut accounts, &[], EqualiseTokensBumps {});
-
             let truth = vec![6000, 4000];
-            let result = equalise(ctx, 0, truth);
+            let result = equalise(ctx, 0, truth, Some(1736899200));
             match result {
-                Err(err) => assert_eq!(err, Error::from(PredictError::AlreadyEqualised)),
+                Err(err) => assert_eq!(err, PredictError::AlreadyEqualised.into()),
                 _ => panic!("Expected already equalised error"),
             }
         }
     }
-    */
 }

@@ -275,7 +275,7 @@ mod tests {
 
         // Test double for Clock
         thread_local! {
-            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1705276800); // 2025-01-15T00:00:00Z
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
         }
 
         let mut accounts = create_test_accounts(program_id);
@@ -367,7 +367,7 @@ mod tests {
         );
 
         // Test deposit
-        let result = deposit(ctx, 0, 5000, 5000, Some(1705276800));
+        let result = deposit(ctx, 0, 5000, 5000, Some(1736899200));
 
         // If the test fails, print the error
         if result.is_err() {
@@ -452,7 +452,7 @@ mod tests {
                 DepositTokensBumps { poll: poll_bump },
             );
 
-            let result = deposit(ctx, 0, 100, 100, Some(1705276800)); // Below MIN_DEPOSIT
+            let result = deposit(ctx, 0, 100, 100, Some(1736899200)); // Below MIN_DEPOSIT
             match result {
                 Err(err) => assert_eq!(err, PredictError::InsufficientDeposit.into()),
                 _ => panic!("Expected insufficient deposit error"),
@@ -546,7 +546,7 @@ mod tests {
             DepositTokensBumps { poll: poll_bump },
         );
 
-        let result = deposit(ctx, 0, anti, pro, Some(1705276800));
+        let result = deposit(ctx, 0, anti, pro, Some(1736899200));
         assert!(result.is_ok());
 
         let poll_info_borrowed = poll_account_info.try_borrow_data().unwrap();

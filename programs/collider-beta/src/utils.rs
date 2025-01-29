@@ -12,7 +12,8 @@ use crate::state::*;
 use anchor_lang::prelude::*;
 use chrono::NaiveDateTime;
 
-pub const BASIS_POINTS: u64 = 10000; // For fixed-point arithmetic
+pub const TRUTH_LIMIT: u64 = 1_000_000; // Truth limit = [0, 1]
+pub const BASIS_POINTS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
 pub const MAX_TITLE_LENGTH: usize = 256;
 pub const MAX_DESCRIPTION_LENGTH: usize = 1000;
 pub const MIN_DEPOSIT_AMOUNT: u64 = 1000; // 0.001 tokens minimum deposit
@@ -23,6 +24,8 @@ pub enum PredictError {
     InsufficientPayment,
     #[msg("Poll is not active")]
     PollInactive,
+    #[msg("Poll is still active")]
+    PollActive,
     #[msg("Poll has already ended")]
     PollEnded,
     #[msg("Title exceeds maximum length")]
