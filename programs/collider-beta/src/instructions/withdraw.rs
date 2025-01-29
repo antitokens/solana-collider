@@ -305,6 +305,5 @@ mod tests {
             ),
             0,
         );
-        // Note: We cannot test for withdrawals due to under the hood invocation of sol_invoke_signed()
     }
 }

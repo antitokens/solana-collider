@@ -52,15 +52,15 @@ pub mod collider_beta {
     pub fn deposit_tokens(
         ctx: Context<DepositTokens>,
         poll_index: u64,
-        anti_amount: u64,
-        pro_amount: u64,
+        anti: u64,
+        pro: u64,
         unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
         deposit::deposit(
             ctx,
             poll_index,
-            anti_amount,
-            pro_amount,
+            anti,
+            pro,
             unix_timestamp, // CRITICAL: Remove in production
         )
     }
@@ -68,13 +68,13 @@ pub mod collider_beta {
     pub fn equalise_tokens(
         ctx: Context<EqualiseTokens>,
         poll_index: u64,
-        truth_values: Vec<u64>,
+        truth: Vec<u64>,
         unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
         equalise::equalise(
             ctx,
             poll_index,
-            truth_values,
+            truth,
             unix_timestamp, // CRITICAL: Remove in production
         )
     }
