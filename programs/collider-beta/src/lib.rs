@@ -69,8 +69,14 @@ pub mod collider_beta {
         ctx: Context<EqualiseTokens>,
         poll_index: u64,
         truth_values: Vec<u64>,
+        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
-        equalise::equalise(ctx, poll_index, truth_values)
+        equalise::equalise(
+            ctx,
+            poll_index,
+            truth_values,
+            unix_timestamp, // CRITICAL: Remove in production
+        )
     }
 
     pub fn withdraw_tokens(ctx: Context<WithdrawTokens>, poll_index: u64) -> Result<()> {
