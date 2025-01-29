@@ -1,6 +1,6 @@
 //! Program Author: sshmatrix, for Antitoken
 //! Program Description: Collider's instruction set
-//! Version: 0.0.1
+//! Version: 1.0.0-beta
 //! License: MIT
 //! Created: 20 Jan 2025
 //! Last Modified: 20 Jan 2025
@@ -14,15 +14,24 @@ use crate::DepositTokens;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
 
-pub fn deposit(ctx: Context<DepositTokens>, poll_index: u64, anti: u64, pro: u64) -> Result<()> {
+pub fn deposit(
+    ctx: Context<DepositTokens>,
+    poll_index: u64,
+    anti: u64,
+    pro: u64,
+    unix_timestamp: Option<i64>, // CRITICAL: Remove in production
+) -> Result<()> {
     let poll = &mut ctx.accounts.poll;
 
+    // Get current time, supporting local testing override
+    let now = match unix_timestamp {
+        Some(ts) => ts,
+        None => Clock::get()?.unix_timestamp,
+    }; // CRITICAL: Remove in production
+       //let now = Clock::get()?.unix_timestamp;
+
     // Verify poll is active
-    let clock = Clock::get()?;
-    require!(
-        poll.is_active(clock.unix_timestamp),
-        PredictError::PollInactive
-    );
+    require!(poll.is_active(now), PredictError::PollInactive);
 
     // Verify minimum deposit
     require!(
@@ -61,7 +70,11 @@ pub fn deposit(ctx: Context<DepositTokens>, poll_index: u64, anti: u64, pro: u64
     }
 
     // Calculate metrics (u and s values)
-    let (u, s) = calculate_metrics(anti, pro, false)?;
+    let (u, s) = collide(anti, pro)?;
+
+    // Serialise and update poll data
+    let poll_info = poll.to_account_info();
+    let mut data_poll = poll_info.try_borrow_mut_data()?;
 
     // Create deposit record
     let deposit = UserDeposit {
@@ -84,6 +97,10 @@ pub fn deposit(ctx: Context<DepositTokens>, poll_index: u64, anti: u64, pro: u64
         .checked_add(pro)
         .ok_or(error!(PredictError::MathError))?;
 
+    // Serialise updated poll state
+    let serialised_poll = poll.try_to_vec()?;
+    data_poll[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+
     // Emit deposit event
     emit!(DepositEvent {
         poll_index,
@@ -92,21 +109,24 @@ pub fn deposit(ctx: Context<DepositTokens>, poll_index: u64, anti: u64, pro: u64
         pro,
         u,
         s,
-        timestamp: clock.unix_timestamp,
+        timestamp: now,
     });
 
     Ok(())
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::DepositTokensBumps;
     use anchor_lang::prelude::AccountInfo;
     use anchor_lang::solana_program::system_program;
-    use anchor_spl::token::TokenAccount;
+    use anchor_lang::Discriminator;
     use anchor_spl::token::{spl_token, Token};
+    use anchor_spl::token::{spl_token::state::Account as SplTokenAccount, TokenAccount};
+    use solana_sdk::program_option::COption;
+    use solana_sdk::program_pack::Pack;
+    use std::cell::RefCell;
     use std::str::FromStr;
 
     // Fixed test IDs - these should be consistent across tests
@@ -128,7 +148,7 @@ mod tests {
             Self {
                 key: system_program::ID,
                 lamports: 1_000_000,
-                data: vec![0; 8 + std::mem::size_of::<T>()], // Account for the 8-byte discriminator that Anchor adds
+                data: vec![0; 8 + PollAccount::LEN],
                 owner,
                 executable: false,
                 rent_epoch: 0,
@@ -152,7 +172,7 @@ mod tests {
             Self {
                 key: Pubkey::new_unique(),
                 lamports: 1_000_000,
-                data: vec![0; 165], // Size of TokenAccount
+                data: vec![0; 165],
                 owner: spl_token::ID,
                 executable: false,
                 rent_epoch: 0,
@@ -161,6 +181,42 @@ mod tests {
 
         fn into_token_account<'a>(account_info: &'a AccountInfo<'a>) -> Account<'a, TokenAccount> {
             Account::try_from(account_info).unwrap()
+        }
+
+        fn init_poll_data(&mut self, poll: &PollAccount) -> Result<()> {
+            self.data = vec![0; 8 + PollAccount::LEN];
+            let data = self.data.as_mut_slice();
+
+            let disc = PollAccount::discriminator();
+            data[..8].copy_from_slice(&disc);
+
+            let account_data = poll.try_to_vec()?;
+            data[8..8 + account_data.len()].copy_from_slice(&account_data);
+
+            Ok(())
+        }
+
+        fn init_token_account(&mut self, owner: Pubkey, mint: Pubkey) -> Result<()> {
+            self.data = vec![0; TokenAccount::LEN]; // Ensure correct buffer size
+            let data = self.data.as_mut_slice();
+
+            let close_authority: COption<Pubkey> = COption::None;
+
+            // Initialise a new SPL Token Account manually
+            let token_account = SplTokenAccount {
+                mint,
+                owner,
+                amount: 0,
+                delegate: None.into(),
+                state: spl_token::state::AccountState::Initialized,
+                is_native: None.into(),
+                delegated_amount: 0,
+                close_authority,
+            };
+
+            token_account.pack_into_slice(data);
+
+            Ok(())
         }
     }
 
@@ -183,7 +239,16 @@ mod tests {
             user_pro_token: TestAccountData::new_token(),
             poll_anti_token: TestAccountData::new_token(),
             poll_pro_token: TestAccountData::new_token(),
-            token_program: TestAccountData::new_owned::<StateAccount>(spl_token::ID),
+
+            // Correct SPL Token Program ID
+            token_program: TestAccountData {
+                key: spl_token::ID,       // Correct SPL Token Program ID
+                lamports: 1_000_000,      // Dummy balance
+                data: vec![],             // Programs don't have on-chain data in tests
+                owner: Pubkey::default(), // Not owned by another program
+                executable: true,         // Mark as an executable program
+                rent_epoch: 0,
+            },
         }
     }
 
@@ -207,7 +272,60 @@ mod tests {
     #[test]
     fn test_deposit() {
         let program_id = program_id();
+
+        // Test double for Clock
+        thread_local! {
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1705276800); // 2025-01-15T00:00:00Z
+        }
+
         let mut accounts = create_test_accounts(program_id);
+
+        let authority_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
+
+        // Initialise token accounts before converting them
+        accounts
+            .user_anti_token
+            .init_token_account(authority_key, mint_key)
+            .unwrap();
+        accounts
+            .user_pro_token
+            .init_token_account(authority_key, mint_key)
+            .unwrap();
+        accounts
+            .poll_anti_token
+            .init_token_account(Pubkey::new_unique(), mint_key)
+            .unwrap();
+        accounts
+            .poll_pro_token
+            .init_token_account(Pubkey::new_unique(), mint_key)
+            .unwrap();
+
+        assert_eq!(
+            accounts.user_anti_token.data.len(),
+            165,
+            "Token account buffer size mismatch!"
+        );
+        assert!(
+            !accounts.user_anti_token.data.iter().all(|&x| x == 0),
+            "Token account is still uninitialised!"
+        );
+
+        // Safely convert to TokenAccount
+        let binding_user_anti = accounts.user_anti_token.to_account_info(false);
+        let user_anti_token = TestAccountData::into_token_account(&binding_user_anti);
+        let binding_user_pro = accounts.user_pro_token.to_account_info(false);
+        let user_pro_token = TestAccountData::into_token_account(&binding_user_pro);
+        let binding_poll_anti = accounts.poll_anti_token.to_account_info(false);
+        let poll_anti_token = TestAccountData::into_token_account(&binding_poll_anti);
+        let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
+        let poll_pro_token = TestAccountData::into_token_account(&binding_poll_pro);
+
+        // Verify initialisation
+        assert_eq!(user_anti_token.amount, 0);
+        assert_eq!(user_pro_token.amount, 0);
+        assert_eq!(poll_anti_token.amount, 0);
+        assert_eq!(poll_pro_token.amount, 0);
 
         // Get account infos
         let authority_info = accounts.authority.to_account_info(true);
@@ -217,13 +335,17 @@ mod tests {
         let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        // Create poll accounts and serialize
+        // Create and initialise the poll account
         let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        accounts.poll_data.init_poll_data(&poll).unwrap();
+
         let poll_account_info = accounts.poll_data.to_account_info(false);
-        poll_account_info
-            .try_borrow_mut_data()
-            .unwrap()
-            .copy_from_slice(&poll.try_to_vec().unwrap());
+
+        // Check that the buffer is correctly allocated
+        assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
+
+        let (_poll_pda, poll_bump) =
+            Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
 
         // Create deposit accounts
         let mut deposit_accounts = DepositTokens {
@@ -236,16 +358,37 @@ mod tests {
             token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
         };
 
+        // Create context with fake bump for poll PDA
         let ctx = Context::new(
             &program_id,
             &mut deposit_accounts,
             &[],
-            DepositTokensBumps { poll: 255 },
+            DepositTokensBumps { poll: poll_bump },
         );
 
         // Test deposit
-        let result = deposit(ctx, 0, 5000, 5000);
-        assert!(result.is_ok());
+        let result = deposit(ctx, 0, 5000, 5000, Some(1705276800));
+
+        // If the test fails, print the error
+        if result.is_err() {
+            println!("Error: {:?}", result.unwrap_err());
+        } else {
+            assert!(result.is_ok());
+        }
+
+        // Verify poll state updates
+        let poll_info_borrowed = poll_account_info.try_borrow_data().unwrap();
+        let updated_poll = PollAccount::try_deserialize(&mut &poll_info_borrowed[..]).unwrap();
+
+        assert_eq!(updated_poll.anti, 5000);
+        assert_eq!(updated_poll.pro, 5000);
+        assert_eq!(updated_poll.deposits.len(), 1);
+
+        let deposit_record = &updated_poll.deposits[0];
+        assert_eq!(deposit_record.address, authority_info.key());
+        assert_eq!(deposit_record.anti, 5000);
+        assert_eq!(deposit_record.pro, 5000);
+        assert_eq!(deposit_record.withdrawn, false);
     }
 
     #[test]
@@ -253,7 +396,27 @@ mod tests {
         let program_id = program_id();
         let mut accounts = create_test_accounts(program_id);
 
-        // Get account infos
+        let authority_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
+
+        // Initialise token accounts before converting them
+        accounts
+            .user_anti_token
+            .init_token_account(authority_key, mint_key)
+            .unwrap();
+        accounts
+            .user_pro_token
+            .init_token_account(authority_key, mint_key)
+            .unwrap();
+        accounts
+            .poll_anti_token
+            .init_token_account(Pubkey::new_unique(), mint_key)
+            .unwrap();
+        accounts
+            .poll_pro_token
+            .init_token_account(Pubkey::new_unique(), mint_key)
+            .unwrap();
+
         let authority_info = accounts.authority.to_account_info(true);
         let user_anti_info = accounts.user_anti_token.to_account_info(false);
         let user_pro_info = accounts.user_pro_token.to_account_info(false);
@@ -261,13 +424,14 @@ mod tests {
         let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        // Create poll accounts and serialize
         let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        accounts.poll_data.init_poll_data(&poll).unwrap();
+
         let poll_account_info = accounts.poll_data.to_account_info(false);
-        poll_account_info
-            .try_borrow_mut_data()
-            .unwrap()
-            .copy_from_slice(&poll.try_to_vec().unwrap());
+        assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
+
+        let (_poll_pda, poll_bump) =
+            Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
 
         // Test minimum deposit validation
         {
@@ -285,10 +449,10 @@ mod tests {
                 &program_id,
                 &mut deposit_accounts,
                 &[],
-                DepositTokensBumps { poll: 255 },
+                DepositTokensBumps { poll: poll_bump },
             );
 
-            let result = deposit(ctx, 0, 100, 100); // Below MIN_DEPOSIT
+            let result = deposit(ctx, 0, 100, 100, Some(1705276800)); // Below MIN_DEPOSIT
             match result {
                 Err(err) => assert_eq!(err, PredictError::InsufficientDeposit.into()),
                 _ => panic!("Expected insufficient deposit error"),
@@ -297,34 +461,26 @@ mod tests {
 
         // Test invalid token account ownership
         {
-            // Create new accounts with invalid owner
-            let mut invalid_accounts = create_test_accounts(program_id);
-            invalid_accounts.user_anti_token.owner = Pubkey::new_unique(); // Set wrong owner
+            // Create an invalid token account with wrong owner
+            let mut invalid_anti_token = TestAccountData::new_token();
+            invalid_anti_token.owner = system_program::ID; // Wrong owner
+            invalid_anti_token.key = Pubkey::new_unique();
 
-            // Get account infos from the new accounts
-            let invalid_user_anti_info = invalid_accounts.user_anti_token.to_account_info(false);
+            let invalid_anti_info = invalid_anti_token.to_account_info(false);
 
-            let mut deposit_accounts = DepositTokens {
-                poll: Account::try_from(&poll_account_info).unwrap(),
-                authority: Signer::try_from(&authority_info).unwrap(),
-                user_anti_token: TestAccountData::into_token_account(&invalid_user_anti_info),
-                user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-                poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-                poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
-                token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
-            };
+            // Try to convert the invalid account - this should return an error
+            let token_account_result = Account::<TokenAccount>::try_from(&invalid_anti_info);
 
-            let ctx = Context::new(
-                &program_id,
-                &mut deposit_accounts,
-                &[],
-                DepositTokensBumps { poll: 255 },
-            );
-
-            let result = deposit(ctx, 0, 5000, 5000);
-            match result {
-                Err(err) => assert_eq!(err, PredictError::InvalidTokenAccount.into()),
-                _ => panic!("Expected invalid token account error"),
+            assert!(token_account_result.is_err());
+            if let Err(error) = token_account_result {
+                match error {
+                    anchor_lang::error::Error::AnchorError(e) => {
+                        let error_code: u32 = ErrorCode::AccountOwnedByWrongProgram.into();
+                        assert_eq!(e.error_code_number, error_code);
+                        assert!(e.compared_values.is_some());
+                    }
+                    _ => panic!("Expected AccountOwnedByWrongProgram error"),
+                }
             }
         }
     }
@@ -334,56 +490,73 @@ mod tests {
         let program_id = program_id();
         let mut accounts = create_test_accounts(program_id);
 
-        // Get account infos
-        let authority_info = accounts.authority.to_account_info(true);
-        let user_anti_info = accounts.user_anti_token.to_account_info(false);
-        let user_pro_info = accounts.user_pro_token.to_account_info(false);
-        let poll_anti_info = accounts.poll_anti_token.to_account_info(false);
-        let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
-        let token_program_info = accounts.token_program.to_account_info(false);
+        let authority_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
 
-        // Create poll accounts and serialize
+        accounts
+            .user_anti_token
+            .init_token_account(authority_key, mint_key)
+            .unwrap();
+        accounts
+            .user_pro_token
+            .init_token_account(authority_key, mint_key)
+            .unwrap();
+        accounts
+            .poll_anti_token
+            .init_token_account(Pubkey::new_unique(), mint_key)
+            .unwrap();
+        accounts
+            .poll_pro_token
+            .init_token_account(Pubkey::new_unique(), mint_key)
+            .unwrap();
+
+        let authority_info = accounts.authority.to_account_info(true);
         let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        accounts.poll_data.init_poll_data(&poll).unwrap();
+
         let poll_account_info = accounts.poll_data.to_account_info(false);
-        poll_account_info
-            .try_borrow_mut_data()
-            .unwrap()
-            .copy_from_slice(&poll.try_to_vec().unwrap());
+        assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
 
         let anti = 7000;
         let pro = 3000;
 
+        let binding_user_anti = accounts.user_anti_token.to_account_info(false);
+        let binding_user_pro = accounts.user_pro_token.to_account_info(false);
+        let binding_poll_anti = accounts.poll_anti_token.to_account_info(false);
+        let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
+        let binding_token_program = accounts.token_program.to_account_info(false);
+
         let mut deposit_accounts = DepositTokens {
             poll: Account::try_from(&poll_account_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            user_anti_token: TestAccountData::into_token_account(&user_anti_info),
-            user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-            poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-            poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
-            token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
+            user_anti_token: TestAccountData::into_token_account(&binding_user_anti),
+            user_pro_token: TestAccountData::into_token_account(&binding_user_pro),
+            poll_anti_token: TestAccountData::into_token_account(&binding_poll_anti),
+            poll_pro_token: TestAccountData::into_token_account(&binding_poll_pro),
+            token_program: Program::<Token>::try_from(&binding_token_program).unwrap(),
         };
+
+        let (_poll_pda, poll_bump) =
+            Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
 
         let ctx = Context::new(
             &program_id,
             &mut deposit_accounts,
             &[],
-            DepositTokensBumps { poll: 255 },
+            DepositTokensBumps { poll: poll_bump },
         );
 
-        let result = deposit(ctx, 0, anti, pro);
+        let result = deposit(ctx, 0, anti, pro, Some(1705276800));
         assert!(result.is_ok());
 
-        // Verify deposit calculations
-        let poll_account: PollAccount = PollAccount::try_deserialize(
-            &mut poll_account_info.try_borrow_data().unwrap().as_ref(),
-        )
-        .unwrap();
+        let poll_info_borrowed = poll_account_info.try_borrow_data().unwrap();
+        let updated_poll = PollAccount::try_deserialize(&mut &poll_info_borrowed[..]).unwrap();
 
-        assert_eq!(poll_account.anti, anti);
-        assert_eq!(poll_account.pro, pro);
+        assert_eq!(updated_poll.anti, anti);
+        assert_eq!(updated_poll.pro, pro);
 
-        let deposit = &poll_account.deposits[0];
-        let (expected_u, expected_s) = calculate_metrics(anti, pro, false).unwrap();
+        let deposit = &updated_poll.deposits[0];
+        let (expected_u, expected_s) = collide(anti, pro).unwrap();
 
         assert_eq!(deposit.u, expected_u);
         assert_eq!(deposit.s, expected_s);
@@ -393,4 +566,3 @@ mod tests {
         assert_eq!(deposit.address, authority_info.key());
     }
 }
-*/

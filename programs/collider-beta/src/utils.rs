@@ -1,6 +1,6 @@
 //! Program Author: sshmatrix, for Antitoken
 //! Program Description: Collider's utils
-//! Version: 0.0.1
+//! Version: 1.0.0-beta
 //! License: MIT
 //! Created: 20 Jan 2025
 //! Last Modified: 20 Jan 2025
@@ -10,6 +10,7 @@
 // utils.rs
 use crate::state::*;
 use anchor_lang::prelude::*;
+use chrono::NaiveDateTime;
 
 pub const BASIS_POINTS: u64 = 10000; // For fixed-point arithmetic
 pub const MAX_TITLE_LENGTH: usize = 256;
@@ -124,11 +125,7 @@ pub struct AdminEvent {
 }
 
 // Utility functions for calculations
-pub fn calculate_metrics(anti: u64, pro: u64, flag: bool) -> Result<(u64, u64)> {
-    if flag {
-        return Ok((anti, pro));
-    }
-
+pub fn collide(anti: u64, pro: u64) -> Result<(u64, u64)> {
     let anti_f = anti * BASIS_POINTS;
     let pro_f = pro * BASIS_POINTS;
     let sum = anti_f.checked_add(pro_f).ok_or(PredictError::MathError)?;
@@ -166,52 +163,24 @@ pub fn calculate_metrics(anti: u64, pro: u64, flag: bool) -> Result<(u64, u64)> 
 
 // Function to parse date
 pub fn parse_iso_timestamp(time_str: &str) -> Result<i64> {
-    // Basic ISO string validation (YYYY-MM-DDTHH:mm:ssZ)
+    // Validate basic ISO string format (YYYY-MM-DDTHH:mm:ssZ)
     if time_str.len() != 20 || !time_str.ends_with('Z') {
         return Err(error!(PredictError::InvalidTimeFormat));
     }
 
-    // Parse components
-    let year: i64 = time_str[0..4]
-        .parse()
-        .map_err(|_| error!(PredictError::InvalidTimeFormat))?;
-    let month: i64 = time_str[5..7]
-        .parse()
-        .map_err(|_| error!(PredictError::InvalidTimeFormat))?;
-    let day: i64 = time_str[8..10]
-        .parse()
-        .map_err(|_| error!(PredictError::InvalidTimeFormat))?;
-    let hour: i64 = time_str[11..13]
-        .parse()
-        .map_err(|_| error!(PredictError::InvalidTimeFormat))?;
-    let minute: i64 = time_str[14..16]
-        .parse()
-        .map_err(|_| error!(PredictError::InvalidTimeFormat))?;
-    let second: i64 = time_str[17..19]
-        .parse()
+    // Parse components using `chrono`
+    let naive_datetime = NaiveDateTime::parse_from_str(&time_str[..19], "%Y-%m-%dT%H:%M:%S")
         .map_err(|_| error!(PredictError::InvalidTimeFormat))?;
 
-    // Basic validation
-    if month < 1 || month > 12 || day < 1 || day > 31 || hour >= 24 || minute >= 60 || second >= 60
-    {
-        return Err(error!(PredictError::InvalidTimeFormat));
-    }
+    // Convert to UTC Unix timestamp
+    let unix_timestamp = naive_datetime.and_utc().timestamp();
 
-    // Convert to Unix timestamp (simplified)
-    let timestamp = second
-        + minute * 60
-        + hour * 3600
-        + day * 86400
-        + month * 2592000
-        + (year - 1970) * 31536000;
-
-    Ok(timestamp)
+    Ok(unix_timestamp)
 }
 
 // Function to check if a title exists in state
 pub fn state_has_title(_state: &Account<StateAccount>, _title: &str) -> bool {
-    // TODO: Implement title uniqueness check based on your state structure
-    // For now, returning false as placeholder
+    // Allow title repetition
     false
 }
 
@@ -342,12 +311,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_calculate_metrics() {
-        let (u, s) = calculate_metrics(100, 50, false).unwrap();
+    fn test_collide() {
+        let (u, s) = collide(100, 50).unwrap();
         assert_eq!(u, 50); // |100 - 50|
         assert_eq!(s, 3); // (100 + 50) / |100 - 50|
 
-        let (u, s) = calculate_metrics(50, 50, false).unwrap();
+        let (u, s) = collide(50, 50).unwrap();
         assert_eq!(u, 0);
         assert_eq!(s, 100);
     }

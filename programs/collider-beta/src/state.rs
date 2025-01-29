@@ -1,8 +1,8 @@
 //! Program Author: sshmatrix, for Antitoken
 //! Program Description: Collider's state enumeration
-//! Version: 0.0.1
+//! Version: 1.0.0-beta
 //! License: MIT
-//! Created: 20 Jan 2025
+//! Created: 20 Jan 20251.0.0-beta
 //! Last Modified: 20 Jan 2025
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro

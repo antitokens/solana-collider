@@ -1,5 +1,6 @@
 //! Program Author: sshmatrix, for Antitoken
 //! Program Description: Collider core
+//! Version: 1.0.0-beta
 //! License: MIT
 //! Created: 20 Jan 2025
 //! Last Modified: 20 Jan 2025
@@ -35,7 +36,7 @@ pub mod collider_beta {
         start_time: String,
         end_time: String,
         etc: Option<Vec<u8>>,
-        unix_timestamp: Option<i64>,
+        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
         create_poll::create(
             ctx,
@@ -44,7 +45,7 @@ pub mod collider_beta {
             start_time,
             end_time,
             etc,
-            unix_timestamp,
+            unix_timestamp, // CRITICAL: Remove in production
         )
     }
 
@@ -53,8 +54,15 @@ pub mod collider_beta {
         poll_index: u64,
         anti_amount: u64,
         pro_amount: u64,
+        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
-        deposit::deposit(ctx, poll_index, anti_amount, pro_amount)
+        deposit::deposit(
+            ctx,
+            poll_index,
+            anti_amount,
+            pro_amount,
+            unix_timestamp, // CRITICAL: Remove in production
+        )
     }
 
     pub fn equalise_tokens(

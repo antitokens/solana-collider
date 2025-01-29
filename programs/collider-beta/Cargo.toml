@@ -17,6 +17,7 @@ spl-token-2022 = { version = "=0.9.0", features = ["no-entrypoint"] }
 borsh = "0.10"
 anchor-lang = { workspace = true }
 anchor-spl = { workspace = true }
+chrono = "0.4"
 
 [dev-dependencies]
 solana-program-test = { workspace = true }

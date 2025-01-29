@@ -1,6 +1,6 @@
 //! Program Author: sshmatrix, for Antitoken
 //! Program Description: Collider's initialisation
-//! Version: 0.0.1
+//! Version: 1.0.0-beta
 //! License: MIT
 //! Created: 20 Jan 2025
 //! Last Modified: 20 Jan 2025
@@ -252,7 +252,7 @@ mod tests {
     }
 
     #[test]
-    fn test_initialisation_state_validation() {
+    fn test_initialisation_with_state_validation() {
         let program_id = program_id();
 
         let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
