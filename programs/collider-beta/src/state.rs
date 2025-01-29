@@ -8,6 +8,7 @@
 //! Contact: dev@antitoken.pro
 
 // state.rs
+use crate::utils::parse_iso_timestamp;
 use anchor_lang::prelude::*;
 
 #[account]
@@ -51,9 +52,14 @@ impl PollAccount {
         1 + // equalised
         1024; // equalisation_results
 
-    pub fn is_active(&self, _current_time: i64) -> bool {
-        // TODO: Fix activity to [start, end]
-        true
+    pub fn is_active(&self, current_time: i64) -> bool {
+        match (
+            parse_iso_timestamp(&self.start_time),
+            parse_iso_timestamp(&self.end_time),
+        ) {
+            (Ok(start), Ok(end)) => current_time >= start && current_time <= end,
+            _ => false, // If timestamps are invalid, poll is not active
+        }
     }
 }
 

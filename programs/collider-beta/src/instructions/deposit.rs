@@ -336,7 +336,7 @@ mod tests {
         let token_program_info = accounts.token_program.to_account_info(false);
 
         // Create and initialise the poll account
-        let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        let poll = create_test_poll("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
         accounts.poll_data.init_poll_data(&poll).unwrap();
 
         let poll_account_info = accounts.poll_data.to_account_info(false);
@@ -348,7 +348,7 @@ mod tests {
             Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
 
         // Create deposit accounts
-        let mut deposit_accounts = DepositTokens {
+        let mut accounts = DepositTokens {
             poll: Account::try_from(&poll_account_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
             user_anti_token: TestAccountData::into_token_account(&user_anti_info),
@@ -361,7 +361,7 @@ mod tests {
         // Create context with fake bump for poll PDA
         let ctx = Context::new(
             &program_id,
-            &mut deposit_accounts,
+            &mut accounts,
             &[],
             DepositTokensBumps { poll: poll_bump },
         );
@@ -424,7 +424,7 @@ mod tests {
         let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        let poll = create_test_poll("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
         accounts.poll_data.init_poll_data(&poll).unwrap();
 
         let poll_account_info = accounts.poll_data.to_account_info(false);
@@ -435,7 +435,7 @@ mod tests {
 
         // Test minimum deposit validation
         {
-            let mut deposit_accounts = DepositTokens {
+            let mut accounts = DepositTokens {
                 poll: Account::try_from(&poll_account_info).unwrap(),
                 authority: Signer::try_from(&authority_info).unwrap(),
                 user_anti_token: TestAccountData::into_token_account(&user_anti_info),
@@ -447,7 +447,7 @@ mod tests {
 
             let ctx = Context::new(
                 &program_id,
-                &mut deposit_accounts,
+                &mut accounts,
                 &[],
                 DepositTokensBumps { poll: poll_bump },
             );
@@ -511,7 +511,7 @@ mod tests {
             .unwrap();
 
         let authority_info = accounts.authority.to_account_info(true);
-        let poll = create_test_poll("2025-02-01T00:00:00Z", "2025-02-02T00:00:00Z");
+        let poll = create_test_poll("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
         accounts.poll_data.init_poll_data(&poll).unwrap();
 
         let poll_account_info = accounts.poll_data.to_account_info(false);
@@ -526,7 +526,7 @@ mod tests {
         let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
         let binding_token_program = accounts.token_program.to_account_info(false);
 
-        let mut deposit_accounts = DepositTokens {
+        let mut accounts = DepositTokens {
             poll: Account::try_from(&poll_account_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
             user_anti_token: TestAccountData::into_token_account(&binding_user_anti),
@@ -541,7 +541,7 @@ mod tests {
 
         let ctx = Context::new(
             &program_id,
-            &mut deposit_accounts,
+            &mut accounts,
             &[],
             DepositTokensBumps { poll: poll_bump },
         );
