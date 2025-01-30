@@ -25,11 +25,13 @@ pub fn initialise(ctx: Context<Initialise>) -> Result<()> {
 mod tests {
     use super::*;
     use crate::InitialiseBumps;
+    use crate::PollAccount;
     use crate::PredictError;
     use crate::StateAccount;
     use anchor_lang::prelude::AccountInfo;
     use anchor_lang::solana_program::system_program;
     use anchor_lang::Discriminator;
+    use solana_sdk::signature::{Keypair, Signer as _};
     use std::str::FromStr;
 
     // Fixed test IDs - these should be consistent across tests
@@ -47,11 +49,14 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_owned<T: AccountSerialize + AccountDeserialize + Clone>(owner: Pubkey) -> Self {
+        fn new_owned<T: AccountSerialize + AccountDeserialize + Clone>(
+            owner: Pubkey,
+            key: Pubkey,
+        ) -> Self {
             Self {
-                key: system_program::ID,
+                key,
                 lamports: 1_000_000,
-                data: vec![0; 8 + std::mem::size_of::<T>()], // Account for the 8-byte discriminator that Anchor adds
+                data: vec![0; 8 + PollAccount::LEN],
                 owner,
                 executable: false,
                 rent_epoch: 0,
@@ -61,6 +66,17 @@ mod tests {
         fn new_system_account() -> Self {
             Self {
                 key: system_program::ID,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: system_program::ID,
+                executable: true,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_authority_account(pubkey: Pubkey) -> Self {
+            Self {
+                key: pubkey,
                 lamports: 1_000_000,
                 data: vec![],
                 owner: system_program::ID,
@@ -100,10 +116,12 @@ mod tests {
     #[test]
     fn test_successful_initialisation() {
         let program_id = program_id();
+        let authority = Keypair::new();
 
         // Create test accounts
-        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
-        let mut authority = TestAccountData::new_system_account();
+        let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id, state_pda);
+        let mut authority = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 
         // Initialise state account
@@ -128,7 +146,7 @@ mod tests {
             &program_id,
             &mut accounts,
             &[],
-            InitialiseBumps {},
+            InitialiseBumps { state: state_bump },
         ));
 
         assert!(result.is_ok());
@@ -137,9 +155,11 @@ mod tests {
     #[test]
     fn test_double_initialisation() {
         let program_id = program_id();
+        let authority = Keypair::new();
 
-        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
-        let mut authority = TestAccountData::new_system_account();
+        let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id, state_pda);
+        let mut authority = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 
         let authority_key = authority.key;
@@ -167,7 +187,7 @@ mod tests {
                 &program_id,
                 &mut accounts,
                 &[],
-                InitialiseBumps {},
+                InitialiseBumps { state: state_bump },
             ));
             assert!(result1.is_ok());
         }
@@ -195,7 +215,7 @@ mod tests {
                 &program_id,
                 &mut accounts,
                 &[],
-                InitialiseBumps {},
+                InitialiseBumps { state: state_bump },
             ));
 
             assert_eq!(
@@ -208,12 +228,14 @@ mod tests {
     #[test]
     fn test_initialisation_with_different_authority() {
         let program_id = program_id();
+        let authority = Keypair::new();
 
-        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
-        let mut authority = TestAccountData::new_system_account();
+        let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id, state_pda);
+        let mut authority = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 
-        // Derive new authority
+        // Switch to new authority
         let different_authority = Pubkey::new_unique();
 
         let state_data = StateAccount {
@@ -237,7 +259,7 @@ mod tests {
                 &program_id,
                 &mut accounts,
                 &[],
-                InitialiseBumps {},
+                InitialiseBumps { state: state_bump },
             ));
 
             assert!(result.is_ok());
@@ -254,9 +276,11 @@ mod tests {
     #[test]
     fn test_initialisation_with_state_validation() {
         let program_id = program_id();
+        let authority = Keypair::new();
 
-        let mut state = TestAccountData::new_owned::<StateAccount>(program_id);
-        let mut authority = TestAccountData::new_system_account();
+        let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+        let mut state = TestAccountData::new_owned::<StateAccount>(program_id, state_pda);
+        let mut authority = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 
         let state_data = StateAccount {
@@ -282,7 +306,7 @@ mod tests {
             &program_id,
             &mut accounts,
             &[],
-            InitialiseBumps {},
+            InitialiseBumps { state: state_bump },
         ));
 
         assert!(result.is_ok());

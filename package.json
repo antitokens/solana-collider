@@ -24,7 +24,7 @@
     "testAnchorFast": "RUST_LOG=trace RUST_BACKTRACE=full anchor test --skip-build --skip-deploy",
     "buildCargo": "cargo build-bpf",
     "buildCargoFull": "RUST_LOG=trace RUST_BACKTRACE=full cargo build-bpf",
-    "testCargo": "cargo test-sbf",
+    "testCargo": "RUST_LOG=error cargo test-sbf",
     "testCargoFull": "RUST_LOG=trace RUST_BACKTRACE=full cargo test-sbf"
   }
 }

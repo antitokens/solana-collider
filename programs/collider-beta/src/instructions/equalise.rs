@@ -32,7 +32,7 @@ pub fn equalise(
 
     // Validate truth values
     require!(
-        truth.len() == 2 && truth.iter().all(|v| *v <= TRUTH_LIMIT),
+        truth.len() == 2 && truth.iter().all(|v| *v <= TRUTH_BASIS),
         PredictError::InvalidTruthValues
     );
 
@@ -210,14 +210,14 @@ mod tests {
             start_time: "2025-01-01T00:00:00Z".to_string(),
             end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
             etc: None,
-            anti: 7000,
-            pro: 3000,
+            anti: 70000,
+            pro: 30000,
             deposits: vec![UserDeposit {
                 address: authority.key,
-                anti: 7000,
-                pro: 3000,
-                u: 4000,
-                s: 10000,
+                anti: 70000,
+                pro: 30000,
+                u: 40000,
+                s: 100000,
                 withdrawn: false,
             }],
             equalised: false,
@@ -327,14 +327,14 @@ mod tests {
                 start_time: "2025-01-01T00:00:00Z".to_string(),
                 end_time: "2025-02-01T00:00:00Z".to_string(), // Still active
                 etc: None,
-                anti: 7000,
-                pro: 3000,
+                anti: 70000,
+                pro: 30000,
                 deposits: vec![UserDeposit {
                     address: authority.key,
-                    anti: 7000,
-                    pro: 3000,
-                    u: 4000,
-                    s: 10000,
+                    anti: 70000,
+                    pro: 30000,
+                    u: 40000,
+                    s: 100000,
                     withdrawn: false,
                 }],
                 equalised: false,
@@ -386,14 +386,14 @@ mod tests {
                 start_time: "2025-01-01T00:00:00Z".to_string(),
                 end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
                 etc: None,
-                anti: 7000,
-                pro: 3000,
+                anti: 70000,
+                pro: 30000,
                 deposits: vec![UserDeposit {
                     address: authority.key,
-                    anti: 7000,
-                    pro: 3000,
-                    u: 4000,
-                    s: 10000,
+                    anti: 70000,
+                    pro: 30000,
+                    u: 40000,
+                    s: 100000,
                     withdrawn: false,
                 }],
                 equalised: false,
@@ -445,19 +445,19 @@ mod tests {
                 start_time: "2025-01-01T00:00:00Z".to_string(),
                 end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
                 etc: None,
-                anti: 7000,
-                pro: 3000,
+                anti: 70000,
+                pro: 30000,
                 deposits: vec![UserDeposit {
                     address: authority.key,
-                    anti: 7000,
-                    pro: 3000,
-                    u: 4000,
-                    s: 10000,
+                    anti: 70000,
+                    pro: 30000,
+                    u: 40000,
+                    s: 100000,
                     withdrawn: false,
                 }],
                 equalised: true,
                 equalisation_results: Some(EqualisationResult {
-                    truth: vec![6000, 4000],
+                    truth: vec![60000, 40000],
                     anti: vec![],
                     pro: vec![],
                     timestamp: 0,

@@ -42,7 +42,7 @@ impl PollAccount {
     pub const LEN: usize = 8 + // discriminator
         8 + // index
         256 + // title max length
-        1000 + // description max length
+        1024 + // description max length
         64 + // start_time
         64 + // end_time
         1024 + // etc max length

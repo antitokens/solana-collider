@@ -367,7 +367,7 @@ mod tests {
         );
 
         // Test deposit
-        let result = deposit(ctx, 0, 5000, 5000, Some(1736899200));
+        let result = deposit(ctx, 0, 50_000, 50_000, Some(1736899200));
 
         // If the test fails, print the error
         if result.is_err() {
@@ -380,14 +380,14 @@ mod tests {
         let poll_info_borrowed = poll_account_info.try_borrow_data().unwrap();
         let updated_poll = PollAccount::try_deserialize(&mut &poll_info_borrowed[..]).unwrap();
 
-        assert_eq!(updated_poll.anti, 5000);
-        assert_eq!(updated_poll.pro, 5000);
+        assert_eq!(updated_poll.anti, 50_000);
+        assert_eq!(updated_poll.pro, 50_000);
         assert_eq!(updated_poll.deposits.len(), 1);
 
         let deposit_record = &updated_poll.deposits[0];
         assert_eq!(deposit_record.address, authority_info.key());
-        assert_eq!(deposit_record.anti, 5000);
-        assert_eq!(deposit_record.pro, 5000);
+        assert_eq!(deposit_record.anti, 50_000);
+        assert_eq!(deposit_record.pro, 50_000);
         assert_eq!(deposit_record.withdrawn, false);
     }
 
@@ -517,8 +517,8 @@ mod tests {
         let poll_account_info = accounts.poll_data.to_account_info(false);
         assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
 
-        let anti = 7000;
-        let pro = 3000;
+        let anti = 70_000;
+        let pro = 30_000;
 
         let binding_user_anti = accounts.user_anti_token.to_account_info(false);
         let binding_user_pro = accounts.user_pro_token.to_account_info(false);

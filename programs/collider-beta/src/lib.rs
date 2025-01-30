@@ -86,7 +86,7 @@ pub mod collider_beta {
 
 #[derive(Accounts)]
 pub struct Initialise<'info> {
-    #[account(init, payer = authority, space = 8 + StateAccount::LEN)]
+    #[account(init, payer = authority, space = 8 + StateAccount::LEN, seeds = [b"state"], bump)]
     pub state: Account<'info, StateAccount>,
     #[account(mut)]
     pub authority: Signer<'info>,

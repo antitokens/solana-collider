@@ -189,6 +189,7 @@ async fn test_full_collider_flow() {
         recent_blockhash,
     );
     banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Initialisation passing ...");
 
     // Create poll
     let poll_index = 0u64;
@@ -207,10 +208,10 @@ async fn test_full_collider_flow() {
         data: collider_beta::instruction::CreatePoll {
             title: "Test Poll".to_string(),
             description: "Test Description".to_string(),
-            start_time: "2025-01-21T00:00:00Z".to_string(),
-            end_time: "2025-01-22T00:00:00Z".to_string(),
+            start_time: "2025-02-01T00:00:00Z".to_string(),
+            end_time: "2025-03-01T00:00:00Z".to_string(),
             etc: None,
-            unix_timestamp: Some(1705795200), // 2025-01-20T00:00:00Z for testing
+            unix_timestamp: Some(1736899200), // 2025-01-15T00:00:00Z for testing
         }
         .data(),
     };
@@ -222,6 +223,7 @@ async fn test_full_collider_flow() {
         recent_blockhash,
     );
     banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ CreatePoll passing ...");
 
     // Create poll token accounts
     let poll_anti_token = Keypair::new();
@@ -269,7 +271,7 @@ async fn test_full_collider_flow() {
         program_id,
         accounts: vec![
             AccountMeta::new(poll_pda, false),
-            AccountMeta::new_readonly(user.pubkey(), true),
+            AccountMeta::new(user.pubkey(), true),
             AccountMeta::new(user_anti_token.pubkey(), false),
             AccountMeta::new(user_pro_token.pubkey(), false),
             AccountMeta::new(poll_anti_token.pubkey(), false),
@@ -280,7 +282,7 @@ async fn test_full_collider_flow() {
             poll_index,
             anti: 7_000_000_000,
             pro: 3_000_000_000,
-            unix_timestamp: Some(1705881600), // 2025-01-21T00:00:00Z for testing
+            unix_timestamp: Some(1739577600), // 2025-02-15T00:00:00Z for testing
         }
         .data(),
     };
@@ -292,13 +294,14 @@ async fn test_full_collider_flow() {
         recent_blockhash,
     );
     banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Deposits passing ...");
 
     // Equalise poll
     let equalise_ix = Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(poll_pda, false),
-            AccountMeta::new_readonly(authority.pubkey(), true),
+            AccountMeta::new(authority.pubkey(), true),
             AccountMeta::new(user_anti_token.pubkey(), false),
             AccountMeta::new(user_pro_token.pubkey(), false),
             AccountMeta::new(poll_anti_token.pubkey(), false),
@@ -308,7 +311,7 @@ async fn test_full_collider_flow() {
         data: collider_beta::instruction::EqualiseTokens {
             poll_index,
             truth: vec![6000, 4000],
-            unix_timestamp: Some(1705968000), // 2025-01-22T00:00:00Z for testing
+            unix_timestamp: Some(1741996800), // 2025-03-15T00:00:00Z for testing
         }
         .data(),
     };
@@ -320,13 +323,14 @@ async fn test_full_collider_flow() {
         recent_blockhash,
     );
     banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Equalisation passing ...");
 
     // Withdraw tokens
     let withdraw_ix = Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(poll_pda, false),
-            AccountMeta::new_readonly(user.pubkey(), true),
+            AccountMeta::new(user.pubkey(), true),
             AccountMeta::new(user_anti_token.pubkey(), false),
             AccountMeta::new(user_pro_token.pubkey(), false),
             AccountMeta::new(poll_anti_token.pubkey(), false),
@@ -343,4 +347,5 @@ async fn test_full_collider_flow() {
         recent_blockhash,
     );
     banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Withdrawals passing ...");
 }
