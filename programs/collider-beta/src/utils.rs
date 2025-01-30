@@ -171,7 +171,7 @@ pub fn parse_iso_timestamp(time_str: &str) -> Result<i64> {
         return Err(error!(PredictError::InvalidTimeFormat));
     }
 
-    // Parse components using `chrono`
+    // Parse components using chrono
     let naive_datetime = NaiveDateTime::parse_from_str(&time_str[..19], "%Y-%m-%dT%H:%M:%S")
         .map_err(|_| error!(PredictError::InvalidTimeFormat))?;
 
@@ -221,7 +221,6 @@ pub fn equalise_with_truth(
     // Calculate overlaps
     let mut overlaps = Vec::with_capacity(deposits.len());
     for deposit in deposits {
-        // Match TS calculation exactly
         let baryon = deposit.u as f64;
         let photon = (deposit.s as f64) / (BASIS_POINTS as f64);
         let parity = if (truth[0] > truth[1]) == (deposit.anti > deposit.pro) {
