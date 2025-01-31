@@ -12,11 +12,16 @@ use crate::state::*;
 use anchor_lang::prelude::*;
 use chrono::NaiveDateTime;
 
+pub const MAX_TITLE_LENGTH: usize = 256; // Maximum title length
+pub const MAX_DESCRIPTION_LENGTH: usize = 1_024; // Maximum description length
 pub const TRUTH_BASIS: u64 = 100_000; // Truth limit = [0, 1]
 pub const BASIS_POINTS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
-pub const MAX_TITLE_LENGTH: usize = 256;
-pub const MAX_DESCRIPTION_LENGTH: usize = 1_024;
 pub const MIN_DEPOSIT_AMOUNT: u64 = 10_000; // 1 token minimum deposit
+pub const ANTITOKEN_MULTISIG: Pubkey =
+    solana_program::pubkey!("AntT1kens1111111111111111111111111111111111"); // FCK
+pub const ANTI_MINT: Pubkey =
+    solana_program::pubkey!("ANTixcHXiUiZ8FfwzBaXYvVypedJA2Vz9YuWUtfatCr"); // FCK
+pub const PRO_MINT: Pubkey = solana_program::pubkey!("PRo99gVHnEtZXgHdWXyrGrVwrGr7vsRvXy3kj4aeE2x"); // FCK
 
 #[error_code]
 pub enum PredictError {

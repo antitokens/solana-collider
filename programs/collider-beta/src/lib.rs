@@ -7,6 +7,8 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
+use crate::utils::ANTI_MINT;
+use crate::utils::PRO_MINT;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
@@ -110,7 +112,32 @@ pub struct CreatePoll<'info> {
     pub authority: Signer<'info>,
     #[account(mut)]
     pub payment: AccountInfo<'info>,
+    // Add token accounts // FCK
+    #[account(
+        init,
+        payer = authority,
+        token::mint = anti_mint,
+        token::authority = authority,
+        seeds = [b"anti_token", state.poll_index.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub poll_anti_token: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = authority,
+        token::mint = pro_mint,
+        token::authority = authority,
+        seeds = [b"pro_token", state.poll_index.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub poll_pro_token: Account<'info, TokenAccount>, // FCK
+    #[account(constraint = anti_mint.key() == ANTI_MINT @ PredictError::InvalidTokenAccount)]
+    pub anti_mint: AccountInfo<'info>, // FCK
+    #[account(constraint = pro_mint.key() == PRO_MINT @ PredictError::InvalidTokenAccount)]
+    pub pro_mint: AccountInfo<'info>, // FCK
+    pub token_program: Program<'info, Token>, // FCK
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 impl Default for PollAccount {
