@@ -39,6 +39,16 @@ pub fn deposit(
         PredictError::InsufficientDeposit
     );
 
+    // Check poll token account authorities
+    require!(
+        ctx.accounts.poll_anti_token.owner == ANTITOKEN_MULTISIG,
+        PredictError::InvalidTokenAccount
+    );
+    require!(
+        ctx.accounts.poll_pro_token.owner == ANTITOKEN_MULTISIG,
+        PredictError::InvalidTokenAccount
+    );
+
     // Transfer ANTI tokens if amount > 0
     if anti > 0 {
         token::transfer(
@@ -122,7 +132,7 @@ mod tests {
     use anchor_lang::prelude::AccountInfo;
     use anchor_lang::solana_program::system_program;
     use anchor_lang::Discriminator;
-    use anchor_spl::token::{spl_token, Token};
+    use anchor_spl::token::{spl_token, Mint, Token};
     use anchor_spl::token::{spl_token::state::Account as SplTokenAccount, TokenAccount};
     use solana_sdk::program_option::COption;
     use solana_sdk::program_pack::Pack;
@@ -144,13 +154,27 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_owned<T: AccountSerialize + AccountDeserialize + Clone>(owner: Pubkey) -> Self {
+        fn new_mint(mint: Pubkey) -> Self {
             Self {
-                key: system_program::ID,
+                key: mint,
+                lamports: 1_000_000,
+                data: vec![0; Mint::LEN],
+                owner: spl_token::ID,
+                executable: false,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_with_key<T: AccountSerialize + AccountDeserialize + Clone>(
+            key: Pubkey,
+            owner: Pubkey,
+        ) -> Self {
+            Self {
+                key,
                 lamports: 1_000_000,
                 data: vec![0; 8 + PollAccount::LEN],
                 owner,
-                executable: false,
+                executable: true,
                 rent_epoch: 0,
             }
         }
@@ -168,9 +192,9 @@ mod tests {
             )
         }
 
-        fn new_token() -> Self {
+        fn new_token(key: Pubkey) -> Self {
             Self {
-                key: Pubkey::new_unique(),
+                key,
                 lamports: 1_000_000,
                 data: vec![0; 165],
                 owner: spl_token::ID,
@@ -181,6 +205,19 @@ mod tests {
 
         fn into_token_account<'a>(account_info: &'a AccountInfo<'a>) -> Account<'a, TokenAccount> {
             Account::try_from(account_info).unwrap()
+        }
+
+        fn init_state_data(&mut self, state: &StateAccount) -> Result<()> {
+            self.data = vec![0; 8 + StateAccount::LEN];
+            let data = self.data.as_mut_slice();
+
+            let disc = StateAccount::discriminator();
+            data[..8].copy_from_slice(&disc);
+
+            let account_data = state.try_to_vec()?;
+            data[8..8 + account_data.len()].copy_from_slice(&account_data);
+
+            Ok(())
         }
 
         fn init_poll_data(&mut self, poll: &PollAccount) -> Result<()> {
@@ -231,14 +268,22 @@ mod tests {
         pub token_program: TestAccountData,
     }
 
-    fn create_test_accounts(program_id: Pubkey) -> TestAccounts {
+    fn create_test_accounts(
+        poll_pda: Pubkey,
+        anti_token_pda: Pubkey,
+        pro_token_pda: Pubkey,
+        program_id: Pubkey,
+    ) -> TestAccounts {
         TestAccounts {
-            poll_data: TestAccountData::new_owned::<PollAccount>(program_id),
-            authority: TestAccountData::new_owned::<StateAccount>(system_program::ID),
-            user_anti_token: TestAccountData::new_token(),
-            user_pro_token: TestAccountData::new_token(),
-            poll_anti_token: TestAccountData::new_token(),
-            poll_pro_token: TestAccountData::new_token(),
+            poll_data: TestAccountData::new_with_key::<StateAccount>(poll_pda, program_id),
+            authority: TestAccountData::new_with_key::<StateAccount>(
+                ANTITOKEN_MULTISIG,
+                program_id,
+            ),
+            user_anti_token: TestAccountData::new_token(Pubkey::new_unique()),
+            user_pro_token: TestAccountData::new_token(Pubkey::new_unique()),
+            poll_anti_token: TestAccountData::new_token(anti_token_pda),
+            poll_pro_token: TestAccountData::new_token(pro_token_pda),
 
             // Correct SPL Token Program ID
             token_program: TestAccountData {
@@ -271,34 +316,66 @@ mod tests {
 
     #[test]
     fn test_deposit() {
+        /* Common Setup Begins Here */
         let program_id = program_id();
+
+        // Create mints
+        let anti_mint = TestAccountData::new_mint(ANTI_MINT);
+        let pro_mint = TestAccountData::new_mint(PRO_MINT);
 
         // Test double for Clock
         thread_local! {
             static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
         }
 
-        let mut accounts = create_test_accounts(program_id);
+        // Initialise state account
+        let root: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        state
+            .init_state_data(&StateAccount {
+                poll_index: 0,
+                authority: root,
+            })
+            .unwrap();
+
+        // Derive PDAs and bumps
+        let (poll_pda, poll_bump) = Pubkey::find_program_address(
+            &[b"poll", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
+            &[b"anti_token", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
+            &[b"pro_token", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let mut accounts =
+            create_test_accounts(poll_pda, anti_token_pda, pro_token_pda, program_id);
 
         let authority_key = Pubkey::new_unique();
-        let mint_key = Pubkey::new_unique();
 
-        // Initialise token accounts before converting them
+        // Initialise user token accounts
         accounts
             .user_anti_token
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(authority_key, anti_mint.key)
             .unwrap();
         accounts
             .user_pro_token
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(authority_key, pro_mint.key)
             .unwrap();
+        // Initialise poll token accounts
         accounts
             .poll_anti_token
-            .init_token_account(Pubkey::new_unique(), mint_key)
+            .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
         accounts
             .poll_pro_token
-            .init_token_account(Pubkey::new_unique(), mint_key)
+            .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
         assert_eq!(
@@ -344,9 +421,6 @@ mod tests {
         // Check that the buffer is correctly allocated
         assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
 
-        let (_poll_pda, poll_bump) =
-            Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
-
         // Create deposit accounts
         let mut accounts = DepositTokens {
             poll: Account::try_from(&poll_account_info).unwrap(),
@@ -358,13 +432,16 @@ mod tests {
             token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
         };
 
-        // Create context with fake bump for poll PDA
-        let ctx = Context::new(
-            &program_id,
-            &mut accounts,
-            &[],
-            DepositTokensBumps { poll: poll_bump },
-        );
+        // Create bumps
+        let bumps = DepositTokensBumps {
+            poll: poll_bump,
+            poll_anti_token: anti_token_bump,
+            poll_pro_token: pro_token_bump,
+        };
+
+        // Create context with bump for poll PDA
+        let ctx = Context::new(&program_id, &mut accounts, &[], bumps);
+        /* Common Setup Ends Here */
 
         // Test deposit
         let result = deposit(ctx, 0, 50_000, 50_000, Some(1736899200));
@@ -393,30 +470,95 @@ mod tests {
 
     #[test]
     fn test_deposit_validation() {
+        /* Common Setup Begins Here */
         let program_id = program_id();
-        let mut accounts = create_test_accounts(program_id);
+
+        // Create mints
+        let anti_mint = TestAccountData::new_mint(ANTI_MINT);
+        let pro_mint = TestAccountData::new_mint(PRO_MINT);
+
+        // Test double for Clock
+        thread_local! {
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
+        }
+
+        // Initialise state account
+        let root: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        state
+            .init_state_data(&StateAccount {
+                poll_index: 0,
+                authority: root,
+            })
+            .unwrap();
+
+        // Derive PDAs and bumps
+        let (poll_pda, poll_bump) = Pubkey::find_program_address(
+            &[b"poll", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
+            &[b"anti_token", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
+            &[b"pro_token", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let mut accounts =
+            create_test_accounts(poll_pda, anti_token_pda, pro_token_pda, program_id);
 
         let authority_key = Pubkey::new_unique();
-        let mint_key = Pubkey::new_unique();
 
-        // Initialise token accounts before converting them
+        // Initialise user token accounts
         accounts
             .user_anti_token
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(authority_key, anti_mint.key)
             .unwrap();
         accounts
             .user_pro_token
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(authority_key, pro_mint.key)
             .unwrap();
+        // Initialise poll token accounts
         accounts
             .poll_anti_token
-            .init_token_account(Pubkey::new_unique(), mint_key)
+            .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
         accounts
             .poll_pro_token
-            .init_token_account(Pubkey::new_unique(), mint_key)
+            .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
+        assert_eq!(
+            accounts.user_anti_token.data.len(),
+            165,
+            "Token account buffer size mismatch!"
+        );
+        assert!(
+            !accounts.user_anti_token.data.iter().all(|&x| x == 0),
+            "Token account is still uninitialised!"
+        );
+
+        // Safely convert to TokenAccount
+        let binding_user_anti = accounts.user_anti_token.to_account_info(false);
+        let user_anti_token = TestAccountData::into_token_account(&binding_user_anti);
+        let binding_user_pro = accounts.user_pro_token.to_account_info(false);
+        let user_pro_token = TestAccountData::into_token_account(&binding_user_pro);
+        let binding_poll_anti = accounts.poll_anti_token.to_account_info(false);
+        let poll_anti_token = TestAccountData::into_token_account(&binding_poll_anti);
+        let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
+        let poll_pro_token = TestAccountData::into_token_account(&binding_poll_pro);
+
+        // Verify initialisation
+        assert_eq!(user_anti_token.amount, 0);
+        assert_eq!(user_pro_token.amount, 0);
+        assert_eq!(poll_anti_token.amount, 0);
+        assert_eq!(poll_pro_token.amount, 0);
+
+        // Get account infos
         let authority_info = accounts.authority.to_account_info(true);
         let user_anti_info = accounts.user_anti_token.to_account_info(false);
         let user_pro_info = accounts.user_pro_token.to_account_info(false);
@@ -424,17 +566,19 @@ mod tests {
         let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
+        // Create and initialise the poll account
         let poll = create_test_poll("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
         accounts.poll_data.init_poll_data(&poll).unwrap();
 
         let poll_account_info = accounts.poll_data.to_account_info(false);
-        assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
 
-        let (_poll_pda, poll_bump) =
-            Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
+        // Check that the buffer is correctly allocated
+        assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
+        /* Common Setup Begins Here */
 
         // Test minimum deposit validation
         {
+            // Create deposit accounts
             let mut accounts = DepositTokens {
                 poll: Account::try_from(&poll_account_info).unwrap(),
                 authority: Signer::try_from(&authority_info).unwrap(),
@@ -445,12 +589,15 @@ mod tests {
                 token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
             };
 
-            let ctx = Context::new(
-                &program_id,
-                &mut accounts,
-                &[],
-                DepositTokensBumps { poll: poll_bump },
-            );
+            // Create bumps
+            let bumps = DepositTokensBumps {
+                poll: poll_bump,
+                poll_anti_token: anti_token_bump,
+                poll_pro_token: pro_token_bump,
+            };
+
+            // Create context with bump for poll PDA
+            let ctx = Context::new(&program_id, &mut accounts, &[], bumps);
 
             let result = deposit(ctx, 0, 100, 100, Some(1736899200)); // Below MIN_DEPOSIT
             match result {
@@ -462,7 +609,7 @@ mod tests {
         // Test invalid token account ownership
         {
             // Create an invalid token account with wrong owner
-            let mut invalid_anti_token = TestAccountData::new_token();
+            let mut invalid_anti_token = TestAccountData::new_token(Pubkey::new_unique());
             invalid_anti_token.owner = system_program::ID; // Wrong owner
             invalid_anti_token.key = Pubkey::new_unique();
 
@@ -487,64 +634,135 @@ mod tests {
 
     #[test]
     fn test_deposit_calculation() {
+        /* Common Setup Begins Here */
         let program_id = program_id();
-        let mut accounts = create_test_accounts(program_id);
+
+        // Create mints
+        let anti_mint = TestAccountData::new_mint(ANTI_MINT);
+        let pro_mint = TestAccountData::new_mint(PRO_MINT);
+
+        // Test double for Clock
+        thread_local! {
+            static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
+        }
+
+        // Initialise state account
+        let root: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        state
+            .init_state_data(&StateAccount {
+                poll_index: 0,
+                authority: root,
+            })
+            .unwrap();
+
+        // Derive PDAs and bumps
+        let (poll_pda, poll_bump) = Pubkey::find_program_address(
+            &[b"poll", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
+            &[b"anti_token", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
+            &[b"pro_token", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let mut accounts =
+            create_test_accounts(poll_pda, anti_token_pda, pro_token_pda, program_id);
 
         let authority_key = Pubkey::new_unique();
-        let mint_key = Pubkey::new_unique();
 
+        // Initialise user token accounts
         accounts
             .user_anti_token
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(authority_key, anti_mint.key)
             .unwrap();
         accounts
             .user_pro_token
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(authority_key, pro_mint.key)
             .unwrap();
+        // Initialise poll token accounts
         accounts
             .poll_anti_token
-            .init_token_account(Pubkey::new_unique(), mint_key)
+            .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
         accounts
             .poll_pro_token
-            .init_token_account(Pubkey::new_unique(), mint_key)
+            .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
+        assert_eq!(
+            accounts.user_anti_token.data.len(),
+            165,
+            "Token account buffer size mismatch!"
+        );
+        assert!(
+            !accounts.user_anti_token.data.iter().all(|&x| x == 0),
+            "Token account is still uninitialised!"
+        );
+
+        // Safely convert to TokenAccount
+        let binding_user_anti = accounts.user_anti_token.to_account_info(false);
+        let user_anti_token = TestAccountData::into_token_account(&binding_user_anti);
+        let binding_user_pro = accounts.user_pro_token.to_account_info(false);
+        let user_pro_token = TestAccountData::into_token_account(&binding_user_pro);
+        let binding_poll_anti = accounts.poll_anti_token.to_account_info(false);
+        let poll_anti_token = TestAccountData::into_token_account(&binding_poll_anti);
+        let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
+        let poll_pro_token = TestAccountData::into_token_account(&binding_poll_pro);
+
+        // Verify initialisation
+        assert_eq!(user_anti_token.amount, 0);
+        assert_eq!(user_pro_token.amount, 0);
+        assert_eq!(poll_anti_token.amount, 0);
+        assert_eq!(poll_pro_token.amount, 0);
+
+        // Get account infos
         let authority_info = accounts.authority.to_account_info(true);
+        let user_anti_info = accounts.user_anti_token.to_account_info(false);
+        let user_pro_info = accounts.user_pro_token.to_account_info(false);
+        let poll_anti_info = accounts.poll_anti_token.to_account_info(false);
+        let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
+        let token_program_info = accounts.token_program.to_account_info(false);
+
+        // Create and initialise the poll account
         let poll = create_test_poll("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
         accounts.poll_data.init_poll_data(&poll).unwrap();
 
         let poll_account_info = accounts.poll_data.to_account_info(false);
+
+        // Check that the buffer is correctly allocated
         assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
 
-        let anti = 70_000;
-        let pro = 30_000;
-
-        let binding_user_anti = accounts.user_anti_token.to_account_info(false);
-        let binding_user_pro = accounts.user_pro_token.to_account_info(false);
-        let binding_poll_anti = accounts.poll_anti_token.to_account_info(false);
-        let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
-        let binding_token_program = accounts.token_program.to_account_info(false);
-
+        // Create deposit accounts
         let mut accounts = DepositTokens {
             poll: Account::try_from(&poll_account_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            user_anti_token: TestAccountData::into_token_account(&binding_user_anti),
-            user_pro_token: TestAccountData::into_token_account(&binding_user_pro),
-            poll_anti_token: TestAccountData::into_token_account(&binding_poll_anti),
-            poll_pro_token: TestAccountData::into_token_account(&binding_poll_pro),
-            token_program: Program::<Token>::try_from(&binding_token_program).unwrap(),
+            user_anti_token: TestAccountData::into_token_account(&user_anti_info),
+            user_pro_token: TestAccountData::into_token_account(&user_pro_info),
+            poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
+            poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+            token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
         };
 
-        let (_poll_pda, poll_bump) =
-            Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
+        // Create bumps
+        let bumps = DepositTokensBumps {
+            poll: poll_bump,
+            poll_anti_token: anti_token_bump,
+            poll_pro_token: pro_token_bump,
+        };
 
-        let ctx = Context::new(
-            &program_id,
-            &mut accounts,
-            &[],
-            DepositTokensBumps { poll: poll_bump },
-        );
+        // Create context with bump for poll PDA
+        let ctx = Context::new(&program_id, &mut accounts, &[], bumps);
+        /* Common Setup Ends Here */
+
+        let anti = 70_000;
+        let pro = 30_000;
 
         let result = deposit(ctx, 0, anti, pro, Some(1736899200));
         assert!(result.is_ok());

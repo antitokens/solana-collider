@@ -211,9 +211,9 @@ mod tests {
             }
         }
 
-        fn new_token() -> Self {
+        fn new_token(key: Pubkey) -> Self {
             Self {
-                key: Pubkey::new_unique(),
+                key,
                 lamports: 1_000_000,
                 data: vec![0; 165],
                 owner: spl_token::ID,
@@ -321,12 +321,12 @@ mod tests {
         }
 
         // Initialise state account
-        let mut state =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
+        let root: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
-                authority: Pubkey::new_unique(),
+                authority: root,
             })
             .unwrap();
 
@@ -336,12 +336,12 @@ mod tests {
             &program_id,
         );
 
-        let (_anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
+        let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
             &[b"anti_token", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
-        let (_pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
+        let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
             &[b"pro_token", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
@@ -360,8 +360,8 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token();
-        let mut poll_pro_token = TestAccountData::new_token();
+        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
+        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
@@ -497,12 +497,12 @@ mod tests {
             &program_id,
         );
 
-        let (_anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
+        let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
             &[b"anti_token", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
-        let (_pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
+        let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
             &[b"pro_token", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
@@ -521,8 +521,8 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token();
-        let mut poll_pro_token = TestAccountData::new_token();
+        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
+        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
@@ -637,12 +637,12 @@ mod tests {
             &program_id,
         );
 
-        let (_anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
+        let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
             &[b"anti_token", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
-        let (_pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
+        let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
             &[b"pro_token", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
@@ -661,8 +661,8 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token();
-        let mut poll_pro_token = TestAccountData::new_token();
+        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
+        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
@@ -799,12 +799,12 @@ mod tests {
             &program_id,
         );
 
-        let (_anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
+        let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
             &[b"anti_token", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
-        let (_pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
+        let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
             &[b"pro_token", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
@@ -823,8 +823,8 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token();
-        let mut poll_pro_token = TestAccountData::new_token();
+        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
+        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
@@ -871,7 +871,6 @@ mod tests {
             system_program: Program::try_from(&system_info).unwrap(),
             rent: Sysvar::<Rent>::from_account_info(&rent_account_info)?,
         };
-
         /* Common Setup Ends Here */
 
         // Test invalid time range

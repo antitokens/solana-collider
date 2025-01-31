@@ -183,12 +183,16 @@ pub struct DepositTokens<'info> {
     pub user_pro_token: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = poll_anti_token.owner == poll.key() @ PredictError::InvalidTokenAccount
+        seeds = [b"anti_token", poll.index.to_le_bytes().as_ref()],
+        bump,
+        constraint = poll_anti_token.owner == ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount
     )]
     pub poll_anti_token: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = poll_pro_token.owner == poll.key() @ PredictError::InvalidTokenAccount
+        seeds = [b"pro_token", poll.index.to_le_bytes().as_ref()],
+        bump,
+        constraint = poll_pro_token.owner == ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount
     )]
     pub poll_pro_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
@@ -247,4 +251,5 @@ pub struct WithdrawTokens<'info> {
 
 // Re-export common types for convenience
 pub use state::{EqualisationResult, PollAccount, StateAccount, UserDeposit};
+use utils::ANTITOKEN_MULTISIG;
 pub use utils::{DepositEvent, EqualisationEvent, PollCreatedEvent, PredictError};
