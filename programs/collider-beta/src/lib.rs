@@ -81,8 +81,11 @@ pub mod collider_beta {
         )
     }
 
-    pub fn withdraw_tokens(ctx: Context<WithdrawTokens>, poll_index: u64) -> Result<()> {
-        withdraw::withdraw(ctx, poll_index)
+    pub fn withdraw_tokens<'a, 'b, 'c: 'info, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, WithdrawTokens<'info>>,
+        poll_index: u64,
+    ) -> Result<()> {
+        withdraw(ctx, poll_index)
     }
 }
 
@@ -224,28 +227,26 @@ pub struct WithdrawTokens<'info> {
         bump
     )]
     pub poll: Account<'info, PollAccount>,
+
     #[account(mut)]
     pub authority: Signer<'info>,
+
     #[account(
         mut,
-        constraint = user_anti_token.owner == authority.key() @ PredictError::InvalidTokenAccount
-    )]
-    pub user_anti_token: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        constraint = user_pro_token.owner == authority.key() @ PredictError::InvalidTokenAccount
-    )]
-    pub user_pro_token: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        constraint = poll_anti_token.owner == poll.key() @ PredictError::InvalidTokenAccount
+        seeds = [b"anti_token", poll_index.to_le_bytes().as_ref()],
+        bump,
+        constraint = poll_anti_token.owner == ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount
     )]
     pub poll_anti_token: Account<'info, TokenAccount>,
+
     #[account(
         mut,
-        constraint = poll_pro_token.owner == poll.key() @ PredictError::InvalidTokenAccount
+        seeds = [b"pro_token", poll_index.to_le_bytes().as_ref()],
+        bump,
+        constraint = poll_pro_token.owner == ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount
     )]
     pub poll_pro_token: Account<'info, TokenAccount>,
+
     pub token_program: Program<'info, Token>,
 }
 

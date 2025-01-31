@@ -84,6 +84,13 @@ pub struct EqualisationResult {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct CreatePollBumps {
     pub poll: u8,
-    pub poll_anti_token: u8, // FCK
-    pub poll_pro_token: u8,  // FCK
+    pub poll_anti_token: u8,
+    pub poll_pro_token: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct WithdrawTokensBumps {
+    pub poll: u8,
+    pub poll_anti_token: u8,
+    pub poll_pro_token: u8,
 }

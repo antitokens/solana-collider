@@ -10,91 +10,128 @@
 use crate::utils::*;
 use crate::WithdrawTokens;
 use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount;
 use anchor_spl::token::{self, Transfer};
 
-pub fn withdraw(ctx: Context<WithdrawTokens>, poll_index: u64) -> Result<()> {
-    // Get mutable reference to poll account
+pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
+    ctx: Context<'a, 'b, 'c, 'info, WithdrawTokens<'info>>,
+    poll_index: u64,
+) -> Result<()> {
+    // Verify only ANTITOKEN_MULTISIG can execute this
+    let authority_key = ctx.accounts.authority.key();
+    require!(
+        authority_key == ANTITOKEN_MULTISIG,
+        PredictError::Unauthorised
+    );
+
+    // Get the poll account
     let poll = &mut ctx.accounts.poll;
 
     // Verify poll has been equalised
     require!(poll.equalised, PredictError::NotEqualised);
 
-    // Find user's deposit and returns
-    let deposit_index = poll
-        .deposits
-        .iter()
-        .position(|d| d.address == ctx.accounts.authority.key())
-        .ok_or(error!(PredictError::NoDeposit))?;
-
-    // Verify deposit hasn't already been withdrawn
-    require!(
-        !poll.deposits[deposit_index].withdrawn,
-        PredictError::AlreadyWithdrawn
-    );
-
     let equalisation = poll
         .equalisation_results
-        .as_ref()
+        .clone() // Clone to avoid immutable borrow issue
         .ok_or(error!(PredictError::NotEqualised))?;
 
-    // Get return amounts
-    let anti_return = equalisation.anti[deposit_index];
-    let pro_return = equalisation.pro[deposit_index];
-
     // Create seeds for PDA signing
-    let index_bytes = poll_index.to_le_bytes();
-    let seeds = &[b"poll" as &[u8], index_bytes.as_ref(), &[ctx.bumps.poll]];
+    let index_bytes: [u8; 8] = poll_index.to_le_bytes(); // Explicitly define array size
+
+    let seeds: &[&[u8]] = &[
+        b"poll",           // Already `&[u8]`
+        &index_bytes,      // Explicitly reference as slice
+        &[ctx.bumps.poll], // Wrap in slice to match type
+    ];
+
     let signer_seeds = &[&seeds[..]];
 
-    // Transfer $ANTI tokens
-    if anti_return > 0 {
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.poll_anti_token.to_account_info(),
-                    to: ctx.accounts.user_anti_token.to_account_info(),
-                    authority: poll.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            anti_return,
-        )?;
+    // Track total withdrawn amounts for verification
+    let mut total_anti_withdrawn: u64 = 0;
+    let mut total_pro_withdrawn: u64 = 0;
+
+    // Use explicit lifetime for `remaining_accounts`
+    let remaining_accounts: &'info [AccountInfo<'info>] = ctx.remaining_accounts;
+    let mut deposits = poll.deposits.clone();
+    let num_deposits = deposits.len();
+    let enum_deposits = deposits.iter_mut().enumerate();
+
+    require!(
+        remaining_accounts.len() == num_deposits * 2,
+        PredictError::InvalidTokenAccount
+    );
+
+    // Iterate through deposits
+    for (deposit_index, deposit) in enum_deposits {
+        // Skip if already withdrawn
+        if deposit.withdrawn {
+            continue;
+        }
+
+        // Get return amounts for this deposit
+        let anti_return = equalisation.anti[deposit_index];
+        let pro_return = equalisation.pro[deposit_index];
+
+        // Fix: Explicitly specify lifetime for `Account<TokenAccount>`
+        let user_anti_token: Account<'info, TokenAccount> =
+            Account::try_from(&remaining_accounts[deposit_index])?;
+        let user_pro_token: Account<'info, TokenAccount> =
+            Account::try_from(&remaining_accounts[deposit_index + num_deposits])?;
+
+        // Transfer $ANTI tokens
+        if anti_return > 0 {
+            token::transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.poll_anti_token.to_account_info(),
+                        to: user_anti_token.to_account_info(),
+                        authority: poll.to_account_info(),
+                    },
+                    signer_seeds,
+                ),
+                anti_return,
+            )?;
+            total_anti_withdrawn += anti_return;
+        }
+
+        // Transfer $PRO tokens
+        if pro_return > 0 {
+            token::transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.poll_pro_token.to_account_info(),
+                        to: user_pro_token.to_account_info(),
+                        authority: poll.to_account_info(),
+                    },
+                    signer_seeds,
+                ),
+                pro_return,
+            )?;
+            total_pro_withdrawn += pro_return;
+        }
+
+        // Mark as withdrawn
+        deposit.withdrawn = true;
     }
 
-    // Transfer $PRO tokens
-    if pro_return > 0 {
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.poll_pro_token.to_account_info(),
-                    to: ctx.accounts.user_pro_token.to_account_info(),
-                    authority: poll.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            pro_return,
-        )?;
-    }
+    // Verify total withdrawn matches equalisation results
+    require!(
+        total_anti_withdrawn == equalisation.anti.iter().copied().sum::<u64>(),
+        PredictError::InvalidEqualisation
+    );
+    require!(
+        total_pro_withdrawn == equalisation.pro.iter().copied().sum::<u64>(),
+        PredictError::InvalidEqualisation
+    );
 
-    // Get poll account info for serialisation
-    let poll_info = poll.to_account_info();
-    let mut data_poll = poll_info.try_borrow_mut_data()?;
-
-    // Update withdrawal status
-    poll.deposits[deposit_index].withdrawn = true;
-
-    // Serialise and update poll state
-    let serialised_poll = poll.try_to_vec()?;
-    data_poll[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
-
-    // Emit withdrawal event
+    // Emit bulk withdrawal event
     emit!(WithdrawEvent {
         poll_index,
         address: ctx.accounts.authority.key(),
-        anti: anti_return,
-        pro: pro_return,
+        anti: total_anti_withdrawn,
+        pro: total_pro_withdrawn,
         timestamp: Clock::get()?.unix_timestamp,
     });
 
@@ -169,8 +206,17 @@ mod tests {
             }
         }
 
-        fn into_token_account<'a>(account_info: &'a AccountInfo<'a>) -> Account<'a, TokenAccount> {
-            Account::try_from(account_info).unwrap()
+        fn init_state_data(&mut self, state: &StateAccount) -> Result<()> {
+            self.data = vec![0; 8 + StateAccount::LEN];
+            let data = self.data.as_mut_slice();
+
+            let disc = StateAccount::discriminator();
+            data[..8].copy_from_slice(&disc);
+
+            let account_data = state.try_to_vec()?;
+            data[8..8 + account_data.len()].copy_from_slice(&account_data);
+
+            Ok(())
         }
 
         fn init_token_account(&mut self, owner: Pubkey, mint: Pubkey) -> Result<()> {
@@ -283,25 +329,52 @@ mod tests {
         let poll_pro_info = poll_pro.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
 
+        // Initialise state account
+        let root: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        state
+            .init_state_data(&StateAccount {
+                poll_index: 0,
+                authority: root,
+            })
+            .unwrap();
+
         let (_poll_pda, poll_bump) =
             Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
+
+        let (_anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
+            &[b"anti_token", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        let (_pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
+            &[b"pro_token", state.data[8..16].try_into().unwrap()],
+            &program_id,
+        );
+
+        // Use `remaining_accounts` dynamically
+        let remaining_accounts = vec![user_anti_info.clone(), user_pro_info.clone()];
 
         let mut accounts = WithdrawTokens {
             poll: Account::try_from(&poll_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            user_anti_token: TestAccountData::into_token_account(&user_anti_info),
-            user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-            poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-            poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+            poll_anti_token: Account::try_from(&poll_anti_info).unwrap(),
+            poll_pro_token: Account::try_from(&poll_pro_info).unwrap(),
             token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
+        };
+
+        let bumps = WithdrawTokensBumps {
+            poll: poll_bump,
+            poll_anti_token: anti_token_bump,
+            poll_pro_token: pro_token_bump,
         };
 
         let _ = withdraw(
             Context::new(
                 &program_id,
                 &mut accounts,
-                &[],
-                WithdrawTokensBumps { poll: poll_bump },
+                &remaining_accounts, // Pass dynamically created accounts
+                bumps,
             ),
             0,
         );
