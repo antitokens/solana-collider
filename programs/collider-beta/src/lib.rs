@@ -38,17 +38,8 @@ pub mod collider_beta {
         start_time: String,
         end_time: String,
         etc: Option<Vec<u8>>,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
-        create_poll::create(
-            ctx,
-            title,
-            description,
-            start_time,
-            end_time,
-            etc,
-            unix_timestamp, // CRITICAL: Remove in production
-        )
+        create_poll::create(ctx, title, description, start_time, end_time, etc)
     }
 
     pub fn deposit_tokens(
@@ -56,29 +47,16 @@ pub mod collider_beta {
         poll_index: u64,
         anti: u64,
         pro: u64,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
-        deposit::deposit(
-            ctx,
-            poll_index,
-            anti,
-            pro,
-            unix_timestamp, // CRITICAL: Remove in production
-        )
+        deposit::deposit(ctx, poll_index, anti, pro)
     }
 
     pub fn equalise_tokens(
         ctx: Context<EqualiseTokens>,
         poll_index: u64,
         truth: Vec<u64>,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
-        equalise::equalise(
-            ctx,
-            poll_index,
-            truth,
-            unix_timestamp, // CRITICAL: Remove in production
-        )
+        equalise::equalise(ctx, poll_index, truth)
     }
 
     pub fn withdraw_tokens<'a, 'b, 'c: 'info, 'info>(
