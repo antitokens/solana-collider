@@ -13,20 +13,20 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct AdminAccount {
-    pub initialised: bool,             // Initialisation flag
-    pub poll_creation_fee: u64,        // Fee to create poll
-    pub max_title_length: usize,       // Maximum title length
-    pub max_description_length: usize, // Maximum description length
-    pub truth_basis: u64,              // Truth limit
-    pub float_basis: u64,              // Fixed-point arithmetic basis
-    pub min_deposit_amount: u64,       // Minimum deposit
-    pub antitoken_multisig: Pubkey,    // Multisig authority
-    pub anti_mint_address: Pubkey,     // ANTI token mint
-    pub pro_mint_address: Pubkey,      // PRO token mint
+    pub initialised: bool,           // Initialisation flag
+    pub poll_creation_fee: u64,      // Fee to create poll
+    pub max_title_length: u64,       // Maximum title length
+    pub max_description_length: u64, // Maximum description length
+    pub truth_basis: u64,            // Truth limit
+    pub float_basis: u64,            // Fixed-point arithmetic basis
+    pub min_deposit_amount: u64,     // Minimum deposit
+    pub antitoken_multisig: Pubkey,  // Multisig authority
+    pub anti_mint_address: Pubkey,   // $ANTI token mint
+    pub pro_mint_address: Pubkey,    // $PRO token mint
 }
 
 impl AdminAccount {
-    pub const LEN: usize = 1 + 8 + (8 * 5) + (32 * 3); // Account size
+    pub const LEN: usize = 1 + (8 * 6) + (32 * 3); // Account size
 }
 
 #[account]

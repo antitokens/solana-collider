@@ -55,7 +55,7 @@ pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()
 }
 
 /// Update the max title length
-pub fn update_max_title_length(ctx: Context<Update>, new_length: usize) -> Result<()> {
+pub fn update_max_title_length(ctx: Context<Update>, new_length: u64) -> Result<()> {
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -65,7 +65,7 @@ pub fn update_max_title_length(ctx: Context<Update>, new_length: usize) -> Resul
 }
 
 /// Update the max description length
-pub fn update_max_description_length(ctx: Context<Update>, new_length: usize) -> Result<()> {
+pub fn update_max_description_length(ctx: Context<Update>, new_length: u64) -> Result<()> {
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised

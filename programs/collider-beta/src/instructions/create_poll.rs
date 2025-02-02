@@ -32,9 +32,9 @@ pub fn create(
     );
 
     // Validate title and description lengths
-    require!(title.len() <= MAX_TITLE_LENGTH, PredictError::TitleTooLong);
+    require!(title.len() <= MAX_TITLE_LENGTH as usize, PredictError::TitleTooLong);
     require!(
-        description.len() <= MAX_DESCRIPTION_LENGTH,
+        description.len() <= MAX_DESCRIPTION_LENGTH as usize,
         PredictError::DescriptionTooLong
     );
 
@@ -726,7 +726,7 @@ mod tests {
                 poll_anti_token: anti_token_bump,
                 poll_pro_token: pro_token_bump,
             };
-            let long_title = "a".repeat(MAX_TITLE_LENGTH + 1);
+            let long_title = "a".repeat((MAX_TITLE_LENGTH + 1) as usize);
             let result = create(
                 Context::new(&program_id, &mut accounts, &[], bumps),
                 long_title,
@@ -748,7 +748,7 @@ mod tests {
                 poll_anti_token: anti_token_bump,
                 poll_pro_token: pro_token_bump,
             };
-            let long_description = "a".repeat(MAX_DESCRIPTION_LENGTH + 1);
+            let long_description = "a".repeat((MAX_DESCRIPTION_LENGTH + 1) as usize);
             let result = create(
                 Context::new(&program_id, &mut accounts, &[], bumps),
                 "Test Poll".to_string(),

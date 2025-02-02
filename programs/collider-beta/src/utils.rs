@@ -13,8 +13,8 @@ use anchor_lang::prelude::*;
 use chrono::NaiveDateTime;
 
 pub const POLL_CREATION_FEE: u64 = 100_000_000; // Fee to create poll (0.1 SOL)
-pub const MAX_TITLE_LENGTH: usize = 256; // Maximum title length
-pub const MAX_DESCRIPTION_LENGTH: usize = 1_024; // Maximum description length
+pub const MAX_TITLE_LENGTH: u64 = 256; // Maximum title length
+pub const MAX_DESCRIPTION_LENGTH: u64 = 1_024; // Maximum description length
 pub const TRUTH_BASIS: u64 = 100_000; // Truth limit = [0, 1]
 pub const FLOAT_BASIS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
 pub const MIN_DEPOSIT_AMOUNT: u64 = 10_000; // 1 token minimum deposit
@@ -202,9 +202,9 @@ pub fn validate_poll_params(
     start_time: &str,
     end_time: &str,
 ) -> Result<()> {
-    require!(title.len() <= MAX_TITLE_LENGTH, PredictError::TitleTooLong);
+    require!(title.len() <= MAX_TITLE_LENGTH as usize, PredictError::TitleTooLong);
     require!(
-        description.len() <= MAX_DESCRIPTION_LENGTH,
+        description.len() <= MAX_DESCRIPTION_LENGTH as usize,
         PredictError::DescriptionTooLong
     );
 

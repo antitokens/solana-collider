@@ -158,7 +158,6 @@ describe("collider-beta", () => {
           state: stateAccount.publicKey,
           poll: pollPDA,
           authority: provider.wallet.publicKey,
-          payment: paymentAccount.publicKey,
           systemProgram: SystemProgram.programId,
         })
         .preInstructions([transferIx])
@@ -197,7 +196,6 @@ describe("collider-beta", () => {
             state: stateAccount.publicKey,
             poll: anchor.web3.Keypair.generate().publicKey,
             authority: provider.wallet.publicKey,
-            payment: anchor.web3.Keypair.generate().publicKey,
             systemProgram: SystemProgram.programId,
           })
           .rpc();
@@ -348,8 +346,6 @@ describe("collider-beta", () => {
         .accounts({
           poll: pollAccount,
           authority: provider.wallet.publicKey,
-          userAntiToken: userAntiAccount,
-          userProToken: userProAccount,
           pollAntiToken: pollAntiAccount,
           pollProToken: pollProAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -408,7 +404,6 @@ describe("collider-beta", () => {
           state: stateAccount.publicKey,
           poll: newPollPDA,
           authority: provider.wallet.publicKey,
-          payment: paymentAccount.publicKey,
           systemProgram: SystemProgram.programId,
         })
         .preInstructions([transferIx])
@@ -422,8 +417,6 @@ describe("collider-beta", () => {
           .accounts({
             poll: newPollPDA,
             authority: provider.wallet.publicKey,
-            userAntiToken: userAntiAccount,
-            userProToken: userProAccount,
             pollAntiToken: pollAntiAccount,
             pollProToken: pollProAccount,
             tokenProgram: TOKEN_PROGRAM_ID,

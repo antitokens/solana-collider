@@ -317,7 +317,7 @@ async fn test_full_collider_flow() {
         &[&creator],
         recent_blockhash,
     );
-    banks_client.process_transaction(tx).await.unwrap(); // This fails because create_poll sees state.poll_index = 1284939282, not 0 !
+    banks_client.process_transaction(tx).await.unwrap();
     println!("✅ CreatePoll passing ...");
 
     // Deposit tokens

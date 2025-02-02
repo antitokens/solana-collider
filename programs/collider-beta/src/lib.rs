@@ -37,11 +37,11 @@ pub mod collider_beta {
         admin_actions::update_poll_creation_fee(ctx, new_fee)
     }
     
-    pub fn update_max_title_length(ctx: Context<Update>, new_length: usize) -> Result<()> {
+    pub fn update_max_title_length(ctx: Context<Update>, new_length: u64) -> Result<()> {
         admin_actions::update_max_title_length(ctx, new_length)
     }
 
-    pub fn update_max_description_length(ctx: Context<Update>, new_length: usize) -> Result<()> {
+    pub fn update_max_description_length(ctx: Context<Update>, new_length: u64) -> Result<()> {
         admin_actions::update_max_description_length(ctx, new_length)
     }
     
@@ -136,7 +136,7 @@ pub struct Admin<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + AdminAccount::LEN,
+        space = 8 + AdminAccount::LEN as usize,
         seeds = [b"admin"],
         bump
     )]
@@ -156,7 +156,7 @@ pub struct Update<'info> {
 
 #[derive(Accounts)]
 pub struct Initialise<'info> {
-    #[account(init, payer = authority, space = 8 + StateAccount::LEN, seeds = [b"state"], bump)]
+    #[account(init, payer = authority, space = 8 + StateAccount::LEN as usize, seeds = [b"state"], bump)]
     pub state: Account<'info, StateAccount>,
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -171,13 +171,13 @@ pub struct CreatePoll<'info> {
         seeds = [b"state"], 
         bump,
         owner = crate::ID, 
-        constraint = state.to_account_info().data_len() >= 8 + StateAccount::LEN
+        constraint = state.to_account_info().data_len() >= 8 + StateAccount::LEN as usize
     )]
     pub state: Account<'info, StateAccount>,
     #[account(
         init,
         payer = authority,
-        space = 8 + PollAccount::LEN,
+        space = 8 + PollAccount::LEN as usize,
         seeds = [b"poll", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
@@ -203,12 +203,15 @@ pub struct CreatePoll<'info> {
     )]
     pub poll_pro_token: Account<'info, TokenAccount>,
     #[account(constraint = anti_mint.key() == ANTI_MINT_ADDRESS @ PredictError::InvalidTokenAccount)]
+    /// CHECK: FUCK YOU BITCH!!!
     pub anti_mint: AccountInfo<'info>,
     #[account(constraint = pro_mint.key() == PRO_MINT_ADDRESS @ PredictError::InvalidTokenAccount)]
+    /// CHECK: FUCK YOU BITCH!!!
     pub pro_mint: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     #[account(mut, address = ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount)]
+    /// CHECK: FUCK YOU BITCH!!!
     pub vault: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
 }
