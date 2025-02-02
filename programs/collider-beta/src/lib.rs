@@ -7,10 +7,11 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
-use crate::utils::ANTI_MINT;
-use crate::utils::PRO_MINT;
+use crate::utils::ANTI_MINT_ADDRESS;
+use crate::utils::PRO_MINT_ADDRESS;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
+
 
 pub mod instructions;
 pub mod state;
@@ -21,14 +22,55 @@ declare_id!("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G");
 #[program]
 pub mod collider_beta {
     use super::*;
+    use crate::instructions::admin_actions;
     use crate::instructions::create_poll;
-    use crate::instructions::initialise;
-    use instructions::deposit;
-    use instructions::equalise;
-    use instructions::withdraw;
+    use crate::instructions::initialise_program;
+    use instructions::deposit_to_poll;
+    use instructions::equalise_poll;
+    use instructions::withdraw_from_poll;
+
+    pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
+        admin_actions::initialise_admin(ctx)
+    }
+    
+    pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()> {
+        admin_actions::update_poll_creation_fee(ctx, new_fee)
+    }
+    
+    pub fn update_max_title_length(ctx: Context<Update>, new_length: usize) -> Result<()> {
+        admin_actions::update_max_title_length(ctx, new_length)
+    }
+
+    pub fn update_max_description_length(ctx: Context<Update>, new_length: usize) -> Result<()> {
+        admin_actions::update_max_description_length(ctx, new_length)
+    }
+    
+    pub fn update_truth_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
+        admin_actions::update_truth_basis(ctx, new_basis)
+    }
+    
+    pub fn update_float_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
+        admin_actions::update_float_basis(ctx, new_basis)
+    }
+    
+    pub fn update_min_deposit_amount(ctx: Context<Update>, new_min_amount: u64) -> Result<()> {
+        admin_actions::update_min_deposit_amount(ctx, new_min_amount)
+    }
+    
+    pub fn update_anti_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
+        admin_actions::update_anti_mint(ctx, new_mint)
+    }
+    
+    pub fn update_pro_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
+        admin_actions::update_pro_mint(ctx, new_mint)
+    }
+    
+    pub fn update_multisig(ctx: Context<Update>, new_multisig: Pubkey) -> Result<()> {
+        admin_actions::update_multisig(ctx, new_multisig)
+    }
 
     pub fn initialiser(ctx: Context<Initialise>) -> Result<()> {
-        initialise::initialise(ctx)
+        initialise_program::initialise(ctx)
     }
 
     pub fn create_poll(
@@ -58,7 +100,7 @@ pub mod collider_beta {
         pro: u64,
         unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
-        deposit::deposit(
+        deposit_to_poll::deposit(
             ctx,
             poll_index,
             anti,
@@ -73,7 +115,7 @@ pub mod collider_beta {
         truth: Vec<u64>,
         unix_timestamp: Option<i64>, // CRITICAL: Remove in production
     ) -> Result<()> {
-        equalise::equalise(
+        equalise_poll::equalise(
             ctx,
             poll_index,
             truth,
@@ -85,8 +127,31 @@ pub mod collider_beta {
         ctx: Context<'a, 'b, 'c, 'info, WithdrawTokens<'info>>,
         poll_index: u64,
     ) -> Result<()> {
-        withdraw(ctx, poll_index)
+        withdraw_from_poll::withdraw(ctx, poll_index)
     }
+}
+
+#[derive(Accounts)]
+pub struct Admin<'info> {
+    #[account(
+        init,
+        payer = authority,
+        space = AdminAccount::LEN,
+        seeds = [b"admin"],
+        bump
+    )]
+    pub admin: Account<'info, AdminAccount>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Update<'info> {
+    #[account(mut, seeds = [b"admin"], bump)]
+    pub admin: Account<'info, AdminAccount>,
+    #[account(signer)]
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -101,7 +166,13 @@ pub struct Initialise<'info> {
 #[derive(Accounts)]
 #[instruction(title: String, description: String, start_time: String, end_time: String)]
 pub struct CreatePoll<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"state"], 
+        bump,
+        owner = crate::ID, 
+        constraint = state.to_account_info().data_len() >= 8 + StateAccount::LEN
+    )]
     pub state: Account<'info, StateAccount>,
     #[account(
         init,
@@ -113,9 +184,6 @@ pub struct CreatePoll<'info> {
     pub poll: Account<'info, PollAccount>,
     #[account(mut)]
     pub authority: Signer<'info>,
-    #[account(mut)]
-    pub payment: AccountInfo<'info>,
-    // Add token accounts // FCK
     #[account(
         init,
         payer = authority,
@@ -133,13 +201,15 @@ pub struct CreatePoll<'info> {
         seeds = [b"pro_token", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
-    pub poll_pro_token: Account<'info, TokenAccount>, // FCK
-    #[account(constraint = anti_mint.key() == ANTI_MINT @ PredictError::InvalidTokenAccount)]
-    pub anti_mint: AccountInfo<'info>, // FCK
-    #[account(constraint = pro_mint.key() == PRO_MINT @ PredictError::InvalidTokenAccount)]
-    pub pro_mint: AccountInfo<'info>, // FCK
-    pub token_program: Program<'info, Token>, // FCK
+    pub poll_pro_token: Account<'info, TokenAccount>,
+    #[account(constraint = anti_mint.key() == ANTI_MINT_ADDRESS @ PredictError::InvalidTokenAccount)]
+    pub anti_mint: AccountInfo<'info>,
+    #[account(constraint = pro_mint.key() == PRO_MINT_ADDRESS @ PredictError::InvalidTokenAccount)]
+    pub pro_mint: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    #[account(mut, address = ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount)]
+    pub vault: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
 }
 
@@ -227,10 +297,8 @@ pub struct WithdrawTokens<'info> {
         bump
     )]
     pub poll: Account<'info, PollAccount>,
-
     #[account(mut)]
     pub authority: Signer<'info>,
-
     #[account(
         mut,
         seeds = [b"anti_token", poll_index.to_le_bytes().as_ref()],
@@ -238,7 +306,6 @@ pub struct WithdrawTokens<'info> {
         constraint = poll_anti_token.owner == ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount
     )]
     pub poll_anti_token: Account<'info, TokenAccount>,
-
     #[account(
         mut,
         seeds = [b"pro_token", poll_index.to_le_bytes().as_ref()],
@@ -246,11 +313,11 @@ pub struct WithdrawTokens<'info> {
         constraint = poll_pro_token.owner == ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount
     )]
     pub poll_pro_token: Account<'info, TokenAccount>,
-
     pub token_program: Program<'info, Token>,
 }
 
 // Re-export common types for convenience
-pub use state::{EqualisationResult, PollAccount, StateAccount, UserDeposit};
+use state::AdminAccount;
 use utils::ANTITOKEN_MULTISIG;
+pub use state::{EqualisationResult, PollAccount, StateAccount, UserDeposit};
 pub use utils::{DepositEvent, EqualisationEvent, PollCreatedEvent, PredictError};

@@ -3,7 +3,7 @@
 //! Version: 1.0.0-beta
 //! License: MIT
 //! Created: 20 Jan 2025
-//! Last Modified: 20 Jan 2025
+//! Last Modified: 02 Feb 2025
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
@@ -11,6 +11,7 @@
 use crate::utils::*;
 use crate::CreatePoll;
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 use anchor_spl::token;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::SetAuthority;
@@ -26,7 +27,7 @@ pub fn create(
 ) -> Result<()> {
     // Ensure payment is sufficient
     require!(
-        ctx.accounts.payment.lamports() >= 100_000_000,
+        ctx.accounts.authority.lamports() >= POLL_CREATION_FEE,
         PredictError::InsufficientPayment
     );
 
@@ -49,50 +50,24 @@ pub fn create(
     let now = match unix_timestamp {
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
-    }; // CRITICAL: Remove in production
-       //let now = Clock::get()?.unix_timestamp;
+    }; // CRITICAL: Remove in production!
+       // CRITICAL: Add in production!let now = Clock::get()?.unix_timestamp;
 
     require!(end > start, PredictError::InvalidTimeRange);
     require!(start > now, PredictError::StartTimeInPast);
 
-    // Create poll token accounts for $ANTI and $PRO tokens
-    let cpi_accounts = token::InitializeAccount {
-        account: ctx.accounts.poll_anti_token.to_account_info(),
-        mint: ctx.accounts.anti_mint.to_account_info(),
-        authority: ctx.accounts.poll.to_account_info(),
-        rent: ctx.accounts.rent.to_account_info(),
-    };
-    token::initialize_account(CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        cpi_accounts,
-        &[&[
-            b"poll",
-            ctx.accounts.state.poll_index.to_le_bytes().as_ref(),
-            b"anti_token",
-            &[ctx.bumps.poll_anti_token],
-        ]],
-    ))?;
-
-    let cpi_accounts = token::InitializeAccount {
-        account: ctx.accounts.poll_pro_token.to_account_info(),
-        mint: ctx.accounts.pro_mint.to_account_info(),
-        authority: ctx.accounts.poll.to_account_info(),
-        rent: ctx.accounts.rent.to_account_info(),
-    };
-    token::initialize_account(CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        cpi_accounts,
-        &[&[
-            b"poll",
-            ctx.accounts.state.poll_index.to_le_bytes().as_ref(),
-            b"pro_token",
-            &[ctx.bumps.poll_pro_token],
-        ]],
-    ))?;
-
-    // Initialise the poll account
-    let poll = &mut ctx.accounts.poll;
-    let state = &mut ctx.accounts.state;
+    // Transfer payment to state account
+    let payment_amount = POLL_CREATION_FEE;
+    system_program::transfer(
+        CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            system_program::Transfer {
+                from: ctx.accounts.authority.to_account_info(),
+                to: ctx.accounts.state.to_account_info(),
+            },
+        ),
+        payment_amount,
+    )?;
 
     // Set the token account authority to ANTITOKEN_MULTISIG using token instruction
     let cpi_accounts = SetAuthority {
@@ -117,35 +92,40 @@ pub fn create(
         Some(ANTITOKEN_MULTISIG),
     )?;
 
-    let poll_info = poll.to_account_info();
-    let state_info = state.to_account_info();
-    let mut data_poll = poll_info.try_borrow_mut_data()?;
+    // Get account infos for manual serialization
+    let state_info = &ctx.accounts.state.to_account_info();
+    let poll_info = &ctx.accounts.poll.to_account_info();
+    //let state_info = &ctx.accounts.state.to_account_info();
     let mut data_state = state_info.try_borrow_mut_data()?;
+    let mut data_poll = poll_info.try_borrow_mut_data()?;
 
-    poll.index = state.poll_index;
-    poll.title = title.clone();
-    poll.description = description;
-    poll.start_time = start_time.clone();
-    poll.end_time = end_time.clone();
-    poll.etc = etc;
-    poll.anti = 0;
-    poll.pro = 0;
-    poll.deposits = vec![];
-    poll.equalised = false;
-    poll.equalisation_results = None;
+    // Set poll data
+    ctx.accounts.poll.index = ctx.accounts.state.poll_index;
+    ctx.accounts.poll.title = title.clone();
+    ctx.accounts.poll.description = description;
+    ctx.accounts.poll.start_time = start_time.clone();
+    ctx.accounts.poll.end_time = end_time.clone();
+    ctx.accounts.poll.etc = etc;
+    ctx.accounts.poll.anti = 0;
+    ctx.accounts.poll.pro = 0;
+    ctx.accounts.poll.deposits = vec![];
+    ctx.accounts.poll.equalised = false;
+    ctx.accounts.poll.equalisation_results = None;
 
-    let serialised_poll = poll.try_to_vec()?;
+    // Manual serialization
+    let serialised_poll = ctx.accounts.poll.try_to_vec()?;
     data_poll[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
 
     // Increment poll index
-    state.poll_index += 1;
+    ctx.accounts.state.poll_index += 1;
 
-    let serialised_state = state.try_to_vec()?;
+    // Manual serialization for state
+    let serialised_state = ctx.accounts.state.try_to_vec()?;
     data_state[8..8 + serialised_state.len()].copy_from_slice(&serialised_state);
 
     // Emit event
     emit!(PollCreatedEvent {
-        poll_index: poll.index,
+        poll_index: ctx.accounts.poll.index,
         address: ctx.accounts.authority.key(),
         title,
         start_time,
@@ -159,6 +139,7 @@ pub fn create(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::PROGRAM_ID;
     use crate::CreatePollBumps;
     use crate::{PollAccount, StateAccount};
     use anchor_lang::system_program;
@@ -173,7 +154,7 @@ mod tests {
 
     // Fixed test IDs - these should be consistent across tests
     fn program_id() -> Pubkey {
-        Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap()
+        Pubkey::from_str(PROGRAM_ID).unwrap()
     }
 
     struct TestAccountData {
@@ -186,7 +167,7 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_with_key<T: AccountSerialize + AccountDeserialize + Clone>(
+        fn new_owned_poll<T: AccountSerialize + AccountDeserialize + Clone>(
             key: Pubkey,
             owner: Pubkey,
         ) -> Self {
@@ -200,7 +181,7 @@ mod tests {
             }
         }
 
-        fn new_mint(mint: Pubkey) -> Self {
+        fn new_mint_address(mint: Pubkey) -> Self {
             Self {
                 key: mint,
                 lamports: 1_000_000,
@@ -217,6 +198,20 @@ mod tests {
                 lamports: 1_000_000,
                 data: vec![0; 165],
                 owner: spl_token::ID,
+                executable: false,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_vault_with_key<T: AccountSerialize + AccountDeserialize + Clone>(
+            owner: Pubkey,
+            key: Pubkey,
+        ) -> Self {
+            Self {
+                key,
+                lamports: 10_000_000,
+                data: vec![],
+                owner,
                 executable: false,
                 rent_epoch: 0,
             }
@@ -312,8 +307,8 @@ mod tests {
         };
 
         // Create mints
-        let mut anti_mint = TestAccountData::new_mint(ANTI_MINT);
-        let mut pro_mint = TestAccountData::new_mint(PRO_MINT);
+        let mut anti_mint = TestAccountData::new_mint_address(ANTI_MINT_ADDRESS);
+        let mut pro_mint = TestAccountData::new_mint_address(PRO_MINT_ADDRESS);
 
         // Test double for Clock
         thread_local! {
@@ -321,16 +316,18 @@ mod tests {
         }
 
         // Initialise state account
-        let root: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        let manager: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_owned_poll::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
-                authority: root,
+                authority: manager,
             })
             .unwrap();
 
         // Derive PDAs and bumps
+        let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+
         let (poll_pda, poll_bump) = Pubkey::find_program_address(
             &[b"poll", state.data[8..16].try_into().unwrap()],
             &program_id,
@@ -346,11 +343,11 @@ mod tests {
             &program_id,
         );
 
-        let mut poll = TestAccountData::new_with_key::<PollAccount>(poll_pda, program_id);
+        let mut poll = TestAccountData::new_owned_poll::<PollAccount>(poll_pda, program_id);
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
-        // Initialise payment account
-        let mut payment = TestAccountData {
+        // Initialise creator account
+        let mut creator = TestAccountData {
             key: Pubkey::new_unique(),
             lamports: 200_000_000,
             data: vec![],
@@ -375,35 +372,36 @@ mod tests {
             .unwrap();
 
         // Initialise other accounts
-        let mut authority =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
         let mut system_program =
-            TestAccountData::new_with_key::<StateAccount>(system_program::ID, system_program::ID);
+            TestAccountData::new_owned_poll::<StateAccount>(system_program::ID, system_program::ID);
+        let mut vault = TestAccountData::new_vault_with_key::<StateAccount>(
+            system_program::ID,
+            ANTITOKEN_MULTISIG,
+        );
 
         // Prepare account infos
-        let state_info = state.to_account_info(true);
-        let poll_info = poll.to_account_info(true);
-        let payment_info = payment.to_account_info(false);
-        let authority_info = authority.to_account_info(true);
+        let state_info = state.to_account_info(false);
+        let poll_info = poll.to_account_info(false);
+        let authority_info = creator.to_account_info(true);
         let system_info = system_program.to_account_info(false);
-        // Get account infos
         let anti_mint_info = anti_mint.to_account_info(false);
         let pro_mint_info = pro_mint.to_account_info(false);
         let poll_anti_token_info = poll_anti_token.to_account_info(false);
         let poll_pro_token_info = poll_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let rent_account_info = rent_account.to_account_info(false);
+        let vault_info = vault.to_account_info(false);
 
         // Set up CreatePoll context
         let mut accounts = CreatePoll {
             state: Account::try_from(&state_info).unwrap(),
             poll: Account::try_from(&poll_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            payment: payment_info.clone(),
             poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
             poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
             anti_mint: anti_mint_info.clone(),
             pro_mint: pro_mint_info.clone(),
+            vault: vault_info,
             token_program: Program::try_from(&token_program_info).unwrap(),
             system_program: Program::try_from(&system_info).unwrap(),
             rent: Sysvar::<Rent>::from_account_info(&rent_account_info)?,
@@ -411,6 +409,7 @@ mod tests {
 
         // Include the CreatePollBumps with the bump for the poll account
         let bumps = CreatePollBumps {
+            state: state_bump,
             poll: poll_bump,
             poll_anti_token: anti_token_bump,
             poll_pro_token: pro_token_bump,
@@ -473,8 +472,8 @@ mod tests {
         };
 
         // Create mints
-        let mut anti_mint = TestAccountData::new_mint(ANTI_MINT);
-        let mut pro_mint = TestAccountData::new_mint(PRO_MINT);
+        let mut anti_mint = TestAccountData::new_mint_address(ANTI_MINT_ADDRESS);
+        let mut pro_mint = TestAccountData::new_mint_address(PRO_MINT_ADDRESS);
 
         // Test double for Clock
         thread_local! {
@@ -482,16 +481,18 @@ mod tests {
         }
 
         // Initialise state account
-        let mut state =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
+        let manager: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_owned_poll::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
-                authority: Pubkey::new_unique(),
+                authority: manager,
             })
             .unwrap();
 
         // Derive PDAs and bumps
+        let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+
         let (poll_pda, poll_bump) = Pubkey::find_program_address(
             &[b"poll", state.data[8..16].try_into().unwrap()],
             &program_id,
@@ -507,11 +508,11 @@ mod tests {
             &program_id,
         );
 
-        let mut poll = TestAccountData::new_with_key::<PollAccount>(poll_pda, program_id);
+        let mut poll = TestAccountData::new_owned_poll::<PollAccount>(poll_pda, program_id);
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
-        // Initialise payment account
-        let mut payment = TestAccountData {
+        // Initialise creator account
+        let mut creator = TestAccountData {
             key: Pubkey::new_unique(),
             lamports: 50_000_000, // Insufficient payment
             data: vec![],
@@ -536,35 +537,36 @@ mod tests {
             .unwrap();
 
         // Initialise other accounts
-        let mut authority =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
         let mut system_program =
-            TestAccountData::new_with_key::<StateAccount>(system_program::ID, system_program::ID);
+            TestAccountData::new_owned_poll::<StateAccount>(system_program::ID, system_program::ID);
+        let mut vault = TestAccountData::new_vault_with_key::<StateAccount>(
+            system_program::ID,
+            ANTITOKEN_MULTISIG,
+        );
 
         // Prepare account infos
-        let state_info = state.to_account_info(true);
-        let poll_info = poll.to_account_info(true);
-        let payment_info = payment.to_account_info(false);
-        let authority_info = authority.to_account_info(true);
+        let state_info = state.to_account_info(false);
+        let poll_info = poll.to_account_info(false);
+        let authority_info = creator.to_account_info(true);
         let system_info = system_program.to_account_info(false);
-        // Get account infos
         let anti_mint_info = anti_mint.to_account_info(false);
         let pro_mint_info = pro_mint.to_account_info(false);
         let poll_anti_token_info = poll_anti_token.to_account_info(false);
         let poll_pro_token_info = poll_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let rent_account_info = rent_account.to_account_info(false);
+        let vault_info = vault.to_account_info(false);
 
         // Set up CreatePoll context
         let mut accounts = CreatePoll {
             state: Account::try_from(&state_info).unwrap(),
             poll: Account::try_from(&poll_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            payment: payment_info.clone(),
             poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
             poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
             anti_mint: anti_mint_info.clone(),
             pro_mint: pro_mint_info.clone(),
+            vault: vault_info,
             token_program: Program::try_from(&token_program_info).unwrap(),
             system_program: Program::try_from(&system_info).unwrap(),
             rent: Sysvar::<Rent>::from_account_info(&rent_account_info)?,
@@ -572,6 +574,7 @@ mod tests {
 
         // Include the CreatePollBumps with the bump for the poll account
         let bumps = CreatePollBumps {
+            state: state_bump,
             poll: poll_bump,
             poll_anti_token: anti_token_bump,
             poll_pro_token: pro_token_bump,
@@ -613,8 +616,8 @@ mod tests {
         };
 
         // Create mints
-        let mut anti_mint = TestAccountData::new_mint(ANTI_MINT);
-        let mut pro_mint = TestAccountData::new_mint(PRO_MINT);
+        let mut anti_mint = TestAccountData::new_mint_address(ANTI_MINT_ADDRESS);
+        let mut pro_mint = TestAccountData::new_mint_address(PRO_MINT_ADDRESS);
 
         // Test double for Clock
         thread_local! {
@@ -622,16 +625,18 @@ mod tests {
         }
 
         // Initialise state account
-        let mut state =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
+        let manager: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_owned_poll::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
-                authority: Pubkey::new_unique(),
+                authority: manager,
             })
             .unwrap();
 
         // Derive PDAs and bumps
+        let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+
         let (poll_pda, poll_bump) = Pubkey::find_program_address(
             &[b"poll", state.data[8..16].try_into().unwrap()],
             &program_id,
@@ -647,13 +652,13 @@ mod tests {
             &program_id,
         );
 
-        let mut poll = TestAccountData::new_with_key::<PollAccount>(poll_pda, program_id);
+        let mut poll = TestAccountData::new_owned_poll::<PollAccount>(poll_pda, program_id);
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
-        // Initialise payment account
-        let mut payment = TestAccountData {
+        // Initialise creator account
+        let mut creator = TestAccountData {
             key: Pubkey::new_unique(),
-            lamports: 200_000_000, // Insufficient payment
+            lamports: 200_000_000,
             data: vec![],
             owner: system_program::ID,
             executable: false,
@@ -676,35 +681,36 @@ mod tests {
             .unwrap();
 
         // Initialise other accounts
-        let mut authority =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
         let mut system_program =
-            TestAccountData::new_with_key::<StateAccount>(system_program::ID, system_program::ID);
+            TestAccountData::new_owned_poll::<StateAccount>(system_program::ID, system_program::ID);
+        let mut vault = TestAccountData::new_vault_with_key::<StateAccount>(
+            system_program::ID,
+            ANTITOKEN_MULTISIG,
+        );
 
         // Prepare account infos
-        let state_info = state.to_account_info(true);
-        let poll_info = poll.to_account_info(true);
-        let payment_info = payment.to_account_info(false);
-        let authority_info = authority.to_account_info(true);
+        let state_info = state.to_account_info(false);
+        let poll_info = poll.to_account_info(false);
+        let authority_info = creator.to_account_info(true);
         let system_info = system_program.to_account_info(false);
-        // Get account infos
         let anti_mint_info = anti_mint.to_account_info(false);
         let pro_mint_info = pro_mint.to_account_info(false);
         let poll_anti_token_info = poll_anti_token.to_account_info(false);
         let poll_pro_token_info = poll_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let rent_account_info = rent_account.to_account_info(false);
+        let vault_info = vault.to_account_info(false);
 
         // Set up CreatePoll context
         let mut accounts = CreatePoll {
             state: Account::try_from(&state_info).unwrap(),
             poll: Account::try_from(&poll_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            payment: payment_info.clone(),
             poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
             poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
             anti_mint: anti_mint_info.clone(),
             pro_mint: pro_mint_info.clone(),
+            vault: vault_info,
             token_program: Program::try_from(&token_program_info).unwrap(),
             system_program: Program::try_from(&system_info).unwrap(),
             rent: Sysvar::<Rent>::from_account_info(&rent_account_info)?,
@@ -715,6 +721,7 @@ mod tests {
         {
             // Include the CreatePollBumps with the bump for the poll account
             let bumps = CreatePollBumps {
+                state: state_bump,
                 poll: poll_bump,
                 poll_anti_token: anti_token_bump,
                 poll_pro_token: pro_token_bump,
@@ -736,6 +743,7 @@ mod tests {
         {
             // Include the CreatePollBumps with the bump for the poll account
             let bumps = CreatePollBumps {
+                state: state_bump,
                 poll: poll_bump,
                 poll_anti_token: anti_token_bump,
                 poll_pro_token: pro_token_bump,
@@ -775,8 +783,8 @@ mod tests {
         };
 
         // Create mints
-        let mut anti_mint = TestAccountData::new_mint(ANTI_MINT);
-        let mut pro_mint = TestAccountData::new_mint(PRO_MINT);
+        let mut anti_mint = TestAccountData::new_mint_address(ANTI_MINT_ADDRESS);
+        let mut pro_mint = TestAccountData::new_mint_address(PRO_MINT_ADDRESS);
 
         // Test double for Clock
         thread_local! {
@@ -784,16 +792,18 @@ mod tests {
         }
 
         // Initialise state account
-        let mut state =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
+        let manager: Pubkey = Pubkey::new_unique();
+        let mut state = TestAccountData::new_owned_poll::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
-                authority: Pubkey::new_unique(),
+                authority: manager,
             })
             .unwrap();
 
         // Derive PDAs and bumps
+        let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+
         let (poll_pda, poll_bump) = Pubkey::find_program_address(
             &[b"poll", state.data[8..16].try_into().unwrap()],
             &program_id,
@@ -809,11 +819,11 @@ mod tests {
             &program_id,
         );
 
-        let mut poll = TestAccountData::new_with_key::<PollAccount>(poll_pda, program_id);
+        let mut poll = TestAccountData::new_owned_poll::<PollAccount>(poll_pda, program_id);
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
-        // Initialise payment account
-        let mut payment = TestAccountData {
+        // Initialise creator account
+        let mut creator = TestAccountData {
             key: Pubkey::new_unique(),
             lamports: 200_000_000,
             data: vec![],
@@ -838,35 +848,36 @@ mod tests {
             .unwrap();
 
         // Initialise other accounts
-        let mut authority =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
         let mut system_program =
-            TestAccountData::new_with_key::<StateAccount>(system_program::ID, system_program::ID);
+            TestAccountData::new_owned_poll::<StateAccount>(system_program::ID, system_program::ID);
+        let mut vault = TestAccountData::new_vault_with_key::<StateAccount>(
+            system_program::ID,
+            ANTITOKEN_MULTISIG,
+        );
 
         // Prepare account infos
         let state_info = state.to_account_info(true);
         let poll_info = poll.to_account_info(true);
-        let payment_info = payment.to_account_info(false);
-        let authority_info = authority.to_account_info(true);
+        let authority_info = creator.to_account_info(true);
         let system_info = system_program.to_account_info(false);
-        // Get account infos
         let anti_mint_info = anti_mint.to_account_info(false);
         let pro_mint_info = pro_mint.to_account_info(false);
         let poll_anti_token_info = poll_anti_token.to_account_info(false);
         let poll_pro_token_info = poll_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let rent_account_info = rent_account.to_account_info(false);
+        let vault_info = vault.to_account_info(false);
 
         // Set up CreatePoll context
         let mut accounts = CreatePoll {
             state: Account::try_from(&state_info).unwrap(),
             poll: Account::try_from(&poll_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            payment: payment_info.clone(),
             poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
             poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
             anti_mint: anti_mint_info.clone(),
             pro_mint: pro_mint_info.clone(),
+            vault: vault_info,
             token_program: Program::try_from(&token_program_info).unwrap(),
             system_program: Program::try_from(&system_info).unwrap(),
             rent: Sysvar::<Rent>::from_account_info(&rent_account_info)?,
@@ -877,6 +888,7 @@ mod tests {
         {
             // Include the CreatePollBumps with the bump for the poll account
             let bumps = CreatePollBumps {
+                state: state_bump,
                 poll: poll_bump,
                 poll_anti_token: anti_token_bump,
                 poll_pro_token: pro_token_bump,
@@ -900,6 +912,7 @@ mod tests {
         {
             // Include the CreatePollBumps with the bump for the poll account
             let bumps = CreatePollBumps {
+                state: state_bump,
                 poll: poll_bump,
                 poll_anti_token: anti_token_bump,
                 poll_pro_token: pro_token_bump,

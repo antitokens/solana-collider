@@ -13,17 +13,21 @@ use anchor_lang::prelude::*;
 
 pub fn initialise(ctx: Context<Initialise>) -> Result<()> {
     let state = &mut ctx.accounts.state;
-    if state.poll_index > 0 {
-        return Err(PredictError::AlreadyInitialised.into());
-    }
+
+    // Prevent unnecessary state writes if already initialised
+    require!(state.poll_index == 0, PredictError::AlreadyInitialised);
+
+    // Directly set values without redundant references
     state.poll_index = 0;
     state.authority = ctx.accounts.authority.key();
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::PROGRAM_ID;
     use crate::InitialiseBumps;
     use crate::PollAccount;
     use crate::PredictError;
@@ -36,7 +40,7 @@ mod tests {
 
     // Fixed test IDs - these should be consistent across tests
     fn program_id() -> Pubkey {
-        Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap()
+        Pubkey::from_str(PROGRAM_ID).unwrap()
     }
 
     struct TestAccountData {
@@ -49,7 +53,7 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_owned<T: AccountSerialize + AccountDeserialize + Clone>(
+        fn new_owned_state<T: AccountSerialize + AccountDeserialize + Clone>(
             owner: Pubkey,
             key: Pubkey,
         ) -> Self {
@@ -120,7 +124,7 @@ mod tests {
 
         // Create test accounts
         let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
-        let mut state = TestAccountData::new_owned::<StateAccount>(program_id, state_pda);
+        let mut state = TestAccountData::new_owned_state::<StateAccount>(program_id, state_pda);
         let mut authority = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 
@@ -158,7 +162,7 @@ mod tests {
         let authority = Keypair::new();
 
         let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
-        let mut state = TestAccountData::new_owned::<StateAccount>(program_id, state_pda);
+        let mut state = TestAccountData::new_owned_state::<StateAccount>(program_id, state_pda);
         let mut authority = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 
@@ -231,7 +235,7 @@ mod tests {
         let authority = Keypair::new();
 
         let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
-        let mut state = TestAccountData::new_owned::<StateAccount>(program_id, state_pda);
+        let mut state = TestAccountData::new_owned_state::<StateAccount>(program_id, state_pda);
         let mut authority = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 
@@ -279,7 +283,7 @@ mod tests {
         let authority = Keypair::new();
 
         let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
-        let mut state = TestAccountData::new_owned::<StateAccount>(program_id, state_pda);
+        let mut state = TestAccountData::new_owned_state::<StateAccount>(program_id, state_pda);
         let mut authority = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 

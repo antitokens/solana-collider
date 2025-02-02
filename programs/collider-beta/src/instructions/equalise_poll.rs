@@ -16,7 +16,7 @@ pub fn equalise(
     ctx: Context<EqualiseTokens>,
     poll_index: u64,
     truth: Vec<u64>,
-    unix_timestamp: Option<i64>, // CRITICAL: Remove in production
+    unix_timestamp: Option<i64>, // CRITICAL: Remove in production!
 ) -> Result<()> {
     let poll = &mut ctx.accounts.poll;
 
@@ -25,8 +25,8 @@ pub fn equalise(
     let now = match unix_timestamp {
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
-    }; // CRITICAL: Remove in production
-       //let now = Clock::get()?.unix_timestamp;
+    }; // CRITICAL: Remove in production!
+       // CRITICAL: Add in production!let now = Clock::get()?.unix_timestamp;
     let end_time = parse_iso_timestamp(&poll.end_time)?;
     require!(now >= end_time, PredictError::PollActive);
 
@@ -72,6 +72,7 @@ pub fn equalise(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::PROGRAM_ID;
     use crate::EqualiseTokensBumps;
     use anchor_lang::Discriminator;
     use anchor_spl::token::{spl_token, Token};
@@ -83,7 +84,7 @@ mod tests {
 
     // Fixed test IDs - these should be consistent across tests
     fn program_id() -> Pubkey {
-        Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap()
+        Pubkey::from_str(PROGRAM_ID).unwrap()
     }
 
     struct TestAccountData {

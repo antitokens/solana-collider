@@ -2,12 +2,12 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program, Idl, BN } from "@coral-xyz/anchor";
 import { ColliderBeta } from "../target/types/collider_beta";
 import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { 
-  TOKEN_PROGRAM_ID, 
-  createMint, 
-  createAccount, 
-  mintTo, 
-  getAccount
+import {
+  TOKEN_PROGRAM_ID,
+  createMint,
+  createAccount,
+  mintTo,
+  getAccount,
 } from "@solana/spl-token";
 import { expect } from "chai";
 
@@ -17,7 +17,7 @@ describe("collider-beta", () => {
   anchor.setProvider(provider);
 
   const program = anchor.workspace.ColliderBeta as Program<ColliderBeta & Idl>;
-  
+
   // Test accounts and variables
   let stateAccount: anchor.web3.Keypair;
   let pollAccount: PublicKey;
@@ -29,9 +29,12 @@ describe("collider-beta", () => {
   let pollProAccount: PublicKey;
 
   // Constants
+  const STATE_SEED = "state";
   const POLL_SEED = "poll";
-  const MIN_DEPOSIT = new BN(1000);
-  const BASIS_POINTS = 10000;
+  const ANTI_SEED = "anti_token";
+  const PRO_SEED = "pro_token";
+  const MIN_DEPOSIT = new BN(10_000);
+  const FLOAT_BASIS = 10_000;
 
   before(async () => {
     // Create state account
@@ -99,7 +102,7 @@ describe("collider-beta", () => {
     it("Initialises the program state", async () => {
       // Initialise program state
       await program.methods
-        .initialise()
+        .initialiser()
         .accounts({
           state: stateAccount.publicKey,
           authority: provider.wallet.publicKey,
@@ -109,9 +112,13 @@ describe("collider-beta", () => {
         .rpc();
 
       // Verify state
-      const state = await program.account.stateAccount.fetch(stateAccount.publicKey);
-      expect(state.pollCount.toNumber()).to.equal(0);
-      expect(state.authority.toString()).to.equal(provider.wallet.publicKey.toString());
+      const state = await program.account.stateAccount.fetch(
+        stateAccount.publicKey
+      );
+      expect(state.pollIndex).to.equal(0);
+      expect(state.authority.toString()).to.equal(
+        provider.wallet.publicKey.toString()
+      );
     });
   });
 
@@ -120,7 +127,7 @@ describe("collider-beta", () => {
       // Get current timestamp
       const now = Math.floor(Date.now() / 1000);
       const startTime = new Date(now + 3600).toISOString(); // Start in 1 hour
-      const endTime = new Date(now + 7200).toISOString();   // End in 2 hours
+      const endTime = new Date(now + 7200).toISOString(); // End in 2 hours
 
       // Find PDA for poll account
       const [pollPDA] = await PublicKey.findProgramAddress(
@@ -139,13 +146,7 @@ describe("collider-beta", () => {
 
       // Create poll
       await program.methods
-        .createPoll(
-          "Test Poll",
-          "Test Description",
-          startTime,
-          endTime,
-          null
-        )
+        .createPoll("Test Poll", "Test Description", startTime, endTime, null)
         .accounts({
           state: stateAccount.publicKey,
           poll: pollPDA,
@@ -159,13 +160,13 @@ describe("collider-beta", () => {
 
       // Verify poll creation
       const poll = await program.account.pollAccount.fetch(pollPDA);
-      expect(poll.index.toNumber()).to.equal(0);
+      expect(poll.index).to.equal(0);
       expect(poll.title).to.equal("Test Poll");
       expect(poll.description).to.equal("Test Description");
       expect(poll.startTime).to.equal(startTime);
       expect(poll.endTime).to.equal(endTime);
-      expect(poll.totalAnti.toNumber()).to.equal(0);
-      expect(poll.totalPro.toNumber()).to.equal(0);
+      expect(poll.anti).to.equal(0);
+      expect(poll.pro).to.equal(0);
       expect(poll.deposits).to.be.empty;
       expect(poll.equalised).to.be.false;
     });
@@ -173,7 +174,7 @@ describe("collider-beta", () => {
     it("Fails to create poll with invalid timestamps", async () => {
       const now = Math.floor(Date.now() / 1000);
       const invalidStart = new Date(now - 3600).toISOString(); // Start 1 hour ago
-      const invalidEnd = new Date(now - 1800).toISOString();   // End 30 mins ago
+      const invalidEnd = new Date(now - 1800).toISOString(); // End 30 mins ago
 
       try {
         await program.methods
@@ -218,11 +219,11 @@ describe("collider-beta", () => {
     });
 
     it("Deposits tokens successfully", async () => {
-      const antiAmount = new BN(5000);
-      const proAmount = new BN(3000);
+      const anti = new BN(5000);
+      const pro = new BN(3000);
 
       await program.methods
-        .depositTokens(new BN(0), antiAmount, proAmount)
+        .depositTokens(new BN(0), anti, pro)
         .accounts({
           poll: pollAccount,
           authority: provider.wallet.publicKey,
@@ -236,14 +237,16 @@ describe("collider-beta", () => {
 
       // Verify deposits
       const poll = await program.account.pollAccount.fetch(pollAccount);
-      expect(poll.totalAnti.toNumber()).to.equal(antiAmount.toNumber());
-      expect(poll.totalPro.toNumber()).to.equal(proAmount.toNumber());
+      expect(poll.anti).to.equal(anti.toNumber());
+      expect(poll.pro).to.equal(pro.toNumber());
       expect(poll.deposits).to.have.lengthOf(1);
-      
+
       const deposit = poll.deposits[0];
-      expect(deposit.user.toString()).to.equal(provider.wallet.publicKey.toString());
-      expect(deposit.antiAmount.toNumber()).to.equal(antiAmount.toNumber());
-      expect(deposit.proAmount.toNumber()).to.equal(proAmount.toNumber());
+      expect(deposit.user.toString()).to.equal(
+        provider.wallet.publicKey.toString()
+      );
+      expect(deposit.anti.toNumber()).to.equal(anti.toNumber());
+      expect(deposit.pro.toNumber()).to.equal(pro.toNumber());
       expect(deposit.withdrawn).to.be.false;
     });
 
@@ -273,12 +276,12 @@ describe("collider-beta", () => {
   describe("Poll Equalisation", () => {
     it("Equalises poll with valid truth values", async () => {
       // Wait for poll to end
-      await new Promise(resolve => setTimeout(resolve, 7500)); // Wait 7.5 seconds
+      await new Promise((resolve) => setTimeout(resolve, 7500)); // Wait 7.5 seconds
 
-      const truthValues = [6000, 4000]; // 60-40 split
+      const truth = [6000, 4000]; // 60-40 split
 
       await program.methods
-        .equaliseTokens(new BN(0), truthValues)
+        .equaliseTokens(new BN(0), truth)
         .accounts({
           poll: pollAccount,
           authority: provider.wallet.publicKey,
@@ -294,15 +297,15 @@ describe("collider-beta", () => {
       const poll = await program.account.pollAccount.fetch(pollAccount);
       expect(poll.equalised).to.be.true;
       expect(poll.equalisationResults).to.exist;
-      expect(poll.equalisationResults.truthValues).to.deep.equal(truthValues);
+      expect(poll.equalisationResults.truth).to.deep.equal(truth);
     });
 
     it("Fails equalisation with invalid truth values", async () => {
-      const invalidTruthValues = [11000, 4000]; // > 10000 basis points
+      const invalidTruth = [11000, 4000]; // > 10000 basis points
 
       try {
         await program.methods
-          .equaliseTokens(new BN(0), invalidTruthValues)
+          .equaliseTokens(new BN(0), invalidTruth)
           .accounts({
             poll: pollAccount,
             authority: provider.wallet.publicKey,
@@ -322,8 +325,14 @@ describe("collider-beta", () => {
 
   describe("Token Withdrawals", () => {
     it("Withdraws tokens after equalisation", async () => {
-      const beforeAntiBalance = await getAccount(provider.connection, userAntiAccount);
-      const beforeProBalance = await getAccount(provider.connection, userProAccount);
+      const beforeAntiBalance = await getAccount(
+        provider.connection,
+        userAntiAccount
+      );
+      const beforeProBalance = await getAccount(
+        provider.connection,
+        userProAccount
+      );
 
       await program.methods
         .withdrawTokens(new BN(0))
@@ -342,11 +351,21 @@ describe("collider-beta", () => {
       const poll = await program.account.pollAccount.fetch(pollAccount);
       expect(poll.deposits[0].withdrawn).to.be.true;
 
-      const afterAntiBalance = await getAccount(provider.connection, userAntiAccount);
-      const afterProBalance = await getAccount(provider.connection, userProAccount);
+      const afterAntiBalance = await getAccount(
+        provider.connection,
+        userAntiAccount
+      );
+      const afterProBalance = await getAccount(
+        provider.connection,
+        userProAccount
+      );
 
-      expect(Number(afterAntiBalance.amount)).to.be.gt(Number(beforeAntiBalance.amount));
-      expect(Number(afterProBalance.amount)).to.be.gt(Number(beforeProBalance.amount));
+      expect(Number(afterAntiBalance.amount)).to.be.gt(
+        Number(beforeAntiBalance.amount)
+      );
+      expect(Number(afterProBalance.amount)).to.be.gt(
+        Number(beforeProBalance.amount)
+      );
     });
 
     it("Fails withdrawal before equalisation on new poll", async () => {

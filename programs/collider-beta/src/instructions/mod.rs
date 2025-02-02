@@ -8,15 +8,17 @@
 //! Contact: dev@antitoken.pro
 
 // instructions/mod.rs
+pub mod admin_actions;
+pub mod initialise_program;
 pub mod create_poll;
-pub mod deposit;
-pub mod equalise;
-pub mod initialise;
-pub mod withdraw;
+pub mod deposit_to_poll;
+pub mod equalise_poll;
+pub mod withdraw_from_poll;
 
 // Re-export the instruction structs
+pub use admin_actions::initialise_admin;
+pub use initialise_program::initialise;
 pub use create_poll::create;
-pub use deposit::deposit;
-pub use equalise::equalise;
-pub use initialise::initialise;
-pub use withdraw::withdraw;
+pub use deposit_to_poll::deposit;
+pub use equalise_poll::equalise;
+pub use withdraw_from_poll::withdraw;

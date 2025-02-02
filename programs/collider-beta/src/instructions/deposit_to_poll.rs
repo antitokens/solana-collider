@@ -19,7 +19,7 @@ pub fn deposit(
     poll_index: u64,
     anti: u64,
     pro: u64,
-    unix_timestamp: Option<i64>, // CRITICAL: Remove in production
+    unix_timestamp: Option<i64>, // CRITICAL: Remove in production!
 ) -> Result<()> {
     let poll = &mut ctx.accounts.poll;
 
@@ -27,8 +27,8 @@ pub fn deposit(
     let now = match unix_timestamp {
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
-    }; // CRITICAL: Remove in production
-       //let now = Clock::get()?.unix_timestamp;
+    }; // CRITICAL: Remove in production!
+       // CRITICAL: Add in production!let now = Clock::get()?.unix_timestamp;
 
     // Verify poll is active
     require!(poll.is_active(now), PredictError::PollInactive);
@@ -49,7 +49,7 @@ pub fn deposit(
         PredictError::InvalidTokenAccount
     );
 
-    // Transfer ANTI tokens if amount > 0
+    // Transfer $ANTI tokens if amount > 0
     if anti > 0 {
         token::transfer(
             CpiContext::new(
@@ -64,7 +64,7 @@ pub fn deposit(
         )?;
     }
 
-    // Transfer PRO tokens if amount > 0
+    // Transfer $PRO tokens if amount > 0
     if pro > 0 {
         token::transfer(
             CpiContext::new(
@@ -141,7 +141,7 @@ mod tests {
 
     // Fixed test IDs - these should be consistent across tests
     fn program_id() -> Pubkey {
-        Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap()
+        Pubkey::from_str(PROGRAM_ID).unwrap()
     }
 
     struct TestAccountData {
@@ -320,8 +320,8 @@ mod tests {
         let program_id = program_id();
 
         // Create mints
-        let anti_mint = TestAccountData::new_mint(ANTI_MINT);
-        let pro_mint = TestAccountData::new_mint(PRO_MINT);
+        let anti_mint = TestAccountData::new_mint(ANTI_MINT_ADDRESS);
+        let pro_mint = TestAccountData::new_mint(PRO_MINT_ADDRESS);
 
         // Test double for Clock
         thread_local! {
@@ -474,8 +474,8 @@ mod tests {
         let program_id = program_id();
 
         // Create mints
-        let anti_mint = TestAccountData::new_mint(ANTI_MINT);
-        let pro_mint = TestAccountData::new_mint(PRO_MINT);
+        let anti_mint = TestAccountData::new_mint(ANTI_MINT_ADDRESS);
+        let pro_mint = TestAccountData::new_mint(PRO_MINT_ADDRESS);
 
         // Test double for Clock
         thread_local! {
@@ -638,8 +638,8 @@ mod tests {
         let program_id = program_id();
 
         // Create mints
-        let anti_mint = TestAccountData::new_mint(ANTI_MINT);
-        let pro_mint = TestAccountData::new_mint(PRO_MINT);
+        let anti_mint = TestAccountData::new_mint(ANTI_MINT_ADDRESS);
+        let pro_mint = TestAccountData::new_mint(PRO_MINT_ADDRESS);
 
         // Test double for Clock
         thread_local! {

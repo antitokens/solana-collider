@@ -24,31 +24,22 @@ pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
         PredictError::Unauthorised
     );
 
-    // Get the poll account
-    let poll = &mut ctx.accounts.poll;
-
     // Verify poll has been equalised
-    require!(poll.equalised, PredictError::NotEqualised);
+    require!(&ctx.accounts.poll.equalised, PredictError::NotEqualised);
 
-    let equalisation = poll
+    let equalisation = &ctx
+        .accounts
+        .poll
         .equalisation_results
-        .clone() // Clone to avoid immutable borrow issue
+        .clone()
         .ok_or(error!(PredictError::NotEqualised))?;
-
-    // Create seeds for PDA signing
-    let index_bytes: [u8; 8] = poll_index.to_le_bytes(); // Explicitly define array size
-
-    let seeds: &[&[u8]] = &[
-        b"poll",           // Already `&[u8]`
-        &index_bytes,      // Explicitly reference as slice
-        &[ctx.bumps.poll], // Wrap in slice to match type
-    ];
-
-    let signer_seeds = &[&seeds[..]];
 
     // Track total withdrawn amounts for verification
     let mut total_anti_withdrawn: u64 = 0;
     let mut total_pro_withdrawn: u64 = 0;
+
+    // Get the poll account
+    let poll = &mut ctx.accounts.poll;
 
     // Use explicit lifetime for `remaining_accounts`
     let remaining_accounts: &'info [AccountInfo<'info>] = ctx.remaining_accounts;
@@ -86,9 +77,9 @@ pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
                     Transfer {
                         from: ctx.accounts.poll_anti_token.to_account_info(),
                         to: user_anti_token.to_account_info(),
-                        authority: poll.to_account_info(),
+                        authority: ctx.accounts.authority.to_account_info(),
                     },
-                    signer_seeds,
+                    &[],
                 ),
                 anti_return,
             )?;
@@ -103,9 +94,9 @@ pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
                     Transfer {
                         from: ctx.accounts.poll_pro_token.to_account_info(),
                         to: user_pro_token.to_account_info(),
-                        authority: poll.to_account_info(),
+                        authority: ctx.accounts.authority.to_account_info(),
                     },
-                    signer_seeds,
+                    &[],
                 ),
                 pro_return,
             )?;
@@ -141,6 +132,7 @@ pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::PROGRAM_ID;
     use crate::EqualisationResult;
     use crate::PollAccount;
     use crate::StateAccount;
@@ -155,7 +147,7 @@ mod tests {
 
     // Fixed test IDs - these should be consistent across tests
     fn program_id() -> Pubkey {
-        Pubkey::from_str("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G").unwrap()
+        Pubkey::from_str(PROGRAM_ID).unwrap()
     }
 
     struct TestAccountData {

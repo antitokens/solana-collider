@@ -2,14 +2,31 @@
 //! Program Description: Collider's state enumeration
 //! Version: 1.0.0-beta
 //! License: MIT
-//! Created: 20 Jan 20251.0.0-beta
-//! Last Modified: 20 Jan 2025
+//! Created: 20 Jan 2025
+//! Last Modified: 02 Feb 2025
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
 // state.rs
 use crate::utils::parse_iso_timestamp;
 use anchor_lang::prelude::*;
+
+#[account]
+pub struct AdminAccount {
+    pub poll_creation_fee: u64,        // Fee to create poll
+    pub max_title_length: usize,       // Maximum title length
+    pub max_description_length: usize, // Maximum description length
+    pub truth_basis: u64,              // Truth limit
+    pub float_basis: u64,              // Fixed-point arithmetic basis
+    pub min_deposit_amount: u64,       // Minimum deposit
+    pub antitoken_multisig: Pubkey,    // Multisig authority
+    pub anti_mint_address: Pubkey,     // ANTI token mint
+    pub pro_mint_address: Pubkey,      // PRO token mint
+}
+
+impl AdminAccount {
+    pub const LEN: usize = 8 + (8 * 5) + (32 * 3); // Account size
+}
 
 #[account]
 pub struct StateAccount {
@@ -83,6 +100,7 @@ pub struct EqualisationResult {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct CreatePollBumps {
+    pub state: u8,
     pub poll: u8,
     pub poll_anti_token: u8,
     pub poll_pro_token: u8,
@@ -93,4 +111,14 @@ pub struct WithdrawTokensBumps {
     pub poll: u8,
     pub poll_anti_token: u8,
     pub poll_pro_token: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct AdminBumps {
+    pub admin: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct UpdateBumps {
+    pub admin: u8,
 }
