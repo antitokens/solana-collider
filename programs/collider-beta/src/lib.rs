@@ -136,7 +136,7 @@ pub struct Admin<'info> {
     #[account(
         init,
         payer = authority,
-        space = AdminAccount::LEN,
+        space = 8 + AdminAccount::LEN,
         seeds = [b"admin"],
         bump
     )]

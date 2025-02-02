@@ -13,6 +13,7 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct AdminAccount {
+    pub initialised: bool,             // Initialisation flag
     pub poll_creation_fee: u64,        // Fee to create poll
     pub max_title_length: usize,       // Maximum title length
     pub max_description_length: usize, // Maximum description length
@@ -25,7 +26,7 @@ pub struct AdminAccount {
 }
 
 impl AdminAccount {
-    pub const LEN: usize = 8 + (8 * 5) + (32 * 3); // Account size
+    pub const LEN: usize = 1 + 8 + (8 * 5) + (32 * 3); // Account size
 }
 
 #[account]

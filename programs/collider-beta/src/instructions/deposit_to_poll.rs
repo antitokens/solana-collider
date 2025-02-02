@@ -617,8 +617,8 @@ mod tests {
 
             // Try to convert the invalid account - this should return an error
             let token_account_result = Account::<TokenAccount>::try_from(&invalid_anti_info);
-
             assert!(token_account_result.is_err());
+            
             if let Err(error) = token_account_result {
                 match error {
                     anchor_lang::error::Error::AnchorError(e) => {

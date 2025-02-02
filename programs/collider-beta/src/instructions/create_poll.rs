@@ -92,7 +92,7 @@ pub fn create(
         Some(ANTITOKEN_MULTISIG),
     )?;
 
-    // Get account infos for manual serialization
+    // Get account infos for manual serialisation
     let state_info = &ctx.accounts.state.to_account_info();
     let poll_info = &ctx.accounts.poll.to_account_info();
     //let state_info = &ctx.accounts.state.to_account_info();
@@ -112,14 +112,14 @@ pub fn create(
     ctx.accounts.poll.equalised = false;
     ctx.accounts.poll.equalisation_results = None;
 
-    // Manual serialization
+    // Manual serialisation
     let serialised_poll = ctx.accounts.poll.try_to_vec()?;
     data_poll[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
 
     // Increment poll index
     ctx.accounts.state.poll_index += 1;
 
-    // Manual serialization for state
+    // Manual serialisation for state
     let serialised_state = ctx.accounts.state.try_to_vec()?;
     data_state[8..8 + serialised_state.len()].copy_from_slice(&serialised_state);
 

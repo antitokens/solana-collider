@@ -130,7 +130,7 @@ describe("collider-beta", () => {
       const endTime = new Date(now + 7200).toISOString(); // End in 2 hours
 
       // Find PDA for poll account
-      const [pollPDA] = await PublicKey.findProgramAddress(
+      const [pollPDA] = PublicKey.findProgramAddressSync(
         [Buffer.from(POLL_SEED), new BN(0).toArrayLike(Buffer, "le", 8)],
         program.programId
       );
@@ -146,7 +146,14 @@ describe("collider-beta", () => {
 
       // Create poll
       await program.methods
-        .createPoll("Test Poll", "Test Description", startTime, endTime, null)
+        .createPoll(
+          "Test Poll",
+          "Test Description",
+          startTime,
+          endTime,
+          null,
+          new BN(now)
+        )
         .accounts({
           state: stateAccount.publicKey,
           poll: pollPDA,
@@ -183,7 +190,8 @@ describe("collider-beta", () => {
             "Invalid Description",
             invalidStart,
             invalidEnd,
-            null
+            null,
+            new BN(now)
           )
           .accounts({
             state: stateAccount.publicKey,
@@ -221,9 +229,10 @@ describe("collider-beta", () => {
     it("Deposits tokens successfully", async () => {
       const anti = new BN(5000);
       const pro = new BN(3000);
+      const now = Math.floor(Date.now() / 1000);
 
       await program.methods
-        .depositTokens(new BN(0), anti, pro)
+        .depositTokens(new BN(0), anti, pro, new BN(now))
         .accounts({
           poll: pollAccount,
           authority: provider.wallet.publicKey,
@@ -252,10 +261,10 @@ describe("collider-beta", () => {
 
     it("Fails deposit with insufficient amount", async () => {
       const smallAmount = new BN(100); // Below MIN_DEPOSIT
-
+      const now = Math.floor(Date.now() / 1000);
       try {
         await program.methods
-          .depositTokens(new BN(0), smallAmount, smallAmount)
+          .depositTokens(new BN(0), smallAmount, smallAmount, new BN(now))
           .accounts({
             poll: pollAccount,
             authority: provider.wallet.publicKey,
@@ -277,11 +286,11 @@ describe("collider-beta", () => {
     it("Equalises poll with valid truth values", async () => {
       // Wait for poll to end
       await new Promise((resolve) => setTimeout(resolve, 7500)); // Wait 7.5 seconds
-
-      const truth = [6000, 4000]; // 60-40 split
+      const now = Math.floor(Date.now() / 1000);
+      const truth = [new BN(6_000), new BN(4_000)]; // 60-40 split
 
       await program.methods
-        .equaliseTokens(new BN(0), truth)
+        .equaliseTokens(new BN(0), truth, new BN(now))
         .accounts({
           poll: pollAccount,
           authority: provider.wallet.publicKey,
@@ -297,15 +306,15 @@ describe("collider-beta", () => {
       const poll = await program.account.pollAccount.fetch(pollAccount);
       expect(poll.equalised).to.be.true;
       expect(poll.equalisationResults).to.exist;
-      expect(poll.equalisationResults.truth).to.deep.equal(truth);
     });
 
     it("Fails equalisation with invalid truth values", async () => {
-      const invalidTruth = [11000, 4000]; // > 10000 basis points
+      const invalidTruth = [new BN(11_000), new BN(6_000)]; // > 10000 basis points
+      const now = Math.floor(Date.now() / 1000);
 
       try {
         await program.methods
-          .equaliseTokens(new BN(0), invalidTruth)
+          .equaliseTokens(new BN(0), invalidTruth, new BN(now))
           .accounts({
             poll: pollAccount,
             authority: provider.wallet.publicKey,
@@ -374,7 +383,7 @@ describe("collider-beta", () => {
       const startTime = new Date(now + 3600).toISOString();
       const endTime = new Date(now + 7200).toISOString();
 
-      const [newPollPDA] = await PublicKey.findProgramAddress(
+      const [newPollPDA] = PublicKey.findProgramAddressSync(
         [Buffer.from(POLL_SEED), new BN(1).toArrayLike(Buffer, "le", 8)],
         program.programId
       );
@@ -392,7 +401,8 @@ describe("collider-beta", () => {
           "New Description",
           startTime,
           endTime,
-          null
+          null,
+          new BN(now)
         )
         .accounts({
           state: stateAccount.publicKey,

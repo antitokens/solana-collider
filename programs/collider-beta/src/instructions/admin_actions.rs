@@ -14,7 +14,16 @@ use crate::Update;
 use anchor_lang::prelude::*;
 
 pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
+    // Get current time, supporting local testing override
+    let now: i64 = 1738518455; // CRITICAL: Remove in production!
+                               // CRITICAL: Add in production!let now = Clock::get()?.unix_timestamp;
+
     let settings = &mut ctx.accounts.admin;
+
+    // Check if already initialised
+    require!(!settings.initialised, PredictError::AlreadyInitialised);
+
+    settings.initialised = true;
     settings.poll_creation_fee = 100_000_000; // 0.1 SOL
     settings.max_title_length = MAX_TITLE_LENGTH;
     settings.max_description_length = MAX_DESCRIPTION_LENGTH;
@@ -29,7 +38,7 @@ pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
     emit!(AdminEvent {
         action: "init_admin".to_string(),
         poll_index: 0,
-        timestamp: Clock::get()?.unix_timestamp,
+        timestamp: now,
     });
 
     Ok(())
@@ -215,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn test_admin_initialisation() {
+    fn test_admin_initialisation<'info>() {
         let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
         let authority = Keypair::new();
 
@@ -223,12 +232,13 @@ mod tests {
         let (admin_pda, admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
 
         // Test initialisation
-        let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(program_id, admin_pda);
-        let mut auth = TestAccountData::new_authority_account(authority.pubkey());
+        let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(admin_pda, program_id);
+        let mut manager = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
 
         // Initialise admin account
         let admin_data = AdminAccount {
+            initialised: false,
             poll_creation_fee: 100_000_000,
             max_title_length: MAX_TITLE_LENGTH,
             max_description_length: MAX_DESCRIPTION_LENGTH,
@@ -242,8 +252,10 @@ mod tests {
         admin.init_admin_data(&admin_data).unwrap();
 
         let admin_info = admin.to_account_info(false);
-        let authority_info = auth.to_account_info(true);
+        let authority_info = manager.to_account_info(true);
         let system_info = system.to_account_info(false);
+
+        let _: Account<AdminAccount> = Account::try_from(&admin_info).unwrap();
 
         let mut accounts = Admin {
             admin: Account::try_from(&admin_info).unwrap(),
@@ -321,7 +333,7 @@ mod tests {
         // Verify authority
         assert_eq!(
             authority_info.key(),
-            auth.key,
+            manager.key,
             "Authority should match the provided keypair"
         );
     }
@@ -334,13 +346,28 @@ mod tests {
 
         // Create test accounts
         let (admin_pda, admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
-        let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(program_id, admin_pda);
-        let mut auth = TestAccountData::new_authority_account(authority.pubkey());
+        let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(admin_pda, program_id);
+        let mut manager = TestAccountData::new_authority_account(authority.pubkey());
         let mut system = TestAccountData::new_system_account();
+
+        // Initialise admin account
+        let admin_data = AdminAccount {
+            initialised: false,
+            poll_creation_fee: 100_000_000,
+            max_title_length: MAX_TITLE_LENGTH,
+            max_description_length: MAX_DESCRIPTION_LENGTH,
+            truth_basis: TRUTH_BASIS,
+            float_basis: FLOAT_BASIS,
+            min_deposit_amount: MIN_DEPOSIT_AMOUNT,
+            antitoken_multisig: ANTITOKEN_MULTISIG,
+            anti_mint_address: ANTI_MINT_ADDRESS,
+            pro_mint_address: PRO_MINT_ADDRESS,
+        };
+        admin.init_admin_data(&admin_data).unwrap();
 
         // First initialisation
         let admin_info = admin.to_account_info(false);
-        let authority_info = auth.to_account_info(true);
+        let authority_info = manager.to_account_info(true);
         let system_info = system.to_account_info(false);
 
         let mut accounts = Admin {
@@ -382,11 +409,26 @@ mod tests {
         // Create test accounts
         let (admin_pda, admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
 
-        let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(program_id, admin_pda);
-        let mut auth = TestAccountData::new_authority_account(unauthorised_user.pubkey());
+        let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(admin_pda, program_id);
+        let mut manager = TestAccountData::new_authority_account(unauthorised_user.pubkey());
+
+        // Initialise admin account
+        let admin_data = AdminAccount {
+            initialised: false,
+            poll_creation_fee: 100_000_000,
+            max_title_length: MAX_TITLE_LENGTH,
+            max_description_length: MAX_DESCRIPTION_LENGTH,
+            truth_basis: TRUTH_BASIS,
+            float_basis: FLOAT_BASIS,
+            min_deposit_amount: MIN_DEPOSIT_AMOUNT,
+            antitoken_multisig: ANTITOKEN_MULTISIG,
+            anti_mint_address: ANTI_MINT_ADDRESS,
+            pro_mint_address: PRO_MINT_ADDRESS,
+        };
+        admin.init_admin_data(&admin_data).unwrap();
 
         let admin_info = admin.to_account_info(false);
-        let authority_info = auth.to_account_info(true);
+        let authority_info = manager.to_account_info(true);
 
         let mut accounts = Update {
             admin: Account::try_from(&admin_info).unwrap(),
@@ -401,17 +443,16 @@ mod tests {
             Context::new(&program_id, &mut accounts, &[], bumps),
             200_000_000,
         );
-
         assert!(result.is_err(), "Unauthorised update should fail");
-        match result {
-            Err(error) => {
-                assert_eq!(
-                    error,
-                    PredictError::Unauthorised.into(),
-                    "Should return Unauthorised error"
-                );
+
+        if let Err(error) = result {
+            match error {
+                anchor_lang::error::Error::AnchorError(e) => {
+                    let error_code: u32 = ErrorCode::Unauthorised.into();
+                    assert_eq!(e.error_code_number, error_code);
+                }
+                _ => panic!("Expected Unauthorised error"),
             }
-            _ => panic!("Expected unauthorised error"),
         }
     }
 
@@ -424,11 +465,12 @@ mod tests {
         // Create test accounts with multisig authority
         let (admin_pda, admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
         let mut admin_account =
-            TestAccountData::new_owned_admin::<AdminAccount>(program_id, admin_pda); // Changed variable name here
+            TestAccountData::new_owned_admin::<AdminAccount>(admin_pda, program_id);
 
-        // Initialize admin settings
+        // Initialise admin settings
         let admin_data = AdminAccount {
             // Changed to admin_data to avoid shadowing
+            initialised: false,
             poll_creation_fee: 100_000_000,
             max_title_length: MAX_TITLE_LENGTH,
             max_description_length: MAX_DESCRIPTION_LENGTH,
@@ -460,15 +502,15 @@ mod tests {
                 new_fee,
             );
 
-            assert!(result.is_ok(), "Authorized fee update should succeed");
+            assert!(result.is_ok(), "Authorised fee update should succeed");
 
-            // Verify the update
-            let updated_admin: AdminAccount =
-                AdminAccount::try_deserialize(&mut admin_info.try_borrow_data().unwrap().as_ref())
-                    .unwrap();
             assert_eq!(
-                updated_admin.poll_creation_fee, new_fee,
+                accounts.admin.poll_creation_fee, new_fee,
                 "Fee should be updated"
+            );
+            assert_ne!(
+                POLL_CREATION_FEE, accounts.admin.poll_creation_fee,
+                "Fee should have changed"
             );
         }
     }

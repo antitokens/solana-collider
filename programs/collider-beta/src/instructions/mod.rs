@@ -16,9 +16,9 @@ pub mod equalise_poll;
 pub mod withdraw_from_poll;
 
 // Re-export the instruction structs
-pub use admin_actions::initialise_admin;
-pub use initialise_program::initialise;
-pub use create_poll::create;
-pub use deposit_to_poll::deposit;
-pub use equalise_poll::equalise;
-pub use withdraw_from_poll::withdraw;
+pub use admin_actions::*;
+pub use initialise_program::*;
+pub use create_poll::*;
+pub use deposit_to_poll::*;
+pub use equalise_poll::*;
+pub use withdraw_from_poll::*;
