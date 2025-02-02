@@ -1,5 +1,7 @@
-import cleanProductionCode from './cleanProductionCode.js';
+import { processFiles } from './code-cleaner.js';
 
-const sourceCode = `your code here`;
-const cleanedCode = cleanProductionCode(sourceCode);
-console.log(cleanedCode);
+// Single pattern
+await processFiles('*work/**/this/*.rs');
+
+// Multiple patterns
+await processFiles(['*work/**/this/*.rs', 'src/**/*.rs']);
