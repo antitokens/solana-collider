@@ -18,13 +18,14 @@
   },
   "scripts": {
     "build-anchor": "anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-anchor-full": "RUST_LOG=trace RUST_BACKTRACE=full anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "build-anchor-full": "RUST_LOG=trace anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
     "build-cargo": "cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-cargo-full": "RUST_LOG=trace RUST_BACKTRACE=full cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "build-cargo-full": "RUST_LOG=trace cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
     "test-anchor": "anchor test",
-    "test-anchor-full": "RUST_LOG=trace RUST_BACKTRACE=full anchor test",
-    "test-anchor-fast": "RUST_LOG=trace RUST_BACKTRACE=full anchor test --skip-build --skip-deploy",
+    "test-anchor-full": "RUST_LOG=trace anchor test",
+    "test-anchor-fast": "RUST_LOG=trace anchor test --skip-build --skip-deploy",
     "test-cargo": "RUST_LOG=error cargo test-sbf",
-    "test-cargo-full": "RUST_LOG=trace RUST_BACKTRACE=full cargo test-sbf"
+    "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
+    "test-cargo-full": "RUST_LOG=trace cargo test-sbf"
   }
 }

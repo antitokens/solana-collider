@@ -12,16 +12,19 @@ use crate::state::*;
 use anchor_lang::prelude::*;
 use chrono::NaiveDateTime;
 
+pub const POLL_CREATION_FEE: u64 = 100_000_000; // Fee to create poll (0.1 SOL)
 pub const MAX_TITLE_LENGTH: usize = 256; // Maximum title length
 pub const MAX_DESCRIPTION_LENGTH: usize = 1_024; // Maximum description length
 pub const TRUTH_BASIS: u64 = 100_000; // Truth limit = [0, 1]
-pub const BASIS_POINTS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
+pub const FLOAT_BASIS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
 pub const MIN_DEPOSIT_AMOUNT: u64 = 10_000; // 1 token minimum deposit
 pub const ANTITOKEN_MULTISIG: Pubkey =
-    solana_program::pubkey!("AntT1kens1111111111111111111111111111111111"); // FCK
-pub const ANTI_MINT: Pubkey =
-    solana_program::pubkey!("ANTixcHXiUiZ8FfwzBaXYvVypedJA2Vz9YuWUtfatCr"); // FCK
-pub const PRO_MINT: Pubkey = solana_program::pubkey!("PRo99gVHnEtZXgHdWXyrGrVwrGr7vsRvXy3kj4aeE2x"); // FCK
+    solana_program::pubkey!("4y85fZmnMmxD4YndrTba794StNLcvzSsNTsHnb97dYJk");
+pub const ANTI_MINT_ADDRESS: Pubkey =
+    solana_program::pubkey!("4ZkEvqRny1khv9Cj8SGbV364SSBBHZJRc4mykkLzFjX2");
+pub const PRO_MINT_ADDRESS: Pubkey =
+    solana_program::pubkey!("838v9XjmvSMMyFfULwNZZcBcGabdQjEVVPixAFunhX6y");
+pub const PROGRAM_ID: &str = "5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G";
 
 #[error_code]
 pub enum PredictError {
@@ -134,8 +137,8 @@ pub struct AdminEvent {
 
 // Utility functions for calculations
 pub fn collide(anti: u64, pro: u64) -> Result<(u64, u64)> {
-    let anti_f = anti * BASIS_POINTS;
-    let pro_f = pro * BASIS_POINTS;
+    let anti_f = anti * FLOAT_BASIS;
+    let pro_f = pro * FLOAT_BASIS;
     let sum = anti_f.checked_add(pro_f).ok_or(PredictError::MathError)?;
     let diff = if anti_f > pro_f {
         anti_f.checked_sub(pro_f)
@@ -145,28 +148,28 @@ pub fn collide(anti: u64, pro: u64) -> Result<(u64, u64)> {
     .ok_or(PredictError::MathError)?;
 
     // Calculate u
-    let u = if sum < BASIS_POINTS {
+    let u = if sum < FLOAT_BASIS {
         0
-    } else if diff > 0 && diff < BASIS_POINTS {
+    } else if diff > 0 && diff < FLOAT_BASIS {
         diff
     } else {
         diff
     };
 
     // Calculate s
-    let s = if sum < BASIS_POINTS {
+    let s = if sum < FLOAT_BASIS {
         0
     } else if diff == sum {
         0
-    } else if diff > 0 && diff < BASIS_POINTS {
-        (sum * BASIS_POINTS) / BASIS_POINTS
+    } else if diff > 0 && diff < FLOAT_BASIS {
+        (sum * FLOAT_BASIS) / FLOAT_BASIS
     } else if diff == 0 {
         sum
     } else {
-        (sum * BASIS_POINTS) / diff
+        (sum * FLOAT_BASIS) / diff
     };
 
-    Ok((u / BASIS_POINTS, s / BASIS_POINTS))
+    Ok((u / FLOAT_BASIS, s / FLOAT_BASIS))
 }
 
 // Function to parse date
@@ -227,7 +230,7 @@ pub fn equalise_with_truth(
     let mut overlaps = Vec::with_capacity(deposits.len());
     for deposit in deposits {
         let baryon = deposit.u as f64;
-        let photon = (deposit.s as f64) / (BASIS_POINTS as f64);
+        let photon = (deposit.s as f64) / (FLOAT_BASIS as f64);
         let parity = if (truth[0] > truth[1]) == (deposit.anti > deposit.pro) {
             1.0
         } else {
