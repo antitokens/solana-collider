@@ -18,26 +18,25 @@ pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
     let now: i64 = 1738518455; // CRITICAL: Remove in production!
                                // CRITICAL: Add in production!let now = Clock::get()?.unix_timestamp;
 
-    let settings = &mut ctx.accounts.admin;
+    let config = &mut ctx.accounts.admin;
 
     // Check if already initialised
-    require!(!settings.initialised, PredictError::AlreadyInitialised);
+    require!(!config.initialised, PredictError::AlreadyInitialised);
 
-    settings.initialised = true;
-    settings.poll_creation_fee = 100_000_000; // 0.1 SOL
-    settings.max_title_length = MAX_TITLE_LENGTH;
-    settings.max_description_length = MAX_DESCRIPTION_LENGTH;
-    settings.truth_basis = TRUTH_BASIS;
-    settings.float_basis = FLOAT_BASIS;
-    settings.min_deposit_amount = MIN_DEPOSIT_AMOUNT;
-    settings.antitoken_multisig = ANTITOKEN_MULTISIG;
-    settings.anti_mint_address = ANTI_MINT_ADDRESS;
-    settings.pro_mint_address = PRO_MINT_ADDRESS;
+    config.initialised = true;
+    config.poll_creation_fee = 100_000_000; // 0.1 SOL
+    config.max_title_length = MAX_TITLE_LENGTH;
+    config.max_description_length = MAX_DESCRIPTION_LENGTH;
+    config.truth_basis = TRUTH_BASIS;
+    config.float_basis = FLOAT_BASIS;
+    config.min_deposit_amount = MIN_DEPOSIT_AMOUNT;
+    config.antitoken_multisig = ANTITOKEN_MULTISIG;
+    config.anti_mint_address = ANTI_MINT_ADDRESS;
+    config.pro_mint_address = PRO_MINT_ADDRESS;
 
     // Emit admin event
     emit!(AdminEvent {
         action: "init_admin".to_string(),
-        poll_index: 0,
         timestamp: now,
     });
 
@@ -270,12 +269,12 @@ mod tests {
 
         assert!(result.is_ok(), "Admin initialisation should succeed");
 
-        // Verify all settings after initialisation
+        // Verify all config after initialisation
         let admin_account: AdminAccount =
             AdminAccount::try_deserialize(&mut admin_info.try_borrow_data().unwrap().as_ref())
                 .unwrap();
 
-        // Basic administrative settings
+        // Basic administrative config
         assert_eq!(
             admin_account.poll_creation_fee, 100_000_000,
             "Poll creation fee should be 0.1 SOL"
@@ -289,7 +288,7 @@ mod tests {
             "Description length should match constant"
         );
 
-        // Numerical basis settings
+        // Numerical basis config
         assert_eq!(
             admin_account.truth_basis, TRUTH_BASIS,
             "Truth basis should match constant"
@@ -303,7 +302,7 @@ mod tests {
             "Minimum deposit should match constant"
         );
 
-        // Address settings
+        // Address config
         assert_eq!(
             admin_account.antitoken_multisig, ANTITOKEN_MULTISIG,
             "Multisig address should match constant"
@@ -467,7 +466,7 @@ mod tests {
         let mut admin_account =
             TestAccountData::new_owned_admin::<AdminAccount>(admin_pda, program_id);
 
-        // Initialise admin settings
+        // Initialise admin config
         let admin_data = AdminAccount {
             // Changed to admin_data to avoid shadowing
             initialised: false,

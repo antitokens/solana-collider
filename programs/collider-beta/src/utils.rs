@@ -19,11 +19,11 @@ pub const TRUTH_BASIS: u64 = 100_000; // Truth limit = [0, 1]
 pub const FLOAT_BASIS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
 pub const MIN_DEPOSIT_AMOUNT: u64 = 10_000; // 1 token minimum deposit
 pub const ANTITOKEN_MULTISIG: Pubkey =
-    solana_program::pubkey!("4y85fZmnMmxD4YndrTba794StNLcvzSsNTsHnb97dYJk");
+    solana_program::pubkey!("7rFEa4g8UZs7eBBoq66FmLeobtb81dfCPx2Hmt61kJ5t");
 pub const ANTI_MINT_ADDRESS: Pubkey =
-    solana_program::pubkey!("4ZkEvqRny1khv9Cj8SGbV364SSBBHZJRc4mykkLzFjX2");
+    solana_program::pubkey!("674rRAKuyAizM6tWKLpo8zDqAtvxYS7ce6DoGBfocmrT");
 pub const PRO_MINT_ADDRESS: Pubkey =
-    solana_program::pubkey!("838v9XjmvSMMyFfULwNZZcBcGabdQjEVVPixAFunhX6y");
+    solana_program::pubkey!("6bDmnBGtGo9pb2vhVkrzQD9uHYcYpBCCSgU61534MyTm");
 pub const PROGRAM_ID: &str = "5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G";
 
 #[error_code]
@@ -131,7 +131,6 @@ pub struct PollUpdateEvent {
 #[event]
 pub struct AdminEvent {
     pub action: String,
-    pub poll_index: u64,
     pub timestamp: i64,
 }
 
@@ -202,7 +201,10 @@ pub fn validate_poll_params(
     start_time: &str,
     end_time: &str,
 ) -> Result<()> {
-    require!(title.len() <= MAX_TITLE_LENGTH as usize, PredictError::TitleTooLong);
+    require!(
+        title.len() <= MAX_TITLE_LENGTH as usize,
+        PredictError::TitleTooLong
+    );
     require!(
         description.len() <= MAX_DESCRIPTION_LENGTH as usize,
         PredictError::DescriptionTooLong

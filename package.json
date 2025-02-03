@@ -25,6 +25,7 @@
     "test-anchor-full": "RUST_LOG=trace anchor test",
     "test-anchor-fast": "RUST_LOG=trace anchor test --skip-build --skip-deploy",
     "test-cargo": "RUST_LOG=error cargo test-sbf",
+    "test-cargo-log": "RUST_LOG=info cargo test-sbf -- --nocapture",
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf"
   }

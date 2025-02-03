@@ -95,7 +95,6 @@ pub fn create(
     // Get account infos for manual serialisation
     let state_info = &ctx.accounts.state.to_account_info();
     let poll_info = &ctx.accounts.poll.to_account_info();
-    //let state_info = &ctx.accounts.state.to_account_info();
     let mut data_state = state_info.try_borrow_mut_data()?;
     let mut data_poll = poll_info.try_borrow_mut_data()?;
 

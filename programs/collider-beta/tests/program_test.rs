@@ -48,26 +48,26 @@ async fn test_full_collider_flow() {
     // Generate fixed keypairs to mimic ANTI_MINT_ADDRESS, PRO_MINT_ADDRESS and ANTITOKEN_MULTISIG
     let anti_mint = keypair_from_parts(
         [
-            239, 190, 227, 14, 160, 236, 240, 48, 197, 85, 133, 154, 162, 0, 104, 165, 142, 246,
-            161, 41, 242, 135, 73, 228, 96, 153, 166, 106, 99, 90, 29, 240,
+            199, 248, 4, 119, 179, 209, 7, 251, 29, 104, 140, 5, 104, 142, 70, 118, 124, 30, 234,
+            100, 93, 56, 177, 105, 86, 95, 183, 187, 77, 30, 146, 248,
         ],
-        "4ZkEvqRny1khv9Cj8SGbV364SSBBHZJRc4mykkLzFjX2",
+        "674rRAKuyAizM6tWKLpo8zDqAtvxYS7ce6DoGBfocmrT",
     );
 
     let pro_mint = keypair_from_parts(
         [
-            207, 45, 179, 220, 32, 150, 106, 44, 115, 149, 90, 137, 157, 116, 16, 225, 151, 252,
-            245, 253, 234, 227, 14, 169, 45, 97, 133, 48, 218, 129, 239, 175,
+            154, 211, 254, 243, 5, 250, 22, 77, 89, 239, 46, 250, 57, 45, 194, 24, 18, 196, 39,
+            200, 37, 184, 155, 255, 83, 172, 147, 99, 16, 55, 162, 179,
         ],
-        "838v9XjmvSMMyFfULwNZZcBcGabdQjEVVPixAFunhX6y",
+        "6bDmnBGtGo9pb2vhVkrzQD9uHYcYpBCCSgU61534MyTm",
     );
 
     let antitoken_multisig = keypair_from_parts(
         [
-            254, 97, 231, 93, 237, 143, 203, 126, 1, 178, 146, 247, 85, 208, 86, 187, 223, 80, 74,
-            76, 242, 136, 240, 74, 66, 2, 119, 190, 41, 56, 68, 147,
+            12, 63, 179, 210, 90, 185, 236, 243, 1, 37, 19, 188, 76, 159, 88, 72, 82, 172, 171,
+            255, 220, 221, 248, 84, 222, 236, 124, 122, 17, 11, 68, 197,
         ],
-        "4y85fZmnMmxD4YndrTba794StNLcvzSsNTsHnb97dYJk",
+        "7rFEa4g8UZs7eBBoq66FmLeobtb81dfCPx2Hmt61kJ5t",
     );
 
     // Initialise the test environment
@@ -85,6 +85,8 @@ async fn test_full_collider_flow() {
 
     // Derive PDAs for poll token accounts
     let poll_index = 0u64;
+
+    let (admin_pda, _) = Pubkey::find_program_address(&[b"admin"], &program_id);
 
     let (poll_pda, _) =
         Pubkey::find_program_address(&[b"poll", poll_index.to_le_bytes().as_ref()], &program_id);
@@ -262,6 +264,214 @@ async fn test_full_collider_flow() {
     );
     banks_client.process_transaction(tx).await.unwrap();
     /* Global setup ends here */
+
+    // Create the admin initialisation instruction
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(manager.pubkey(), true),
+            AccountMeta::new(system_program::id(), false),
+        ],
+        data: collider_beta::instruction::InitialiseAdmin {}.data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&manager.pubkey()),
+        &[&manager],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Admin initialisation passing ...");
+
+    // Test updating poll creation fee
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdatePollCreationFee {
+            new_fee: 200_000_000,
+        }
+        .data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Poll creation fee update passing ...");
+
+    // Test updating max title length
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdateMaxTitleLength { new_length: 512 }.data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Max title length update passing ...");
+
+    // Test updating max description length
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdateMaxDescriptionLength { new_length: 2048 }.data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Max description length update passing ...");
+
+    // Test updating truth basis
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdateTruthBasis { new_basis: 200_000 }.data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Truth basis update passing ...");
+
+    // Test updating float basis
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdateFloatBasis { new_basis: 20_000 }.data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Float basis update passing ...");
+
+    // Test updating min deposit amount
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdateMinDepositAmount {
+            new_min_amount: 20_000,
+        }
+        .data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Min deposit amount update passing ...");
+
+    // Test updating $ANTI mint address
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdateAntiMint {
+            new_mint: anti_mint.pubkey(),
+        }
+        .data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ $ANTI mint update passing ...");
+
+    // Test updating $PRO mint address
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdateProMint {
+            new_mint: pro_mint.pubkey(),
+        }
+        .data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ $PRO mint update passing ...");
+
+    // Test updating multisig authority
+    let new_multisig = Keypair::new();
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(admin_pda, false),
+            AccountMeta::new(antitoken_multisig.pubkey(), true),
+        ],
+        data: collider_beta::instruction::UpdateMultisig {
+            new_multisig: new_multisig.pubkey(),
+        }
+        .data(),
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&antitoken_multisig.pubkey()),
+        &[&antitoken_multisig],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(tx).await.unwrap();
+    println!("✅ Multisig authority update passing ...");
+    println!("✅ Admin actions passing ...");
 
     // Create the initialisation instruction
     let ix = Instruction {

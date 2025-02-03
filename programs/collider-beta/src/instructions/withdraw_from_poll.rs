@@ -12,64 +12,55 @@ use crate::WithdrawTokens;
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 use anchor_spl::token::{self, Transfer};
+use borsh::BorshSerialize;
 
 pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
     ctx: Context<'a, 'b, 'c, 'info, WithdrawTokens<'info>>,
     poll_index: u64,
 ) -> Result<()> {
-    // Verify only ANTITOKEN_MULTISIG can execute this
     let authority_key = ctx.accounts.authority.key();
     require!(
         authority_key == ANTITOKEN_MULTISIG,
         PredictError::Unauthorised
     );
-
-    // Verify poll has been equalised
     require!(&ctx.accounts.poll.equalised, PredictError::NotEqualised);
 
-    let equalisation = &ctx
+    let equalisation = ctx
         .accounts
         .poll
         .equalisation_results
         .clone()
         .ok_or(error!(PredictError::NotEqualised))?;
 
-    // Track total withdrawn amounts for verification
-    let mut total_anti_withdrawn: u64 = 0;
-    let mut total_pro_withdrawn: u64 = 0;
+    let poll_info = ctx.accounts.poll.to_account_info();
+    let mut poll_data = poll_info.try_borrow_mut_data()?;
 
-    // Get the poll account
     let poll = &mut ctx.accounts.poll;
-
-    // Use explicit lifetime for `remaining_accounts`
-    let remaining_accounts: &'info [AccountInfo<'info>] = ctx.remaining_accounts;
+    let remaining_accounts: &[AccountInfo<'info>] = ctx.remaining_accounts;
     let mut deposits = poll.deposits.clone();
     let num_deposits = deposits.len();
-    let enum_deposits = deposits.iter_mut().enumerate();
 
     require!(
         remaining_accounts.len() == num_deposits * 2,
         PredictError::InvalidTokenAccount
     );
 
-    // Iterate through deposits
-    for (deposit_index, deposit) in enum_deposits {
-        // Skip if already withdrawn
+    let mut total_anti_withdrawn: u64 = 0;
+    let mut total_pro_withdrawn: u64 = 0;
+
+    for (deposit_index, deposit) in deposits.iter_mut().enumerate() {
         if deposit.withdrawn {
             continue;
         }
 
-        // Get return amounts for this deposit
         let anti_return = equalisation.anti[deposit_index];
         let pro_return = equalisation.pro[deposit_index];
 
-        // Fix: Explicitly specify lifetime for `Account<TokenAccount>`
         let user_anti_token: Account<'info, TokenAccount> =
-            Account::try_from(&remaining_accounts[deposit_index])?;
+            Account::try_from(&remaining_accounts[deposit_index * 2])?;
         let user_pro_token: Account<'info, TokenAccount> =
-            Account::try_from(&remaining_accounts[deposit_index + num_deposits])?;
+            Account::try_from(&remaining_accounts[deposit_index * 2 + 1])?;
 
-        // Transfer $ANTI tokens
         if anti_return > 0 {
             token::transfer(
                 CpiContext::new_with_signer(
@@ -86,7 +77,6 @@ pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
             total_anti_withdrawn += anti_return;
         }
 
-        // Transfer $PRO tokens
         if pro_return > 0 {
             token::transfer(
                 CpiContext::new_with_signer(
@@ -103,11 +93,10 @@ pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
             total_pro_withdrawn += pro_return;
         }
 
-        // Mark as withdrawn
         deposit.withdrawn = true;
     }
 
-    // Verify total withdrawn matches equalisation results
+    // Verify total withdrawals match equalisation sums
     require!(
         total_anti_withdrawn == equalisation.anti.iter().copied().sum::<u64>(),
         PredictError::InvalidEqualisation
@@ -117,7 +106,11 @@ pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
         PredictError::InvalidEqualisation
     );
 
-    // Emit bulk withdrawal event
+    // Serialise updated poll state and store it in account data
+    poll.deposits = deposits;
+    let serialised_poll = poll.try_to_vec()?;
+    poll_data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+
     emit!(WithdrawEvent {
         poll_index,
         address: ctx.accounts.authority.key(),

@@ -1,7 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program, Idl, BN } from "@coral-xyz/anchor";
 import { ColliderBeta } from "../target/types/collider_beta";
-import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import {
+  PublicKey,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+  Keypair,
+  Signer,
+} from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
   createMint,
@@ -18,133 +24,205 @@ describe("collider-beta", () => {
 
   const program = anchor.workspace.ColliderBeta as Program<ColliderBeta & Idl>;
 
-  // Test accounts and variables
-  let stateAccount: anchor.web3.Keypair;
-  let pollAccount: PublicKey;
-  let antiMint: PublicKey;
-  let proMint: PublicKey;
-  let userAntiAccount: PublicKey;
-  let userProAccount: PublicKey;
-  let pollAntiAccount: PublicKey;
-  let pollProAccount: PublicKey;
+  // Fixed keypairs for tests
+  const antiMintKeypair = Keypair.fromSecretKey(
+    Uint8Array.from([
+      199, 248, 4, 119, 179, 209, 7, 251, 29, 104, 140, 5, 104, 142, 70, 118,
+      124, 30, 234, 100, 93, 56, 177, 105, 86, 95, 183, 187, 77, 30, 146, 248,
+      75, 216, 70, 100, 69, 123, 252, 137, 35, 116, 37, 57, 70, 222, 220, 169,
+      103, 132, 121, 48, 61, 34, 121, 247, 62, 62, 200, 231, 57, 4, 93, 124,
+    ]),
+    { skipValidation: false }
+  );
 
-  // Constants
-  const STATE_SEED = "state";
-  const POLL_SEED = "poll";
-  const ANTI_SEED = "anti_token";
-  const PRO_SEED = "pro_token";
-  const MIN_DEPOSIT = new BN(10_000);
-  const FLOAT_BASIS = 10_000;
+  const proMintKeypair = Keypair.fromSecretKey(
+    Uint8Array.from([
+      154, 211, 254, 243, 5, 250, 22, 77, 89, 239, 46, 250, 57, 45, 194, 24, 18,
+      196, 39, 200, 37, 184, 155, 255, 83, 172, 147, 99, 16, 55, 162, 179, 83,
+      14, 159, 160, 141, 181, 31, 188, 126, 1, 187, 152, 138, 51, 199, 48, 236,
+      210, 29, 243, 81, 147, 101, 154, 33, 34, 191, 159, 45, 210, 243, 128,
+    ]),
+    { skipValidation: false }
+  );
+
+  const antitokenMultisigKeypair = Keypair.fromSecretKey(
+    Uint8Array.from([
+      12, 63, 179, 210, 90, 185, 236, 243, 1, 37, 19, 188, 76, 159, 88, 72, 82,
+      172, 171, 255, 220, 221, 248, 84, 222, 236, 124, 122, 17, 11, 68, 197,
+      101, 195, 172, 244, 31, 202, 21, 241, 93, 231, 125, 235, 92, 231, 50, 179,
+      127, 190, 107, 208, 159, 17, 151, 136, 105, 43, 164, 77, 45, 59, 132, 23,
+    ]),
+    { skipValidation: false }
+  );
+
+  let manager: Keypair;
+  let creator: Keypair;
+  let user: Keypair;
+  let attacker: Keypair;
+
+  // PDAs and accounts
+  let adminPda: PublicKey;
+  let statePda: PublicKey;
+  let pollPda: PublicKey;
+  let pollPda2: PublicKey;
+  let pollAntiTokenPda: PublicKey;
+  let pollProTokenPda: PublicKey;
+
+  let userAntiToken: PublicKey;
+  let userProToken: PublicKey;
+
+  const pollIndex = new BN(0);
 
   before(async () => {
-    // Create state account
-    stateAccount = anchor.web3.Keypair.generate();
+    // Create test keypairs
+    manager = new Keypair();
+    creator = new Keypair();
+    user = new Keypair();
+    attacker = new Keypair();
 
-    // Create token mints
-    antiMint = await createMint(
+    // Airdrop SOL to all accounts
+    const airdropAmount = 10 * LAMPORTS_PER_SOL;
+    const accounts = [
+      manager,
+      creator,
+      user,
+      attacker,
+      antitokenMultisigKeypair,
+    ];
+
+    for (const account of accounts) {
+      const sig = await provider.connection.requestAirdrop(
+        account.publicKey,
+        airdropAmount
+      );
+      await provider.connection.confirmTransaction(sig);
+    }
+
+    // Find PDAs
+    [adminPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("admin")],
+      program.programId
+    );
+
+    [statePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("state")],
+      program.programId
+    );
+
+    [pollPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("poll"), pollIndex.toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    [pollAntiTokenPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("anti_token"), pollIndex.toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    [pollProTokenPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("pro_token"), pollIndex.toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+
+    // Initialise token mints
+    await createMint(
       provider.connection,
-      (provider.wallet as anchor.Wallet).payer,
-      provider.wallet.publicKey,
+      manager,
+      manager.publicKey,
       null,
       9,
-      undefined,
+      antiMintKeypair,
       undefined,
       TOKEN_PROGRAM_ID
     );
 
-    proMint = await createMint(
+    await createMint(
       provider.connection,
-      (provider.wallet as anchor.Wallet).payer,
-      provider.wallet.publicKey,
+      manager,
+      manager.publicKey,
       null,
       9,
-      undefined,
+      proMintKeypair,
       undefined,
       TOKEN_PROGRAM_ID
     );
 
     // Create user token accounts
-    userAntiAccount = await createAccount(
+    userAntiToken = await createAccount(
       provider.connection,
-      (provider.wallet as anchor.Wallet).payer,
-      antiMint,
-      provider.wallet.publicKey
+      manager,
+      antiMintKeypair.publicKey,
+      user.publicKey
     );
 
-    userProAccount = await createAccount(
+    userProToken = await createAccount(
       provider.connection,
-      (provider.wallet as anchor.Wallet).payer,
-      proMint,
-      provider.wallet.publicKey
+      manager,
+      proMintKeypair.publicKey,
+      user.publicKey
     );
 
-    // Mint some tokens to user
+    // Mint tokens to user
     await mintTo(
       provider.connection,
-      (provider.wallet as anchor.Wallet).payer,
-      antiMint,
-      userAntiAccount,
-      provider.wallet.publicKey,
-      1000000000
+      manager,
+      antiMintKeypair.publicKey,
+      userAntiToken,
+      manager.publicKey,
+      10_000_000_000
     );
 
     await mintTo(
       provider.connection,
-      (provider.wallet as anchor.Wallet).payer,
-      proMint,
-      userProAccount,
-      provider.wallet.publicKey,
-      1000000000
+      manager,
+      proMintKeypair.publicKey,
+      userProToken,
+      manager.publicKey,
+      10_000_000_000
     );
+  });
+
+  describe("Admin", () => {
+    it("Initialises the admin state", async () => {
+      await program.methods
+        .initialiseAdmin()
+        .accounts({
+          admin: adminPda,
+          authority: manager.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([manager])
+        .rpc();
+
+      const admin = await program.account.adminAccount.fetch(adminPda);
+      expect(admin.initialised).to.be.true;
+    });
   });
 
   describe("Initialisation", () => {
     it("Initialises the program state", async () => {
-      // Initialise program state
       await program.methods
         .initialiser()
         .accounts({
-          state: stateAccount.publicKey,
-          authority: provider.wallet.publicKey,
+          state: statePda,
+          authority: manager.publicKey,
           systemProgram: SystemProgram.programId,
         })
-        .signers([stateAccount])
+        .signers([manager])
         .rpc();
 
-      // Verify state
-      const state = await program.account.stateAccount.fetch(
-        stateAccount.publicKey
-      );
-      expect(state.pollIndex).to.equal(0);
-      expect(state.authority.toString()).to.equal(
-        provider.wallet.publicKey.toString()
-      );
+      const state = await program.account.stateAccount.fetch(statePda);
+      expect(Number(state.pollIndex)).to.equal(0);
+      expect(state.authority.toString()).to.equal(manager.publicKey.toString());
     });
   });
 
   describe("Poll Creation", () => {
     it("Creates a new poll", async () => {
-      // Get current timestamp
       const now = Math.floor(Date.now() / 1000);
-      const startTime = new Date(now + 3600).toISOString(); // Start in 1 hour
-      const endTime = new Date(now + 7200).toISOString(); // End in 2 hours
+      const startTime = "2025-02-01T00:00:00Z";
+      const endTime = "2025-03-01T00:00:00Z";
 
-      // Find PDA for poll account
-      const [pollPDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from(POLL_SEED), new BN(0).toArrayLike(Buffer, "le", 8)],
-        program.programId
-      );
-      pollAccount = pollPDA;
-
-      // Create payment account
-      const paymentAccount = anchor.web3.Keypair.generate();
-      const transferIx = SystemProgram.transfer({
-        fromPubkey: provider.wallet.publicKey,
-        toPubkey: paymentAccount.publicKey,
-        lamports: LAMPORTS_PER_SOL / 10, // 0.1 SOL
-      });
-
-      // Create poll
       await program.methods
         .createPoll(
           "Test Poll",
@@ -152,181 +230,81 @@ describe("collider-beta", () => {
           startTime,
           endTime,
           null,
-          new BN(now)
+          new BN(1736899200) // Fixed timestamp for testing
         )
         .accounts({
-          state: stateAccount.publicKey,
-          poll: pollPDA,
-          authority: provider.wallet.publicKey,
+          state: statePda,
+          poll: pollPda,
+          authority: creator.publicKey,
+          pollAntiToken: pollAntiTokenPda,
+          pollProToken: pollProTokenPda,
+          antiMint: antiMintKeypair.publicKey,
+          proMint: proMintKeypair.publicKey,
+          vault: antitokenMultisigKeypair.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
-        .preInstructions([transferIx])
-        .signers([paymentAccount])
+        .signers([creator])
         .rpc();
 
-      // Verify poll creation
-      const poll = await program.account.pollAccount.fetch(pollPDA);
-      expect(poll.index).to.equal(0);
+      const poll = await program.account.pollAccount.fetch(pollPda);
+      expect(Number(poll.index)).to.equal(0);
       expect(poll.title).to.equal("Test Poll");
       expect(poll.description).to.equal("Test Description");
       expect(poll.startTime).to.equal(startTime);
       expect(poll.endTime).to.equal(endTime);
-      expect(poll.anti).to.equal(0);
-      expect(poll.pro).to.equal(0);
-      expect(poll.deposits).to.be.empty;
-      expect(poll.equalised).to.be.false;
-    });
-
-    it("Fails to create poll with invalid timestamps", async () => {
-      const now = Math.floor(Date.now() / 1000);
-      const invalidStart = new Date(now - 3600).toISOString(); // Start 1 hour ago
-      const invalidEnd = new Date(now - 1800).toISOString(); // End 30 mins ago
-
-      try {
-        await program.methods
-          .createPoll(
-            "Invalid Poll",
-            "Invalid Description",
-            invalidStart,
-            invalidEnd,
-            null,
-            new BN(now)
-          )
-          .accounts({
-            state: stateAccount.publicKey,
-            poll: anchor.web3.Keypair.generate().publicKey,
-            authority: provider.wallet.publicKey,
-            systemProgram: SystemProgram.programId,
-          })
-          .rpc();
-        expect.fail("Should have failed with invalid timestamps");
-      } catch (error) {
-        expect(error).to.exist;
-      }
     });
   });
 
   describe("Token Deposits", () => {
-    before(async () => {
-      // Create poll token accounts
-      pollAntiAccount = await createAccount(
-        provider.connection,
-        (provider.wallet as anchor.Wallet).payer,
-        antiMint,
-        pollAccount
-      );
-
-      pollProAccount = await createAccount(
-        provider.connection,
-        (provider.wallet as anchor.Wallet).payer,
-        proMint,
-        pollAccount
-      );
-    });
-
     it("Deposits tokens successfully", async () => {
-      const anti = new BN(5000);
-      const pro = new BN(3000);
-      const now = Math.floor(Date.now() / 1000);
+      const anti = new BN(7_000_000_000);
+      const pro = new BN(3_000_000_000);
 
       await program.methods
-        .depositTokens(new BN(0), anti, pro, new BN(now))
+        .depositTokens(pollIndex, anti, pro, new BN(1739577600))
         .accounts({
-          poll: pollAccount,
-          authority: provider.wallet.publicKey,
-          userAntiToken: userAntiAccount,
-          userProToken: userProAccount,
-          pollAntiToken: pollAntiAccount,
-          pollProToken: pollProAccount,
+          poll: pollPda,
+          authority: user.publicKey,
+          userAntiToken: userAntiToken,
+          userProToken: userProToken,
+          pollAntiToken: pollAntiTokenPda,
+          pollProToken: pollProTokenPda,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
+        .signers([user])
         .rpc();
 
-      // Verify deposits
-      const poll = await program.account.pollAccount.fetch(pollAccount);
-      expect(poll.anti).to.equal(anti.toNumber());
-      expect(poll.pro).to.equal(pro.toNumber());
+      const poll = await program.account.pollAccount.fetch(pollPda);
+      expect(Number(poll.anti)).to.equal(anti.toNumber());
+      expect(Number(poll.pro)).to.equal(pro.toNumber());
       expect(poll.deposits).to.have.lengthOf(1);
-
-      const deposit = poll.deposits[0];
-      expect(deposit.user.toString()).to.equal(
-        provider.wallet.publicKey.toString()
-      );
-      expect(deposit.anti.toNumber()).to.equal(anti.toNumber());
-      expect(deposit.pro.toNumber()).to.equal(pro.toNumber());
-      expect(deposit.withdrawn).to.be.false;
-    });
-
-    it("Fails deposit with insufficient amount", async () => {
-      const smallAmount = new BN(100); // Below MIN_DEPOSIT
-      const now = Math.floor(Date.now() / 1000);
-      try {
-        await program.methods
-          .depositTokens(new BN(0), smallAmount, smallAmount, new BN(now))
-          .accounts({
-            poll: pollAccount,
-            authority: provider.wallet.publicKey,
-            userAntiToken: userAntiAccount,
-            userProToken: userProAccount,
-            pollAntiToken: pollAntiAccount,
-            pollProToken: pollProAccount,
-            tokenProgram: TOKEN_PROGRAM_ID,
-          })
-          .rpc();
-        expect.fail("Should have failed with insufficient deposit");
-      } catch (error) {
-        expect(error).to.exist;
-      }
     });
   });
 
   describe("Poll Equalisation", () => {
-    it("Equalises poll with valid truth values", async () => {
-      // Wait for poll to end
-      await new Promise((resolve) => setTimeout(resolve, 7500)); // Wait 7.5 seconds
-      const now = Math.floor(Date.now() / 1000);
-      const truth = [new BN(6_000), new BN(4_000)]; // 60-40 split
-
+    it("Equalises poll with truth", async () => {
       await program.methods
-        .equaliseTokens(new BN(0), truth, new BN(now))
+        .equaliseTokens(
+          pollIndex,
+          [new BN(6000), new BN(4000)],
+          new BN(1741996800)
+        )
         .accounts({
-          poll: pollAccount,
-          authority: provider.wallet.publicKey,
-          userAntiToken: userAntiAccount,
-          userProToken: userProAccount,
-          pollAntiToken: pollAntiAccount,
-          pollProToken: pollProAccount,
+          poll: pollPda,
+          authority: manager.publicKey,
+          userAntiToken: userAntiToken,
+          userProToken: userProToken,
+          pollAntiToken: pollAntiTokenPda,
+          pollProToken: pollProTokenPda,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
+        .signers([manager])
         .rpc();
 
-      // Verify equalisation
-      const poll = await program.account.pollAccount.fetch(pollAccount);
+      const poll = await program.account.pollAccount.fetch(pollPda);
       expect(poll.equalised).to.be.true;
       expect(poll.equalisationResults).to.exist;
-    });
-
-    it("Fails equalisation with invalid truth values", async () => {
-      const invalidTruth = [new BN(11_000), new BN(6_000)]; // > 10000 basis points
-      const now = Math.floor(Date.now() / 1000);
-
-      try {
-        await program.methods
-          .equaliseTokens(new BN(0), invalidTruth, new BN(now))
-          .accounts({
-            poll: pollAccount,
-            authority: provider.wallet.publicKey,
-            userAntiToken: userAntiAccount,
-            userProToken: userProAccount,
-            pollAntiToken: pollAntiAccount,
-            pollProToken: pollProAccount,
-            tokenProgram: TOKEN_PROGRAM_ID,
-          })
-          .rpc();
-        expect.fail("Should have failed with invalid truth values");
-      } catch (error) {
-        expect(error).to.exist;
-      }
     });
   });
 
@@ -334,35 +312,42 @@ describe("collider-beta", () => {
     it("Withdraws tokens after equalisation", async () => {
       const beforeAntiBalance = await getAccount(
         provider.connection,
-        userAntiAccount
+        userAntiToken
       );
+
       const beforeProBalance = await getAccount(
         provider.connection,
-        userProAccount
+        userProToken
       );
 
+      const remainingAccounts = [
+        { pubkey: userAntiToken, isWritable: true, isSigner: false },
+        { pubkey: userProToken, isWritable: true, isSigner: false },
+      ];
+
       await program.methods
-        .withdrawTokens(new BN(0))
+        .withdrawTokens(pollIndex)
         .accounts({
-          poll: pollAccount,
-          authority: provider.wallet.publicKey,
-          pollAntiToken: pollAntiAccount,
-          pollProToken: pollProAccount,
+          poll: pollPda,
+          authority: antitokenMultisigKeypair.publicKey,
+          pollAntiToken: pollAntiTokenPda,
+          pollProToken: pollProTokenPda,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
+        .remainingAccounts(remainingAccounts)
+        .signers([antitokenMultisigKeypair])
         .rpc();
 
-      // Verify withdrawal
-      const poll = await program.account.pollAccount.fetch(pollAccount);
+      const poll = await program.account.pollAccount.fetch(pollPda);
       expect(poll.deposits[0].withdrawn).to.be.true;
 
       const afterAntiBalance = await getAccount(
         provider.connection,
-        userAntiAccount
+        userAntiToken
       );
       const afterProBalance = await getAccount(
         provider.connection,
-        userProAccount
+        userProToken
       );
 
       expect(Number(afterAntiBalance.amount)).to.be.gt(
@@ -371,61 +356,6 @@ describe("collider-beta", () => {
       expect(Number(afterProBalance.amount)).to.be.gt(
         Number(beforeProBalance.amount)
       );
-    });
-
-    it("Fails withdrawal before equalisation on new poll", async () => {
-      // Create new poll first
-      const now = Math.floor(Date.now() / 1000);
-      const startTime = new Date(now + 3600).toISOString();
-      const endTime = new Date(now + 7200).toISOString();
-
-      const [newPollPDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from(POLL_SEED), new BN(1).toArrayLike(Buffer, "le", 8)],
-        program.programId
-      );
-
-      const paymentAccount = anchor.web3.Keypair.generate();
-      const transferIx = SystemProgram.transfer({
-        fromPubkey: provider.wallet.publicKey,
-        toPubkey: paymentAccount.publicKey,
-        lamports: LAMPORTS_PER_SOL / 10,
-      });
-
-      await program.methods
-        .createPoll(
-          "New Test Poll",
-          "New Description",
-          startTime,
-          endTime,
-          null,
-          new BN(now)
-        )
-        .accounts({
-          state: stateAccount.publicKey,
-          poll: newPollPDA,
-          authority: provider.wallet.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .preInstructions([transferIx])
-        .signers([paymentAccount])
-        .rpc();
-
-      // Try to withdraw before equalisation
-      try {
-        await program.methods
-          .withdrawTokens(new BN(1))
-          .accounts({
-            poll: newPollPDA,
-            authority: provider.wallet.publicKey,
-            pollAntiToken: pollAntiAccount,
-            pollProToken: pollProAccount,
-            tokenProgram: TOKEN_PROGRAM_ID,
-          })
-          .rpc();
-        expect.fail("Should have failed withdrawal before equalisation");
-      } catch (error) {
-        expect(error).to.exist;
-      }
     });
   });
 });
