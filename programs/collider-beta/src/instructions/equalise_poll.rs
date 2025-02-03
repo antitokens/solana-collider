@@ -75,7 +75,7 @@ mod tests {
     use crate::utils::PROGRAM_ID;
     use crate::EqualiseTokensBumps;
     use anchor_lang::{system_program, Discriminator};
-    use anchor_spl::token::{spl_token, Token};
+    use anchor_spl::token::{spl_token, Mint, Token};
     use anchor_spl::token::{spl_token::state::Account as SplTokenAccount, TokenAccount};
     use solana_sdk::program_option::COption;
     use solana_sdk::program_pack::Pack;
@@ -184,6 +184,17 @@ mod tests {
             Ok(())
         }
 
+        fn new_mint(mint: Pubkey) -> Self {
+            Self {
+                key: mint,
+                lamports: 1_000_000,
+                data: vec![0; Mint::LEN],
+                owner: spl_token::ID,
+                executable: false,
+                rent_epoch: 0,
+            }
+        }
+
         // Reusable method to create a test poll
         fn create_test_poll(authority: Pubkey) -> PollAccount {
             PollAccount {
@@ -192,6 +203,30 @@ mod tests {
                 description: "Test Description".to_string(),
                 start_time: "2025-01-01T00:00:00Z".to_string(),
                 end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
+                etc: None,
+                anti: 70000,
+                pro: 30000,
+                deposits: vec![UserDeposit {
+                    address: authority,
+                    anti: 70000,
+                    pro: 30000,
+                    u: 40000,
+                    s: 100000,
+                    withdrawn: false,
+                }],
+                equalised: false,
+                equalisation_results: None,
+            }
+        }
+
+        // Reusable method to create an active test poll
+        fn create_active_test_poll(authority: Pubkey) -> PollAccount {
+            PollAccount {
+                index: 0,
+                title: "Test Poll".to_string(),
+                description: "Test Description".to_string(),
+                start_time: "2025-02-01T00:00:00Z".to_string(),
+                end_time: "2025-03-01T00:00:00Z".to_string(), // Still active
                 etc: None,
                 anti: 70000,
                 pro: 30000,
@@ -338,6 +373,10 @@ mod tests {
     fn test_equalise_validation_failures() {
         let program_id = program_id();
 
+        // Create mints
+        let anti_mint = TestAccountData::new_mint(ANTI_MINT_ADDRESS);
+        let pro_mint = TestAccountData::new_mint(PRO_MINT_ADDRESS);
+
         // Test double for Clock
         thread_local! {
             static MOCK_UNIX_TIMESTAMP: RefCell<i64> = RefCell::new(1736899200); // 2025-01-15T00:00:00Z
@@ -351,25 +390,19 @@ mod tests {
         let mut authority = TestAccountData::new_authority_account(Pubkey::new_unique());
 
         // Initialise token accounts
-        let mint_key = Pubkey::new_unique();
-        let user_authority_key = Pubkey::new_unique();
-
+        let user = Pubkey::new_unique();
         let mut user_anti = TestAccountData::new_token();
         let mut user_pro = TestAccountData::new_token();
         let mut poll_anti = TestAccountData::new_token();
         let mut poll_pro = TestAccountData::new_token();
 
-        user_anti
-            .init_token_account(user_authority_key, mint_key)
-            .unwrap();
-        user_pro
-            .init_token_account(user_authority_key, mint_key)
-            .unwrap();
+        user_anti.init_token_account(user, anti_mint.key).unwrap();
+        user_pro.init_token_account(user, pro_mint.key).unwrap();
         poll_anti
-            .init_token_account(Pubkey::new_unique(), mint_key)
+            .init_token_account(Pubkey::new_unique(), anti_mint.key)
             .unwrap();
         poll_pro
-            .init_token_account(Pubkey::new_unique(), mint_key)
+            .init_token_account(Pubkey::new_unique(), pro_mint.key)
             .unwrap();
 
         let mut token_program = TestAccountData::new_token_program();
@@ -377,7 +410,7 @@ mod tests {
         // Test active poll (should fail)
         {
             // Create poll with deposits
-            let poll_data = TestAccountData::create_test_poll(authority.key);
+            let poll_data = TestAccountData::create_active_test_poll(authority.key);
 
             // Write discriminator
             poll.data[..8].copy_from_slice(&PollAccount::discriminator());
