@@ -165,7 +165,7 @@ mod tests {
             }
         }
 
-        fn new_with_key<T: AccountSerialize + AccountDeserialize + Clone>(
+        fn new_account_with_key_and_owner<T: AccountSerialize + AccountDeserialize + Clone>(
             key: Pubkey,
             owner: Pubkey,
         ) -> Self {
@@ -275,8 +275,10 @@ mod tests {
         program_id: Pubkey,
     ) -> TestAccounts {
         TestAccounts {
-            poll_data: TestAccountData::new_with_key::<StateAccount>(poll_pda, program_id),
-            authority: TestAccountData::new_with_key::<StateAccount>(
+            poll_data: TestAccountData::new_account_with_key_and_owner::<StateAccount>(
+                poll_pda, program_id,
+            ),
+            authority: TestAccountData::new_account_with_key_and_owner::<StateAccount>(
                 ANTITOKEN_MULTISIG,
                 program_id,
             ),
@@ -330,7 +332,8 @@ mod tests {
 
         // Initialise state account
         let root: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        let mut state =
+            TestAccountData::new_account_with_key_and_owner::<StateAccount>(root, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
@@ -484,7 +487,8 @@ mod tests {
 
         // Initialise state account
         let root: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        let mut state =
+            TestAccountData::new_account_with_key_and_owner::<StateAccount>(root, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
@@ -618,7 +622,7 @@ mod tests {
             // Try to convert the invalid account - this should return an error
             let token_account_result = Account::<TokenAccount>::try_from(&invalid_anti_info);
             assert!(token_account_result.is_err());
-            
+
             if let Err(error) = token_account_result {
                 match error {
                     anchor_lang::error::Error::AnchorError(e) => {
@@ -648,7 +652,8 @@ mod tests {
 
         // Initialise state account
         let root: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        let mut state =
+            TestAccountData::new_account_with_key_and_owner::<StateAccount>(root, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,

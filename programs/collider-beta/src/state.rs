@@ -108,8 +108,23 @@ pub struct CreatePollBumps {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct WithdrawTokensBumps {
+pub struct BulkWithdrawTokensBumps {
     pub poll: u8,
+    pub poll_anti_token: u8,
+    pub poll_pro_token: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct UserWithdrawTokensBumps {
+    pub state: u8,
+    pub poll: u8,
+    pub poll_anti_token: u8,
+    pub poll_pro_token: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct SetPollTokenAuthorityBumps {
+    pub state: u8,
     pub poll_anti_token: u8,
     pub poll_pro_token: u8,
 }

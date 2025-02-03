@@ -32,7 +32,10 @@ pub fn create(
     );
 
     // Validate title and description lengths
-    require!(title.len() <= MAX_TITLE_LENGTH as usize, PredictError::TitleTooLong);
+    require!(
+        title.len() <= MAX_TITLE_LENGTH as usize,
+        PredictError::TitleTooLong
+    );
     require!(
         description.len() <= MAX_DESCRIPTION_LENGTH as usize,
         PredictError::DescriptionTooLong
@@ -166,7 +169,7 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_owned_poll<T: AccountSerialize + AccountDeserialize + Clone>(
+        fn new_account_with_key_and_owner<T: AccountSerialize + AccountDeserialize + Clone>(
             key: Pubkey,
             owner: Pubkey,
         ) -> Self {
@@ -191,7 +194,18 @@ mod tests {
             }
         }
 
-        fn new_token(key: Pubkey) -> Self {
+        fn new_system_account() -> Self {
+            Self {
+                key: system_program::ID,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: system_program::ID,
+                executable: true,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_token_account(key: Pubkey) -> Self {
             Self {
                 key,
                 lamports: 1_000_000,
@@ -202,15 +216,23 @@ mod tests {
             }
         }
 
-        fn new_vault_with_key<T: AccountSerialize + AccountDeserialize + Clone>(
-            owner: Pubkey,
-            key: Pubkey,
-        ) -> Self {
+        fn new_token_program() -> Self {
             Self {
-                key,
+                key: spl_token::ID,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: Pubkey::default(),
+                executable: true,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_vault_with_key() -> Self {
+            Self {
+                key: ANTITOKEN_MULTISIG,
                 lamports: 10_000_000,
                 data: vec![],
-                owner,
+                owner: system_program::ID,
                 executable: false,
                 rent_epoch: 0,
             }
@@ -296,14 +318,7 @@ mod tests {
         let program_id = program_id();
 
         // Create token program account
-        let mut token_program = TestAccountData {
-            key: spl_token::ID,
-            lamports: 1_000_000,
-            data: vec![],
-            owner: Pubkey::default(),
-            executable: true,
-            rent_epoch: 0,
-        };
+        let mut token_program = TestAccountData::new_token_program();
 
         // Create mints
         let mut anti_mint = TestAccountData::new_mint_address(ANTI_MINT_ADDRESS);
@@ -316,7 +331,8 @@ mod tests {
 
         // Initialise state account
         let manager: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_owned_poll::<StateAccount>(manager, program_id);
+        let mut state =
+            TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
@@ -342,7 +358,8 @@ mod tests {
             &program_id,
         );
 
-        let mut poll = TestAccountData::new_owned_poll::<PollAccount>(poll_pda, program_id);
+        let mut poll =
+            TestAccountData::new_account_with_key_and_owner::<PollAccount>(poll_pda, program_id);
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
         // Initialise creator account
@@ -356,8 +373,8 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
+        let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
+        let mut poll_pro_token = TestAccountData::new_token_account(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
@@ -371,12 +388,8 @@ mod tests {
             .unwrap();
 
         // Initialise other accounts
-        let mut system_program =
-            TestAccountData::new_owned_poll::<StateAccount>(system_program::ID, system_program::ID);
-        let mut vault = TestAccountData::new_vault_with_key::<StateAccount>(
-            system_program::ID,
-            ANTITOKEN_MULTISIG,
-        );
+        let mut system_program = TestAccountData::new_system_account();
+        let mut vault = TestAccountData::new_vault_with_key();
 
         // Prepare account infos
         let state_info = state.to_account_info(false);
@@ -461,14 +474,7 @@ mod tests {
         let program_id = program_id();
 
         // Create token program account
-        let mut token_program = TestAccountData {
-            key: spl_token::ID,
-            lamports: 1_000_000,
-            data: vec![],
-            owner: Pubkey::default(),
-            executable: true,
-            rent_epoch: 0,
-        };
+        let mut token_program = TestAccountData::new_token_program();
 
         // Create mints
         let mut anti_mint = TestAccountData::new_mint_address(ANTI_MINT_ADDRESS);
@@ -481,7 +487,8 @@ mod tests {
 
         // Initialise state account
         let manager: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_owned_poll::<StateAccount>(manager, program_id);
+        let mut state =
+            TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
@@ -507,7 +514,8 @@ mod tests {
             &program_id,
         );
 
-        let mut poll = TestAccountData::new_owned_poll::<PollAccount>(poll_pda, program_id);
+        let mut poll =
+            TestAccountData::new_account_with_key_and_owner::<PollAccount>(poll_pda, program_id);
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
         // Initialise creator account
@@ -521,8 +529,8 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
+        let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
+        let mut poll_pro_token = TestAccountData::new_token_account(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
@@ -536,12 +544,8 @@ mod tests {
             .unwrap();
 
         // Initialise other accounts
-        let mut system_program =
-            TestAccountData::new_owned_poll::<StateAccount>(system_program::ID, system_program::ID);
-        let mut vault = TestAccountData::new_vault_with_key::<StateAccount>(
-            system_program::ID,
-            ANTITOKEN_MULTISIG,
-        );
+        let mut system_program = TestAccountData::new_system_account();
+        let mut vault = TestAccountData::new_vault_with_key();
 
         // Prepare account infos
         let state_info = state.to_account_info(false);
@@ -605,14 +609,7 @@ mod tests {
         let program_id = program_id();
 
         // Create token program account
-        let mut token_program = TestAccountData {
-            key: spl_token::ID,
-            lamports: 1_000_000,
-            data: vec![],
-            owner: Pubkey::default(),
-            executable: true,
-            rent_epoch: 0,
-        };
+        let mut token_program = TestAccountData::new_token_program();
 
         // Create mints
         let mut anti_mint = TestAccountData::new_mint_address(ANTI_MINT_ADDRESS);
@@ -625,7 +622,8 @@ mod tests {
 
         // Initialise state account
         let manager: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_owned_poll::<StateAccount>(manager, program_id);
+        let mut state =
+            TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
@@ -651,7 +649,8 @@ mod tests {
             &program_id,
         );
 
-        let mut poll = TestAccountData::new_owned_poll::<PollAccount>(poll_pda, program_id);
+        let mut poll =
+            TestAccountData::new_account_with_key_and_owner::<PollAccount>(poll_pda, program_id);
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
         // Initialise creator account
@@ -665,8 +664,8 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
+        let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
+        let mut poll_pro_token = TestAccountData::new_token_account(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
@@ -680,12 +679,8 @@ mod tests {
             .unwrap();
 
         // Initialise other accounts
-        let mut system_program =
-            TestAccountData::new_owned_poll::<StateAccount>(system_program::ID, system_program::ID);
-        let mut vault = TestAccountData::new_vault_with_key::<StateAccount>(
-            system_program::ID,
-            ANTITOKEN_MULTISIG,
-        );
+        let mut system_program = TestAccountData::new_system_account();
+        let mut vault = TestAccountData::new_vault_with_key();
 
         // Prepare account infos
         let state_info = state.to_account_info(false);
@@ -772,14 +767,7 @@ mod tests {
         let program_id = program_id();
 
         // Create token program account
-        let mut token_program = TestAccountData {
-            key: spl_token::ID,
-            lamports: 1_000_000,
-            data: vec![],
-            owner: Pubkey::default(),
-            executable: true,
-            rent_epoch: 0,
-        };
+        let mut token_program = TestAccountData::new_token_program();
 
         // Create mints
         let mut anti_mint = TestAccountData::new_mint_address(ANTI_MINT_ADDRESS);
@@ -792,7 +780,8 @@ mod tests {
 
         // Initialise state account
         let manager: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_owned_poll::<StateAccount>(manager, program_id);
+        let mut state =
+            TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
@@ -818,7 +807,8 @@ mod tests {
             &program_id,
         );
 
-        let mut poll = TestAccountData::new_owned_poll::<PollAccount>(poll_pda, program_id);
+        let mut poll =
+            TestAccountData::new_account_with_key_and_owner::<PollAccount>(poll_pda, program_id);
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
         // Initialise creator account
@@ -832,8 +822,8 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
+        let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
+        let mut poll_pro_token = TestAccountData::new_token_account(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
@@ -847,12 +837,8 @@ mod tests {
             .unwrap();
 
         // Initialise other accounts
-        let mut system_program =
-            TestAccountData::new_owned_poll::<StateAccount>(system_program::ID, system_program::ID);
-        let mut vault = TestAccountData::new_vault_with_key::<StateAccount>(
-            system_program::ID,
-            ANTITOKEN_MULTISIG,
-        );
+        let mut system_program = TestAccountData::new_system_account();
+        let mut vault = TestAccountData::new_vault_with_key();
 
         // Prepare account infos
         let state_info = state.to_account_info(true);

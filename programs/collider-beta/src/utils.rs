@@ -74,6 +74,8 @@ pub enum PredictError {
     AlreadyEqualised,
     #[msg("No deposits in prediction pool")]
     NoDeposits,
+    #[msg("User withdrawals not enabled yet")]
+    UserWithdrawalsNotEnabled,
 }
 
 // Event emitted when a new poll is created
@@ -127,10 +129,11 @@ pub struct PollUpdateEvent {
     pub timestamp: i64,
 }
 
-// Event for administrative actions
+// AdminEvent for logging actions with arguments
 #[event]
 pub struct AdminEvent {
     pub action: String,
+    pub args: Vec<(String, String)>, // Dynamic key-value pairs for arguments
     pub timestamp: i64,
 }
 

@@ -8,14 +8,14 @@
 //! Contact: dev@antitoken.pro
 
 use crate::utils::*;
-use crate::WithdrawTokens;
+use crate::BulkWithdrawTokens;
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 use anchor_spl::token::{self, Transfer};
 use borsh::BorshSerialize;
 
-pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
-    ctx: Context<'a, 'b, 'c, 'info, WithdrawTokens<'info>>,
+pub fn bulk_withdraw<'a, 'b, 'c: 'info, 'info>(
+    ctx: Context<'a, 'b, 'c, 'info, BulkWithdrawTokens<'info>>,
     poll_index: u64,
 ) -> Result<()> {
     let authority_key = ctx.accounts.authority.key();
@@ -126,11 +126,12 @@ pub fn withdraw<'a, 'b, 'c: 'info, 'info>(
 mod tests {
     use super::*;
     use crate::utils::PROGRAM_ID;
+    use crate::BulkWithdrawTokensBumps;
     use crate::EqualisationResult;
     use crate::PollAccount;
     use crate::StateAccount;
     use crate::UserDeposit;
-    use crate::WithdrawTokensBumps;
+    use anchor_lang::system_program;
     use anchor_lang::Discriminator;
     use anchor_spl::token::{spl_token, Token};
     use anchor_spl::token::{spl_token::state::Account as SplTokenAccount, TokenAccount};
@@ -153,7 +154,7 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_with_key<T: AccountSerialize + AccountDeserialize + Clone>(
+        fn new_account_with_key_and_owner<T: AccountSerialize + AccountDeserialize + Clone>(
             key: Pubkey,
             owner: Pubkey,
         ) -> Self {
@@ -187,6 +188,17 @@ mod tests {
                 data: vec![0; 165],
                 owner: spl_token::ID,
                 executable: false,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_authority_account(pubkey: Pubkey) -> Self {
+            Self {
+                key: pubkey,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: system_program::ID,
+                executable: true,
                 rent_epoch: 0,
             }
         }
@@ -226,6 +238,45 @@ mod tests {
 
             Ok(())
         }
+
+        // Reusable method to create an equalised test poll
+        fn create_equalised_test_poll(authority: Pubkey) -> PollAccount {
+            PollAccount {
+                index: 0,
+                title: "Test Poll".to_string(),
+                description: "Test Description".to_string(),
+                start_time: "2025-01-01T00:00:00Z".to_string(),
+                end_time: "2025-01-02T00:00:00Z".to_string(),
+                etc: None,
+                anti: 10000,
+                pro: 8000,
+                deposits: vec![
+                    UserDeposit {
+                        address: authority,
+                        anti: 6000,
+                        pro: 5000,
+                        u: 1000,
+                        s: 11000,
+                        withdrawn: false,
+                    },
+                    UserDeposit {
+                        address: Pubkey::new_unique(),
+                        anti: 4000,
+                        pro: 3000,
+                        u: 1000,
+                        s: 7000,
+                        withdrawn: false,
+                    },
+                ],
+                equalised: true,
+                equalisation_results: Some(EqualisationResult {
+                    anti: vec![6000, 4000],
+                    pro: vec![5000, 3000],
+                    truth: vec![6000, 4000],
+                    timestamp: 1736899200,
+                }),
+            }
+        }
     }
 
     #[test]
@@ -233,10 +284,11 @@ mod tests {
         let program_id = program_id();
 
         // Create test accounts
-        let mut poll =
-            TestAccountData::new_with_key::<PollAccount>(Pubkey::new_unique(), program_id);
-        let mut authority =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
+        let mut poll = TestAccountData::new_account_with_key_and_owner::<PollAccount>(
+            Pubkey::new_unique(),
+            program_id,
+        );
+        let mut authority = TestAccountData::new_authority_account(Pubkey::new_unique());
 
         // Initialise token accounts
         let mint_key = Pubkey::new_unique();
@@ -260,45 +312,13 @@ mod tests {
             .init_token_account(Pubkey::new_unique(), mint_key)
             .unwrap();
 
-        let mut token_program =
-            TestAccountData::new_with_key::<StateAccount>(spl_token::ID, spl_token::ID);
+        let mut token_program = TestAccountData::new_account_with_key_and_owner::<StateAccount>(
+            spl_token::ID,
+            spl_token::ID,
+        );
 
         // Create poll with deposits and results
-        let poll_data = PollAccount {
-            index: 0,
-            title: "Test Poll".to_string(),
-            description: "Test Description".to_string(),
-            start_time: "2025-01-01T00:00:00Z".to_string(),
-            end_time: "2025-01-02T00:00:00Z".to_string(),
-            etc: None,
-            anti: 10000,
-            pro: 8000,
-            deposits: vec![
-                UserDeposit {
-                    address: authority.key,
-                    anti: 6000,
-                    pro: 5000,
-                    u: 1000,
-                    s: 11000,
-                    withdrawn: false,
-                },
-                UserDeposit {
-                    address: Pubkey::new_unique(),
-                    anti: 4000,
-                    pro: 3000,
-                    u: 1000,
-                    s: 7000,
-                    withdrawn: false,
-                },
-            ],
-            equalised: true,
-            equalisation_results: Some(EqualisationResult {
-                anti: vec![6000, 4000],
-                pro: vec![5000, 3000],
-                truth: vec![6000, 4000],
-                timestamp: 1736899200,
-            }),
-        };
+        let poll_data = TestAccountData::create_equalised_test_poll(authority.key);
 
         // Write discriminator and serialise poll data
         poll.data[..8].copy_from_slice(&PollAccount::discriminator());
@@ -316,7 +336,8 @@ mod tests {
 
         // Initialise state account
         let root: Pubkey = Pubkey::new_unique();
-        let mut state = TestAccountData::new_with_key::<StateAccount>(root, program_id);
+        let mut state =
+            TestAccountData::new_account_with_key_and_owner::<StateAccount>(root, program_id);
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
@@ -340,7 +361,7 @@ mod tests {
         // Use `remaining_accounts` dynamically
         let remaining_accounts = vec![user_anti_info.clone(), user_pro_info.clone()];
 
-        let mut accounts = WithdrawTokens {
+        let mut accounts = BulkWithdrawTokens {
             poll: Account::try_from(&poll_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
             poll_anti_token: Account::try_from(&poll_anti_info).unwrap(),
@@ -348,13 +369,13 @@ mod tests {
             token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
         };
 
-        let bumps = WithdrawTokensBumps {
+        let bumps = BulkWithdrawTokensBumps {
             poll: poll_bump,
             poll_anti_token: anti_token_bump,
             poll_pro_token: pro_token_bump,
         };
 
-        let _ = withdraw(
+        let _ = bulk_withdraw(
             Context::new(
                 &program_id,
                 &mut accounts,

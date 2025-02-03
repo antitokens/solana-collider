@@ -608,7 +608,7 @@ async fn test_full_collider_flow() {
     let withdraw_ix = Instruction {
         program_id,
         accounts: withdraw_accounts,
-        data: collider_beta::instruction::WithdrawTokens { poll_index }.data(),
+        data: collider_beta::instruction::BulkWithdrawTokens { poll_index }.data(),
     };
 
     let tx = Transaction::new_signed_with_payer(

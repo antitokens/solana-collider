@@ -74,7 +74,7 @@ mod tests {
     use super::*;
     use crate::utils::PROGRAM_ID;
     use crate::EqualiseTokensBumps;
-    use anchor_lang::Discriminator;
+    use anchor_lang::{system_program, Discriminator};
     use anchor_spl::token::{spl_token, Token};
     use anchor_spl::token::{spl_token::state::Account as SplTokenAccount, TokenAccount};
     use solana_sdk::program_option::COption;
@@ -97,7 +97,7 @@ mod tests {
     }
 
     impl TestAccountData {
-        fn new_with_key<T: AccountSerialize + AccountDeserialize + Clone>(
+        fn new_account_with_key_and_owner<T: AccountSerialize + AccountDeserialize + Clone>(
             key: Pubkey,
             owner: Pubkey,
         ) -> Self {
@@ -124,6 +124,17 @@ mod tests {
             )
         }
 
+        fn new_authority_account(pubkey: Pubkey) -> Self {
+            Self {
+                key: pubkey,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: system_program::ID,
+                executable: true,
+                rent_epoch: 0,
+            }
+        }
+
         fn new_token() -> Self {
             Self {
                 key: Pubkey::new_unique(),
@@ -131,6 +142,17 @@ mod tests {
                 data: vec![0; 165],
                 owner: spl_token::ID,
                 executable: false,
+                rent_epoch: 0,
+            }
+        }
+
+        fn new_token_program() -> Self {
+            Self {
+                key: spl_token::ID,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: Pubkey::default(),
+                executable: true,
                 rent_epoch: 0,
             }
         }
@@ -161,6 +183,59 @@ mod tests {
 
             Ok(())
         }
+
+        // Reusable method to create a test poll
+        fn create_test_poll(authority: Pubkey) -> PollAccount {
+            PollAccount {
+                index: 0,
+                title: "Test Poll".to_string(),
+                description: "Test Description".to_string(),
+                start_time: "2025-01-01T00:00:00Z".to_string(),
+                end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
+                etc: None,
+                anti: 70000,
+                pro: 30000,
+                deposits: vec![UserDeposit {
+                    address: authority,
+                    anti: 70000,
+                    pro: 30000,
+                    u: 40000,
+                    s: 100000,
+                    withdrawn: false,
+                }],
+                equalised: false,
+                equalisation_results: None,
+            }
+        }
+
+        // Reusable method to create an equalised test poll
+        fn create_equalised_test_poll(authority: Pubkey) -> PollAccount {
+            PollAccount {
+                index: 0,
+                title: "Test Poll".to_string(),
+                description: "Test Description".to_string(),
+                start_time: "2025-01-01T00:00:00Z".to_string(),
+                end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
+                etc: None,
+                anti: 70000,
+                pro: 30000,
+                deposits: vec![UserDeposit {
+                    address: authority,
+                    anti: 70000,
+                    pro: 30000,
+                    u: 40000,
+                    s: 100000,
+                    withdrawn: false,
+                }],
+                equalised: true,
+                equalisation_results: Some(EqualisationResult {
+                    truth: vec![60000, 40000],
+                    anti: vec![],
+                    pro: vec![],
+                    timestamp: 0,
+                }),
+            }
+        }
     }
 
     #[test]
@@ -173,14 +248,15 @@ mod tests {
         }
 
         // Create test accounts
-        let mut poll =
-            TestAccountData::new_with_key::<PollAccount>(Pubkey::new_unique(), program_id);
-        let mut authority =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
+        let mut poll = TestAccountData::new_account_with_key_and_owner::<PollAccount>(
+            Pubkey::new_unique(),
+            program_id,
+        );
+        let mut authority = TestAccountData::new_authority_account(Pubkey::new_unique());
 
         // Initialise token accounts
         let mint_key = Pubkey::new_unique();
-        let authority_key = Pubkey::new_unique();
+        let user_authority_key = Pubkey::new_unique();
 
         let mut user_anti = TestAccountData::new_token();
         let mut user_pro = TestAccountData::new_token();
@@ -188,10 +264,10 @@ mod tests {
         let mut poll_pro = TestAccountData::new_token();
 
         user_anti
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(user_authority_key, mint_key)
             .unwrap();
         user_pro
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(user_authority_key, mint_key)
             .unwrap();
         poll_anti
             .init_token_account(Pubkey::new_unique(), mint_key)
@@ -200,30 +276,10 @@ mod tests {
             .init_token_account(Pubkey::new_unique(), mint_key)
             .unwrap();
 
-        let mut token_program =
-            TestAccountData::new_with_key::<StateAccount>(spl_token::ID, spl_token::ID);
+        let mut token_program = TestAccountData::new_token_program();
 
         // Create poll with deposits
-        let poll_data = PollAccount {
-            index: 0,
-            title: "Test Poll".to_string(),
-            description: "Test Description".to_string(),
-            start_time: "2025-01-01T00:00:00Z".to_string(),
-            end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
-            etc: None,
-            anti: 70000,
-            pro: 30000,
-            deposits: vec![UserDeposit {
-                address: authority.key,
-                anti: 70000,
-                pro: 30000,
-                u: 40000,
-                s: 100000,
-                withdrawn: false,
-            }],
-            equalised: false,
-            equalisation_results: None,
-        };
+        let poll_data = TestAccountData::create_test_poll(authority.key);
 
         // Write discriminator
         poll.data[..8].copy_from_slice(&PollAccount::discriminator());
@@ -288,14 +344,15 @@ mod tests {
         }
 
         // Create test accounts
-        let mut poll =
-            TestAccountData::new_with_key::<PollAccount>(Pubkey::new_unique(), program_id);
-        let mut authority =
-            TestAccountData::new_with_key::<StateAccount>(Pubkey::new_unique(), program_id);
+        let mut poll = TestAccountData::new_account_with_key_and_owner::<PollAccount>(
+            Pubkey::new_unique(),
+            program_id,
+        );
+        let mut authority = TestAccountData::new_authority_account(Pubkey::new_unique());
 
         // Initialise token accounts
         let mint_key = Pubkey::new_unique();
-        let authority_key = Pubkey::new_unique();
+        let user_authority_key = Pubkey::new_unique();
 
         let mut user_anti = TestAccountData::new_token();
         let mut user_pro = TestAccountData::new_token();
@@ -303,10 +360,10 @@ mod tests {
         let mut poll_pro = TestAccountData::new_token();
 
         user_anti
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(user_authority_key, mint_key)
             .unwrap();
         user_pro
-            .init_token_account(authority_key, mint_key)
+            .init_token_account(user_authority_key, mint_key)
             .unwrap();
         poll_anti
             .init_token_account(Pubkey::new_unique(), mint_key)
@@ -315,32 +372,12 @@ mod tests {
             .init_token_account(Pubkey::new_unique(), mint_key)
             .unwrap();
 
-        let mut token_program =
-            TestAccountData::new_with_key::<StateAccount>(spl_token::ID, spl_token::ID);
+        let mut token_program = TestAccountData::new_token_program();
 
         // Test active poll (should fail)
         {
             // Create poll with deposits
-            let poll_data = PollAccount {
-                index: 0,
-                title: "Test Poll".to_string(),
-                description: "Test Description".to_string(),
-                start_time: "2025-01-01T00:00:00Z".to_string(),
-                end_time: "2025-02-01T00:00:00Z".to_string(), // Still active
-                etc: None,
-                anti: 70000,
-                pro: 30000,
-                deposits: vec![UserDeposit {
-                    address: authority.key,
-                    anti: 70000,
-                    pro: 30000,
-                    u: 40000,
-                    s: 100000,
-                    withdrawn: false,
-                }],
-                equalised: false,
-                equalisation_results: None,
-            };
+            let poll_data = TestAccountData::create_test_poll(authority.key);
 
             // Write discriminator
             poll.data[..8].copy_from_slice(&PollAccount::discriminator());
@@ -380,26 +417,7 @@ mod tests {
         // Test invalid truth values
         {
             // Create poll with deposits
-            let poll_data = PollAccount {
-                index: 0,
-                title: "Test Poll".to_string(),
-                description: "Test Description".to_string(),
-                start_time: "2025-01-01T00:00:00Z".to_string(),
-                end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
-                etc: None,
-                anti: 70000,
-                pro: 30000,
-                deposits: vec![UserDeposit {
-                    address: authority.key,
-                    anti: 70000,
-                    pro: 30000,
-                    u: 40000,
-                    s: 100000,
-                    withdrawn: false,
-                }],
-                equalised: false,
-                equalisation_results: None,
-            };
+            let poll_data = TestAccountData::create_test_poll(authority.key);
 
             // Write discriminator
             poll.data[..8].copy_from_slice(&PollAccount::discriminator());
@@ -439,31 +457,7 @@ mod tests {
         // Test already equalised poll
         {
             // Create poll with deposits
-            let poll_data = PollAccount {
-                index: 0,
-                title: "Test Poll".to_string(),
-                description: "Test Description".to_string(),
-                start_time: "2025-01-01T00:00:00Z".to_string(),
-                end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
-                etc: None,
-                anti: 70000,
-                pro: 30000,
-                deposits: vec![UserDeposit {
-                    address: authority.key,
-                    anti: 70000,
-                    pro: 30000,
-                    u: 40000,
-                    s: 100000,
-                    withdrawn: false,
-                }],
-                equalised: true,
-                equalisation_results: Some(EqualisationResult {
-                    truth: vec![60000, 40000],
-                    anti: vec![],
-                    pro: vec![],
-                    timestamp: 0,
-                }),
-            };
+            let poll_data = TestAccountData::create_equalised_test_poll(authority.key);
 
             // Write discriminator
             poll.data[..8].copy_from_slice(&PollAccount::discriminator());
