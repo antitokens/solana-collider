@@ -274,6 +274,17 @@ mod tests {
             }
         }
 
+        fn new_authority_account(pubkey: Pubkey) -> Self {
+            Self {
+                key: pubkey,
+                lamports: 1_000_000,
+                data: vec![],
+                owner: system_program::ID,
+                executable: true,
+                rent_epoch: 0,
+            }
+        }
+
         // Reusable method to create an equalised test poll
         fn create_equalised_test_poll(authority: Pubkey) -> PollAccount {
             PollAccount {
@@ -296,8 +307,8 @@ mod tests {
                 equalised: true,
                 equalisation_results: Some(EqualisationResult {
                     truth: vec![60000, 40000],
-                    anti: vec![],
-                    pro: vec![],
+                    anti: vec![70000],
+                    pro: vec![30000],
                     timestamp: 0,
                 }),
             }
@@ -307,6 +318,7 @@ mod tests {
     #[test]
     fn test_user_withdrawal() {
         let program_id = program_id();
+        let poll_index: u64 = 0;
 
         // Create mints
         let anti_mint = TestAccountData::new_mint(ANTI_MINT_ADDRESS);
@@ -321,10 +333,7 @@ mod tests {
             Pubkey::new_unique(),
             program_id,
         );
-        let mut user = TestAccountData::new_account_with_key_and_owner::<StateAccount>(
-            Pubkey::new_unique(),
-            program_id,
-        );
+        let mut user = TestAccountData::new_authority_account(Pubkey::new_unique());
         let mut vault = TestAccountData::new_vault_with_key();
 
         // Initialise token accounts
@@ -349,7 +358,7 @@ mod tests {
 
         // Create state data
         let state_data = StateAccount {
-            poll_index: 1,
+            poll_index,
             authority: Pubkey::new_unique(),
         };
         state.init_state_data(&state_data).unwrap();
@@ -376,8 +385,10 @@ mod tests {
 
         // Derive PDAs and bumps
         let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
-        let (_poll_pda, poll_bump) =
-            Pubkey::find_program_address(&[b"poll", 0u64.to_le_bytes().as_ref()], &program_id);
+        let (_poll_pda, poll_bump) = Pubkey::find_program_address(
+            &[b"poll", poll_index.to_le_bytes().as_ref()],
+            &program_id,
+        );
         let (_anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
             &[b"anti_token", poll_data.index.to_le_bytes().as_ref()],
             &program_id,

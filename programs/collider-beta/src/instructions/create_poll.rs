@@ -227,6 +227,17 @@ mod tests {
             }
         }
 
+        fn new_authority_account(pubkey: Pubkey) -> Self {
+            Self {
+                key: pubkey,
+                lamports: 200_000_000,
+                data: vec![],
+                owner: system_program::ID,
+                executable: true,
+                rent_epoch: 0,
+            }
+        }
+
         fn new_vault_with_key() -> Self {
             Self {
                 key: ANTITOKEN_MULTISIG,
@@ -363,14 +374,7 @@ mod tests {
         poll.init_poll_data(&PollAccount::default()).unwrap();
 
         // Initialise creator account
-        let mut creator = TestAccountData {
-            key: Pubkey::new_unique(),
-            lamports: 200_000_000,
-            data: vec![],
-            owner: system_program::ID,
-            executable: false,
-            rent_epoch: 0,
-        };
+        let mut creator = TestAccountData::new_authority_account(Pubkey::new_unique());
 
         // Create token accounts
         let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
@@ -381,10 +385,10 @@ mod tests {
 
         // Initialise token accounts
         poll_anti_token
-            .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
+            .init_token_account(creator.key, anti_mint.key)
             .unwrap();
         poll_pro_token
-            .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
+            .init_token_account(creator.key, pro_mint.key)
             .unwrap();
 
         // Initialise other accounts

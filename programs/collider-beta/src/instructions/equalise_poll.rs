@@ -265,8 +265,8 @@ mod tests {
                 equalised: true,
                 equalisation_results: Some(EqualisationResult {
                     truth: vec![60000, 40000],
-                    anti: vec![],
-                    pro: vec![],
+                    anti: vec![70000],
+                    pro: vec![30000],
                     timestamp: 0,
                 }),
             }

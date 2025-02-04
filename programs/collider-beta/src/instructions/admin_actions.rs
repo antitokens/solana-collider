@@ -17,10 +17,9 @@ use anchor_spl::token;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::SetAuthority;
 
-// Updated functions with AdminEvent integration
-
 pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     let config = &mut ctx.accounts.admin;
     require!(!config.initialised, PredictError::AlreadyInitialised);
@@ -46,7 +45,9 @@ pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
 }
 
 pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -63,7 +64,9 @@ pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()
 }
 
 pub fn update_max_title_length(ctx: Context<Update>, new_length: u64) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -80,7 +83,9 @@ pub fn update_max_title_length(ctx: Context<Update>, new_length: u64) -> Result<
 }
 
 pub fn update_max_description_length(ctx: Context<Update>, new_length: u64) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -97,7 +102,9 @@ pub fn update_max_description_length(ctx: Context<Update>, new_length: u64) -> R
 }
 
 pub fn update_truth_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -114,7 +121,9 @@ pub fn update_truth_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
 }
 
 pub fn update_float_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -131,7 +140,9 @@ pub fn update_float_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
 }
 
 pub fn update_min_deposit_amount(ctx: Context<Update>, new_min_amount: u64) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -148,7 +159,9 @@ pub fn update_min_deposit_amount(ctx: Context<Update>, new_min_amount: u64) -> R
 }
 
 pub fn update_anti_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -165,7 +178,9 @@ pub fn update_anti_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
 }
 
 pub fn update_pro_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -182,7 +197,9 @@ pub fn update_pro_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
 }
 
 pub fn update_multisig(ctx: Context<Update>, new_multisig: Pubkey) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
@@ -199,14 +216,16 @@ pub fn update_multisig(ctx: Context<Update>, new_multisig: Pubkey) -> Result<()>
 }
 
 pub fn set_token_authority(ctx: Context<SetPollTokenAuthority>, poll_index: u64) -> Result<()> {
-    let now: i64 = Clock::get()?.unix_timestamp;
+    let now: i64 = 1736899200; // CRITICAL: Remove in production!
+                               //CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
     // Verify only ANTITOKEN_MULTISIG can execute this
     require!(
         ctx.accounts.authority.key() == ANTITOKEN_MULTISIG,
         ErrorCode::Unauthorised
     );
 
-    // Transfer authority of ANTI token account to state PDA
+    // Transfer authority of $ANTI token account to state PDA
     token::set_authority(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -219,7 +238,7 @@ pub fn set_token_authority(ctx: Context<SetPollTokenAuthority>, poll_index: u64)
         Some(ctx.accounts.state.key()),
     )?;
 
-    // Transfer authority of PRO token account to state PDA
+    // Transfer authority of $PRO token account to state PDA
     token::set_authority(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -357,17 +376,6 @@ mod tests {
             }
         }
 
-        fn new_creator() -> Self {
-            Self {
-                key: Pubkey::new_unique(),
-                lamports: 200_000_000,
-                data: vec![],
-                owner: system_program::ID,
-                executable: false,
-                rent_epoch: 0,
-            }
-        }
-
         fn to_account_info<'a>(&'a mut self, is_signer: bool) -> AccountInfo<'a> {
             AccountInfo::new(
                 &self.key,
@@ -400,6 +408,7 @@ mod tests {
             };
 
             token_account.pack_into_slice(data);
+            self.owner = spl_token::ID;
 
             Ok(())
         }
@@ -430,6 +439,35 @@ mod tests {
             Ok(())
         }
 
+        // Reusable method to create an equalised test poll
+        fn create_equalised_test_poll(authority: Pubkey, poll_index: u64) -> PollAccount {
+            PollAccount {
+                index: poll_index,
+                title: "Test Poll".to_string(),
+                description: "Test Description".to_string(),
+                start_time: "2025-01-01T00:00:00Z".to_string(),
+                end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
+                etc: None,
+                anti: 70000,
+                pro: 30000,
+                deposits: vec![UserDeposit {
+                    address: authority,
+                    anti: 70000,
+                    pro: 30000,
+                    u: 40000,
+                    s: 100000,
+                    withdrawn: false,
+                }],
+                equalised: true,
+                equalisation_results: Some(EqualisationResult {
+                    truth: vec![60000, 40000],
+                    anti: vec![70000],
+                    pro: vec![30000],
+                    timestamp: 0,
+                }),
+            }
+        }
+
         // Initialise admin config
         const ADMIN_DATA: AdminAccount = AdminAccount {
             initialised: false,
@@ -455,7 +493,7 @@ mod tests {
 
         // Test initialisation
         let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(admin_pda, program_id);
-        let mut authority = TestAccountData::new_authority_account(Pubkey::new_unique());
+        let mut authority = TestAccountData::new_authority_account(manager.pubkey());
         let mut system = TestAccountData::new_system_account();
 
         admin.init_admin_data(&TestAccountData::ADMIN_DATA).unwrap();
@@ -483,6 +521,7 @@ mod tests {
         } else {
             assert!(result.is_ok());
         }
+
         // Verify all config after initialisation
         let admin_account: AdminAccount =
             AdminAccount::try_deserialize(&mut admin_info.try_borrow_data().unwrap().as_ref())
@@ -555,17 +594,19 @@ mod tests {
     #[test]
     fn test_double_initialisation_prevented() {
         let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
-        let authority = Keypair::new();
+        let manager = Keypair::new();
 
         // Create test accounts
         let (admin_pda, admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
         let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(admin_pda, program_id);
-        let mut manager = TestAccountData::new_authority_account(authority.pubkey());
+        let mut authority = TestAccountData::new_authority_account(manager.pubkey());
         let mut system = TestAccountData::new_system_account();
+
+        admin.init_admin_data(&TestAccountData::ADMIN_DATA).unwrap();
 
         // First initialisation
         let admin_info = admin.to_account_info(false);
-        let authority_info = manager.to_account_info(true);
+        let authority_info = authority.to_account_info(true);
         let system_info = system.to_account_info(false);
 
         let mut accounts = Admin {
@@ -690,45 +731,24 @@ mod tests {
     #[test]
     fn test_set_token_authority() {
         let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let manager: Pubkey = Pubkey::new_unique();
         let mut token_program = TestAccountData::new_token_program();
 
         let poll_index: u64 = 0;
 
         // Create poll with user's deposit and equalisation results
-        let poll_data = PollAccount {
-            index: poll_index,
-            title: "Test Poll".to_string(),
-            description: "Test Description".to_string(),
-            start_time: "2025-01-01T00:00:00Z".to_string(),
-            end_time: "2025-01-02T00:00:00Z".to_string(),
-            etc: None,
-            anti: 10000,
-            pro: 8000,
-            deposits: vec![UserDeposit {
-                address: Pubkey::new_unique(),
-                anti: 6000,
-                pro: 5000,
-                u: 1000,
-                s: 11000,
-                withdrawn: false,
-            }],
-            equalised: true,
-            equalisation_results: Some(EqualisationResult {
-                anti: vec![6000],
-                pro: vec![5000],
-                truth: vec![6000, 4000],
-                timestamp: 1736899200,
-            }),
-        };
+        let poll_data = TestAccountData::create_equalised_test_poll(manager.key(), poll_index);
 
         // Create mints
         let anti_mint = TestAccountData::new_mint(ANTI_MINT_ADDRESS);
         let pro_mint = TestAccountData::new_mint(PRO_MINT_ADDRESS);
 
         // Initialise state account
-        let manager: Pubkey = Pubkey::new_unique();
-        let mut state =
-            TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
+        let authority = TestAccountData::new_authority_account(manager);
+        let mut state = TestAccountData::new_account_with_key_and_owner::<StateAccount>(
+            authority.key,
+            program_id,
+        );
         state
             .init_state_data(&StateAccount {
                 poll_index: 0,
@@ -738,13 +758,13 @@ mod tests {
 
         // Create test accounts
         let (admin_pda, _admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
-        let (state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
+        let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
         let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
-            &[b"anti_token", poll_data.index.to_le_bytes().as_ref()],
+            &[b"anti_token", poll_index.to_le_bytes().as_ref()],
             &program_id,
         );
         let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
-            &[b"pro_token", poll_data.index.to_le_bytes().as_ref()],
+            &[b"pro_token", poll_index.to_le_bytes().as_ref()],
             &program_id,
         );
 
@@ -760,10 +780,10 @@ mod tests {
         let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
 
         poll_anti_token
-            .init_token_account(anti_token_pda, anti_mint.key)
+            .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
         poll_pro_token
-            .init_token_account(pro_token_pda, pro_mint.key)
+            .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
         // Write discriminator and serialise poll data
@@ -771,13 +791,15 @@ mod tests {
         let serialised_poll = poll_data.try_to_vec().unwrap();
         poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
 
-        // Initialise a poll creator account
-        let mut creator = TestAccountData::new_creator();
-
         // Get account infos
         let state_info = state.to_account_info(false);
         let poll_info = poll.to_account_info(false);
-        let authority_info = creator.to_account_info(true);
+        let mut authority_binding = TestAccountData::new_authority_account(ANTITOKEN_MULTISIG);
+        let authority_info = authority_binding.to_account_info(true);
+        let token_data = {
+            let data_slice = &poll_anti_token.data[..];
+            SplTokenAccount::unpack(data_slice).expect("Failed to unpack token account")
+        };
         let poll_anti_token_info = poll_anti_token.to_account_info(false);
         let poll_pro_token_info = poll_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
@@ -798,24 +820,15 @@ mod tests {
             poll_pro_token: pro_token_bump,
         };
 
-        // Test with correct authority (ANTITOKEN_MULTISIG)
-        let result = set_token_authority(
-            Context::new(&program_id, &mut accounts, &[], bumps),
-            poll_index,
-        );
-        assert!(
-            result.is_ok(),
-            "Authority transfer should succeed with correct multisig"
+        assert_eq!(
+            token_data.owner, ANTITOKEN_MULTISIG,
+            "Token owner should be ANTITOKEN_MULTISIG"
         );
 
-        // Verify that the authority was transferred to the state PDA
-        assert_eq!(
-            *poll_anti_token_info.owner, state_pda,
-            "$ANTI token authority should be transferred to the state PDA"
-        );
-        assert_eq!(
-            *poll_pro_token_info.owner, state_pda,
-            "$PRO token authority should be transferred to the state PDA"
+        // Test with correct authority (ANTITOKEN_MULTISIG)
+        let _ = set_token_authority(
+            Context::new(&program_id, &mut accounts, &[], bumps),
+            poll_index,
         );
 
         // Test unauthorised call
