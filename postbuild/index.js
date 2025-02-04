@@ -1,7 +1,4 @@
-import { processFiles } from './code-cleaner.js';
-
-// Single pattern
-await processFiles('*work/**/this/*.rs');
+import { processFiles } from "./cleanProductionCode.js";
 
 // Multiple patterns
-await processFiles(['*work/**/this/*.rs', 'src/**/*.rs']);
+await processFiles(["programs/collider-beta/src/**/*.rs"]);
