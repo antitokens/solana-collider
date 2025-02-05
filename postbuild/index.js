@@ -41,9 +41,8 @@ async function replaceAnchorTestFilesContent(pattern) {
     try {
         const files = await glob(pattern, { absolute: true });
 
-        const newTestContent = `describe("collider-beta", () => {
+        const newTestContent = `
             console.log("Note: No testing available for production branch. Please switch to 'localnet' branch for testing");
-        });
         `;
 
         let processed = 0;
