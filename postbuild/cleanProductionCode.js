@@ -6,24 +6,34 @@ function cleanProductionCode(sourceCode) {
     let lines = sourceCode.split("\n");
     let cleanedLines = [];
     let skipBlock = false;
+    let inTestBlock = false;
     let openBraces = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const currentLine = lines[i];
 
-      // Handle single-line "Remove in production"
-      if (currentLine.includes("// CRITICAL: Remove line in production!")) {
-        const codePart = currentLine.split("//")[0].trim();
-        // If there's code before the comment on the same line, it's a single-line removal
-        if (codePart.length > 0) {
-          continue;
+      // Handle "Add line in production!"
+      if (currentLine.includes("// CRITICAL: Add line in production!")) {
+        const parts = currentLine.split("!");
+        if (parts.length > 1) {
+          const codeToAdd = parts[1].trim();
+          if (codeToAdd) {
+            cleanedLines.push(codeToAdd);
+          }
         }
+        continue;
       }
 
-      // Handle block "Remove in production"
+      // Handle single-line "Remove line in production"
+      if (currentLine.includes("// CRITICAL: Remove line in production!")) {
+        continue;
+      }
+
+      // Handle block "Remove block in production!"
       if (currentLine.includes("// CRITICAL: Remove block in production!")) {
         skipBlock = true;
-        // Find start of the block by scanning backward for statement start
+
+        // Find start of the block
         let j = cleanedLines.length - 1;
         while (j >= 0) {
           const line = cleanedLines[j].trim();
@@ -32,9 +42,9 @@ function cleanProductionCode(sourceCode) {
           }
           j--;
         }
-        cleanedLines = cleanedLines.slice(0, j); // Remove entire block start
+        cleanedLines = cleanedLines.slice(0, j);
 
-        // Scan forward until the block closes
+        // Skip until block closes
         openBraces = (currentLine.match(/{/g) || []).length - (currentLine.match(/}/g) || []).length;
         while (skipBlock && i < lines.length) {
           i++;
@@ -48,16 +58,13 @@ function cleanProductionCode(sourceCode) {
         continue;
       }
 
-      // Handle "Add in production" comments - moved after removal checks
-      if (currentLine.includes("// CRITICAL: Add line in production!")) {
-        const parts = currentLine.split("!");
-        if (parts.length > 1) {
-          const codeToAdd = parts[1].trim();
-          if (codeToAdd) {
-            cleanedLines.push(currentLine);  // Keep the original line
-            cleanedLines.push(codeToAdd);    // Add the extracted code on next line
-          }
-        }
+      // Handle #[cfg(test)] and subsequent test code block
+      if (currentLine.trim().startsWith("#[cfg(test)]")) {
+        inTestBlock = true;
+        continue;
+      }
+
+      if (inTestBlock) {
         continue;
       }
 
@@ -69,6 +76,11 @@ function cleanProductionCode(sourceCode) {
     while (cleanedLines.length > 0 && cleanedLines[cleanedLines.length - 1].trim() === "") {
       cleanedLines.pop();
     }
+
+    // Final pass to remove lingering comments
+    cleanedLines = cleanedLines.filter(
+      (line) => !line.trim().startsWith("// CRITICAL: Add line in production!")
+    );
 
     return cleanedLines.join("\n") + "\n";
   } catch (error) {

@@ -85,7 +85,7 @@ pub mod collider_beta {
         start_time: String,
         end_time: String,
         etc: Option<Vec<u8>>,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
+        unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
     ) -> Result<()> {
         create_poll::create(
             ctx,
@@ -94,7 +94,7 @@ pub mod collider_beta {
             start_time,
             end_time,
             etc,
-            unix_timestamp, // CRITICAL: Remove in production
+            unix_timestamp, // CRITICAL: Remove line in production!
         )
     }
 
@@ -103,14 +103,14 @@ pub mod collider_beta {
         poll_index: u64,
         anti: u64,
         pro: u64,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
+        unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
     ) -> Result<()> {
         deposit_to_poll::deposit(
             ctx,
             poll_index,
             anti,
             pro,
-            unix_timestamp, // CRITICAL: Remove in production
+            unix_timestamp, // CRITICAL: Remove line in production!
         )
     }
 
@@ -118,13 +118,13 @@ pub mod collider_beta {
         ctx: Context<EqualiseTokens>,
         poll_index: u64,
         truth: Vec<u64>,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove in production
+        unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
     ) -> Result<()> {
         equalise_poll::equalise(
             ctx,
             poll_index,
             truth,
-            unix_timestamp, // CRITICAL: Remove in production
+            unix_timestamp, // CRITICAL: Remove line in production!
         )
     }
 

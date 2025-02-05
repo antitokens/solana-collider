@@ -20,7 +20,7 @@ use anchor_spl::token::SetAuthority;
 pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
 
-    // CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     let config = &mut ctx.accounts.admin;
     require!(!config.initialised, PredictError::AlreadyInitialised);
