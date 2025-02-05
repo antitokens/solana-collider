@@ -130,10 +130,15 @@ pub struct PollUpdateEvent {
 }
 
 // AdminEvent for logging actions with arguments
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct KeyValue {
+    pub key: String,
+    pub value: String,
+}
 #[event]
 pub struct AdminEvent {
     pub action: String,
-    pub args: Vec<(String, String)>, // Dynamic key-value pairs for arguments
+    pub args: Vec<KeyValue>, // Dynamic key-value pairs for arguments
     pub timestamp: i64,
 }
 

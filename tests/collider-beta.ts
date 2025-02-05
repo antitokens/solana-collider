@@ -326,7 +326,7 @@ describe("collider-beta", () => {
       ];
 
       await program.methods
-        .withdrawTokens(pollIndex)
+        .bulkWithdrawTokens(pollIndex)
         .accounts({
           poll: pollPda,
           authority: antitokenMultisigKeypair.publicKey,

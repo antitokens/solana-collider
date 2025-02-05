@@ -56,7 +56,10 @@ pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()
 
     emit!(AdminEvent {
         action: "update_poll_creation_fee".to_string(),
-        args: vec![("new_fee".to_string(), new_fee.to_string())],
+        args: vec![KeyValue {
+            key: "new_fee".to_string(),
+            value: new_fee.to_string(),
+        }],
         timestamp: now,
     });
 
@@ -75,7 +78,10 @@ pub fn update_max_title_length(ctx: Context<Update>, new_length: u64) -> Result<
 
     emit!(AdminEvent {
         action: "update_max_title_length".to_string(),
-        args: vec![("new_length".to_string(), new_length.to_string())],
+        args: vec![KeyValue {
+            key: "new_length".to_string(),
+            value: new_length.to_string(),
+        }],
         timestamp: now,
     });
 
@@ -94,7 +100,10 @@ pub fn update_max_description_length(ctx: Context<Update>, new_length: u64) -> R
 
     emit!(AdminEvent {
         action: "update_max_description_length".to_string(),
-        args: vec![("new_length".to_string(), new_length.to_string())],
+        args: vec![KeyValue {
+            key: "new_length".to_string(),
+            value: new_length.to_string(),
+        }],
         timestamp: now,
     });
 
@@ -113,7 +122,10 @@ pub fn update_truth_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
 
     emit!(AdminEvent {
         action: "update_truth_basis".to_string(),
-        args: vec![("new_basis".to_string(), new_basis.to_string())],
+        args: vec![KeyValue {
+            key: "new_basis".to_string(),
+            value: new_basis.to_string()
+        }],
         timestamp: now,
     });
 
@@ -132,7 +144,10 @@ pub fn update_float_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
 
     emit!(AdminEvent {
         action: "update_float_basis".to_string(),
-        args: vec![("new_basis".to_string(), new_basis.to_string())],
+        args: vec![KeyValue {
+            key: "new_basis".to_string(),
+            value: new_basis.to_string(),
+        }],
         timestamp: now,
     });
 
@@ -151,7 +166,10 @@ pub fn update_min_deposit_amount(ctx: Context<Update>, new_min_amount: u64) -> R
 
     emit!(AdminEvent {
         action: "update_min_deposit_amount".to_string(),
-        args: vec![("new_min_amount".to_string(), new_min_amount.to_string())],
+        args: vec![KeyValue {
+            key: "new_min_amount".to_string(),
+            value: new_min_amount.to_string()
+        }],
         timestamp: now,
     });
 
@@ -170,7 +188,10 @@ pub fn update_anti_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
 
     emit!(AdminEvent {
         action: "update_anti_mint".to_string(),
-        args: vec![("new_mint".to_string(), new_mint.to_string())],
+        args: vec![KeyValue {
+            key: "new_mint".to_string(),
+            value: new_mint.to_string()
+        }],
         timestamp: now,
     });
 
@@ -189,7 +210,10 @@ pub fn update_pro_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
 
     emit!(AdminEvent {
         action: "update_pro_mint".to_string(),
-        args: vec![("new_mint".to_string(), new_mint.to_string())],
+        args: vec![KeyValue {
+            key: "new_mint".to_string(),
+            value: new_mint.to_string()
+        }],
         timestamp: now,
     });
 
@@ -208,7 +232,10 @@ pub fn update_multisig(ctx: Context<Update>, new_multisig: Pubkey) -> Result<()>
 
     emit!(AdminEvent {
         action: "update_multisig".to_string(),
-        args: vec![("new_multisig".to_string(), new_multisig.to_string())],
+        args: vec![KeyValue {
+            key: "new_multisig".to_string(),
+            value: new_multisig.to_string()
+        }],
         timestamp: now,
     });
 
@@ -253,7 +280,10 @@ pub fn set_token_authority(ctx: Context<SetPollTokenAuthority>, poll_index: u64)
 
     emit!(AdminEvent {
         action: "set_token_authority".to_string(),
-        args: vec![("poll_index".to_string(), poll_index.to_string())],
+        args: vec![KeyValue {
+            key: "poll_index".to_string(),
+            value: poll_index.to_string()
+        }],
         timestamp: now,
     });
 
