@@ -54,7 +54,8 @@ pub fn create(
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
     }; // CRITICAL: Remove block in production!
-       // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
 
     require!(end > start, PredictError::InvalidTimeRange);
     require!(start > now, PredictError::StartTimeInPast);

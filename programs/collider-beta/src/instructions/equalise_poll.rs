@@ -26,7 +26,9 @@ pub fn equalise(
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
     }; // CRITICAL: Remove block in production!
-       // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
+       
+    // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
+    
     let end_time = parse_iso_timestamp(&poll.end_time)?;
     require!(now >= end_time, PredictError::PollActive);
 

@@ -28,7 +28,8 @@ pub fn deposit(
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
     }; // CRITICAL: Remove block in production!
-       // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
 
     // Verify poll is active
     require!(poll.is_active(now), PredictError::PollInactive);

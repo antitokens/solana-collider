@@ -19,7 +19,8 @@ use anchor_spl::token::SetAuthority;
 
 pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     let config = &mut ctx.accounts.admin;
     require!(!config.initialised, PredictError::AlreadyInitialised);
@@ -46,7 +47,8 @@ pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
 
 pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -68,7 +70,8 @@ pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()
 
 pub fn update_max_title_length(ctx: Context<Update>, new_length: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -90,7 +93,8 @@ pub fn update_max_title_length(ctx: Context<Update>, new_length: u64) -> Result<
 
 pub fn update_max_description_length(ctx: Context<Update>, new_length: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -112,7 +116,8 @@ pub fn update_max_description_length(ctx: Context<Update>, new_length: u64) -> R
 
 pub fn update_truth_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -134,7 +139,8 @@ pub fn update_truth_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
 
 pub fn update_float_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -156,7 +162,8 @@ pub fn update_float_basis(ctx: Context<Update>, new_basis: u64) -> Result<()> {
 
 pub fn update_min_deposit_amount(ctx: Context<Update>, new_min_amount: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -178,7 +185,8 @@ pub fn update_min_deposit_amount(ctx: Context<Update>, new_min_amount: u64) -> R
 
 pub fn update_anti_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -200,7 +208,8 @@ pub fn update_anti_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
 
 pub fn update_pro_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -222,7 +231,8 @@ pub fn update_pro_mint(ctx: Context<Update>, new_mint: Pubkey) -> Result<()> {
 
 pub fn update_multisig(ctx: Context<Update>, new_multisig: Pubkey) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     require!(
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
@@ -244,7 +254,8 @@ pub fn update_multisig(ctx: Context<Update>, new_multisig: Pubkey) -> Result<()>
 
 pub fn set_token_authority(ctx: Context<SetPollTokenAuthority>, poll_index: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
-                               // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
+
+    // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
 
     // Verify only ANTITOKEN_MULTISIG can execute this
     require!(
