@@ -1,11 +1,13 @@
 import { glob } from "glob";
 import fs from "fs/promises";
 
-// Core cleaning function remains the same but without any formatting logic
+// Core cleaning function remains the same but with robust logic for block removal
 function cleanProductionCode(sourceCode) {
   try {
     let lines = sourceCode.split("\n");
     let cleanedLines = [];
+    let skipMode = false;
+    let openBraces = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const currentLine = lines[i];
@@ -19,30 +21,21 @@ function cleanProductionCode(sourceCode) {
         continue;
       }
 
-      // Skip lines with "Remove in production" comment
-      if (currentLine.includes("// CRITICAL: Remove in production")) {
+      // Handle "Remove in production" comment and start block skip mode
+      if (currentLine.includes("// CRITICAL: Remove in production!")) {
+        skipMode = true;
+        openBraces = 0;
         continue;
       }
 
-      // Handle multi-line blocks ending with "Remove in production"
-      if (currentLine.includes("// CRITICAL: Remove in production!")) {
-        let j = cleanedLines.length - 1;
-        let openBraces = 0;
-        const closingCount = (currentLine.match(/[})\]]/g) || []).length;
+      if (skipMode) {
+        // Track braces to handle block removal
+        openBraces += (currentLine.match(/{/g) || []).length;
+        openBraces -= (currentLine.match(/}/g) || []).length;
 
-        // Remove lines until we find the matching opening structure
-        while (j >= 0) {
-          const line = cleanedLines[j];
-          const openCount = (line.match(/[{([]/g) || []).length;
-          const closeCount = (line.match(/[})\]]/g) || []).length;
-
-          openBraces += openCount - closeCount;
-
-          if (openBraces >= closingCount) {
-            cleanedLines = cleanedLines.slice(0, j);
-            break;
-          }
-          j--;
+        // End skip mode if we've closed the block
+        if (openBraces <= 0) {
+          skipMode = false;
         }
         continue;
       }
