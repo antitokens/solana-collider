@@ -16,7 +16,7 @@ pub fn equalise(
     ctx: Context<EqualiseTokens>,
     poll_index: u64,
     truth: Vec<u64>,
-    unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
+    unix_timestamp: Option<i64>, // CRITICAL: Remove in production!
 ) -> Result<()> {
     let poll = &mut ctx.accounts.poll;
 
@@ -25,8 +25,8 @@ pub fn equalise(
     let now = match unix_timestamp {
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
-    }; // CRITICAL: Remove block in production!
-       // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
+    }; // CRITICAL: Remove in production!
+       // CRITICAL: Add in production!let now = Clock::get()?.unix_timestamp;
     let end_time = parse_iso_timestamp(&poll.end_time)?;
     require!(now >= end_time, PredictError::PollActive);
 

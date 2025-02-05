@@ -23,7 +23,7 @@ pub fn create(
     start_time: String,
     end_time: String,
     etc: Option<Vec<u8>>,
-    unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
+    unix_timestamp: Option<i64>, // CRITICAL: Remove in production
 ) -> Result<()> {
     // Ensure payment is sufficient
     require!(
@@ -53,8 +53,8 @@ pub fn create(
     let now = match unix_timestamp {
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
-    }; // CRITICAL: Remove block in production!
-       // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
+    }; // CRITICAL: Remove in production!
+       // CRITICAL: Add in production!let now = Clock::get()?.unix_timestamp;
 
     require!(end > start, PredictError::InvalidTimeRange);
     require!(start > now, PredictError::StartTimeInPast);

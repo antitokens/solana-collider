@@ -1,41 +1,62 @@
 import { glob } from "glob";
 import fs from "fs/promises";
 
-// Core cleaning function remains the same but with robust logic for block removal
 function cleanProductionCode(sourceCode) {
   try {
     let lines = sourceCode.split("\n");
     let cleanedLines = [];
-    let skipMode = false;
+    let skipBlock = false;
     let openBraces = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const currentLine = lines[i];
 
-      // Handle "Add in production" comments
-      if (currentLine.includes("// CRITICAL: Add in production!")) {
-        const contentToAdd = currentLine.split("!")[1];
-        if (contentToAdd) {
-          cleanedLines.push(contentToAdd.trim());
+      // Handle single-line "Remove in production"
+      if (currentLine.includes("// CRITICAL: Remove line in production!")) {
+        const codePart = currentLine.split("//")[0].trim();
+        // If there's code before the comment on the same line, it's a single-line removal
+        if (codePart.length > 0) {
+          continue;
+        }
+      }
+
+      // Handle block "Remove in production"
+      if (currentLine.includes("// CRITICAL: Remove block in production!")) {
+        skipBlock = true;
+        // Find start of the block by scanning backward for statement start
+        let j = cleanedLines.length - 1;
+        while (j >= 0) {
+          const line = cleanedLines[j].trim();
+          if (line.endsWith(";") || line.endsWith("{") || line.endsWith(")")) {
+            break;
+          }
+          j--;
+        }
+        cleanedLines = cleanedLines.slice(0, j); // Remove entire block start
+
+        // Scan forward until the block closes
+        openBraces = (currentLine.match(/{/g) || []).length - (currentLine.match(/}/g) || []).length;
+        while (skipBlock && i < lines.length) {
+          i++;
+          const line = lines[i];
+          openBraces += (line.match(/{/g) || []).length;
+          openBraces -= (line.match(/}/g) || []).length;
+          if (openBraces <= 0) {
+            skipBlock = false;
+          }
         }
         continue;
       }
 
-      // Handle "Remove in production" comment and start block skip mode
-      if (currentLine.includes("// CRITICAL: Remove in production!")) {
-        skipMode = true;
-        openBraces = 0;
-        continue;
-      }
-
-      if (skipMode) {
-        // Track braces to handle block removal
-        openBraces += (currentLine.match(/{/g) || []).length;
-        openBraces -= (currentLine.match(/}/g) || []).length;
-
-        // End skip mode if we've closed the block
-        if (openBraces <= 0) {
-          skipMode = false;
+      // Handle "Add in production" comments - moved after removal checks
+      if (currentLine.includes("// CRITICAL: Add line in production!")) {
+        const parts = currentLine.split("!");
+        if (parts.length > 1) {
+          const codeToAdd = parts[1].trim();
+          if (codeToAdd) {
+            cleanedLines.push(currentLine);  // Keep the original line
+            cleanedLines.push(codeToAdd);    // Add the extracted code on next line
+          }
         }
         continue;
       }
@@ -44,7 +65,12 @@ function cleanProductionCode(sourceCode) {
       cleanedLines.push(currentLine);
     }
 
-    return cleanedLines.join("\n");
+    // Clean up trailing empty lines
+    while (cleanedLines.length > 0 && cleanedLines[cleanedLines.length - 1].trim() === "") {
+      cleanedLines.pop();
+    }
+
+    return cleanedLines.join("\n") + "\n";
   } catch (error) {
     throw new Error(`Error cleaning code: ${error.message}`);
   }
