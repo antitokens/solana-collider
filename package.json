@@ -30,6 +30,6 @@
     "test-cargo-log": "RUST_LOG=info cargo test-sbf -- --nocapture",
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
-    "prepare-for-production": "node postbuild/index.js && rustup component add clippy && cargo clippy --fix"
+    "prepare-for-production": "node postbuild/index.js && rustup component add clippy && cargo clippy --fix --allow-dirty"
   }
 }
