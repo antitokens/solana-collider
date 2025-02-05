@@ -6,10 +6,11 @@ async function replaceCargoTestFilesContent(pattern) {
     try {
         const files = await glob(pattern, { absolute: true });
 
-        const newTestContent = `#[tokio::test]
-        async fn test_full_collider_flow() {
-            println!("Note: No testing available for production branch. Please switch to 'localnet' branch for testing");
-        }
+        const newTestContent = `
+#[tokio::test]
+async fn test_full_collider_flow() {
+    println!("Note: No testing available for production branch. Please switch to 'localnet' branch for testing");
+}
         `;
 
         let processed = 0;
@@ -42,7 +43,7 @@ async function replaceAnchorTestFilesContent(pattern) {
         const files = await glob(pattern, { absolute: true });
 
         const newTestContent = `
-            console.log("Note: No testing available for production branch. Please switch to 'localnet' branch for testing");
+console.log("Note: No testing available for production branch. Please switch to 'localnet' branch for testing");
         `;
 
         let processed = 0;
