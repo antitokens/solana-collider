@@ -128,7 +128,7 @@ async function processFiles(patterns) {
       }
     }
 
-    console.log("\nProcessing Summary:");
+    console.log("\nProduction Preparation Summary:");
     console.log(`Files processed: ${stats.processed}`);
     console.log(`Files skipped (no changes): ${stats.skipped}`);
     console.log(`Files failed: ${stats.failed}`);

@@ -73,6 +73,7 @@ async function replaceAnchorTestFilesContent(pattern) {
 // Cleanup .bak files function
 async function cleanupBackupFiles(pattern) {
     try {
+        console.log("\nCleanup Summary:");
         const backupFiles = await glob(pattern, { absolute: true });
         for (const backupFile of backupFiles) {
             try {
