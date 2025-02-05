@@ -70,6 +70,23 @@ async function replaceAnchorTestFilesContent(pattern) {
     }
 }
 
+// Cleanup .bak files function
+async function cleanupBackupFiles(pattern) {
+    try {
+        const backupFiles = await glob(pattern, { absolute: true });
+        for (const backupFile of backupFiles) {
+            try {
+                await fs.unlink(backupFile);
+                console.log(`Removed backup file: ${backupFile}`);
+            } catch (error) {
+                console.error(`Failed to remove backup file ${backupFile}: ${error.message}`);
+            }
+        }
+    } catch (error) {
+        console.error(`Error cleaning up backup files: ${error.message}`);
+    }
+}
+
 async function main() {
     // Process test files with the specific pattern
     await processFiles(["programs/collider-beta/src/**/*.rs"]);
@@ -79,6 +96,9 @@ async function main() {
 
     // Replace test file content for all Anchor test files
     await replaceAnchorTestFilesContent("tests/*.ts");
+
+    // Clean backup files
+    await cleanupBackupFiles("programs/collider-beta/src/**/*.bak");
 }
 
 main().catch(console.error);
