@@ -13,6 +13,7 @@ docs/
 # Dotenv
 .env
 .config
+config.toml
 
 # Packages
 node_modules
