@@ -41,10 +41,10 @@ security_txt! {
     // Optional Fields
     preferred_languages: "English",
     source_code: "https://github.com/antitokens/solana-collider",
-    source_revision: "",
+    source_revision: "748c281a21fd5cce3ea75d9908cc516694450833",
     source_release: "v1.0.0-alpha",
     auditors: "None",
-    acknowledgements: "Claude,ChatGPT"
+    acknowledgements: "Claude Haiku/3.5 Sonnet, ChatGPT o1/o3-mini"
 }
 
 #[error_code]
