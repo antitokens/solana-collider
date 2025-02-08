@@ -18,6 +18,7 @@ borsh = "0.10"
 anchor-lang = { workspace = true }
 anchor-spl = { workspace = true }
 chrono = "0.4"
+solana-security-txt = { workspace = true }
 
 [dev-dependencies]
 solana-program-test = { workspace = true }

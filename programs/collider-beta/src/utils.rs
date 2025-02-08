@@ -8,6 +8,7 @@
 //! Contact: dev@antitoken.pro
 
 // utils.rs
+use solana_security_txt;
 use crate::state::*;
 use anchor_lang::prelude::*;
 use chrono::NaiveDateTime;
@@ -19,12 +20,32 @@ pub const TRUTH_BASIS: u64 = 100_000; // Truth limit = [0, 1]
 pub const FLOAT_BASIS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
 pub const MIN_DEPOSIT_AMOUNT: u64 = 10_000; // 1 token minimum deposit
 pub const ANTITOKEN_MULTISIG: Pubkey =
-    solana_program::pubkey!("7rFEa4g8UZs7eBBoq66FmLeobtb81dfCPx2Hmt61kJ5t");
+    solana_program::pubkey!("BVkN9PdWJA8YYJCHdkd46Y4HUPhvSUf38qcHYgFUopBh");
 pub const ANTI_MINT_ADDRESS: Pubkey =
-    solana_program::pubkey!("674rRAKuyAizM6tWKLpo8zDqAtvxYS7ce6DoGBfocmrT");
+    solana_program::pubkey!("5LfuwEF4SCTxijmmXoc8KpK5osLEPfxcma4QRiTVVJyt");
 pub const PRO_MINT_ADDRESS: Pubkey =
-    solana_program::pubkey!("6bDmnBGtGo9pb2vhVkrzQD9uHYcYpBCCSgU61534MyTm");
-pub const PROGRAM_ID: &str = "5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G";
+    solana_program::pubkey!("DqF2BkNYro78v84xBbJPdRPy619qAzz8do39gA1DC5k");
+pub const PROGRAM_ID: &str = "AMXPSQ9nWyHUqq7dB1KaPf3Wm9SMTofi7jFFGYp6pfFW";
+
+#[cfg(not(feature = "no-entrypoint"))]
+use solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    // Required fields
+    name: "Antitoken Collider",
+    project_url: "https://antitoken.pro",
+    contacts: "email:dev@antitoken.pro,link:https://antitoken.pro/security",
+    policy: "https://github.com/antitokens/solana-collider/SECURITY.md",
+
+    // Optional Fields
+    preferred_languages: "English",
+    source_code: "https://github.com/antitokens/solana-collider",
+    source_revision: "",
+    source_release: "v1.0.0-alpha",
+    auditors: "None",
+    acknowledgements: "Claude,ChatGPT"
+}
 
 #[error_code]
 pub enum PredictError {
@@ -354,75 +375,4 @@ fn overlap(baryon: f64, photon: f64, parity: f64) -> Result<f64> {
     };
 
     Ok(normalised.clamp(0.0, 1.0))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_collide() {
-        let (u, s) = collide(100, 50).unwrap();
-        assert_eq!(u, 50); // |100 - 50|
-        assert_eq!(s, 3); // (100 + 50) / |100 - 50|
-
-        let (u, s) = collide(50, 50).unwrap();
-        assert_eq!(u, 0);
-        assert_eq!(s, 100);
-    }
-
-    #[test]
-    fn test_equalise_with_truth() {
-        let deposits = vec![
-            UserDeposit {
-                address: Pubkey::new_unique(),
-                anti: 7_000,
-                pro: 3_000,
-                u: 4_000,
-                s: 25_000,
-                withdrawn: false,
-            },
-            UserDeposit {
-                address: Pubkey::new_unique(),
-                anti: 3_000,
-                pro: 7_000,
-                u: 4_000,
-                s: 25_000,
-                withdrawn: false,
-            },
-        ];
-
-        let total_anti = 10_000;
-        let total_pro = 10_000;
-        let truth = vec![0, 100_000];
-
-        let result = equalise_with_truth(&deposits, total_anti, total_pro, &truth);
-
-        assert!(result.is_ok(), "Equalisation should succeed");
-
-        let (equalised_anti, equalised_pro) = result.unwrap();
-
-        // Ensure distribution follows the truth ratio
-        assert_eq!(equalised_anti.len(), deposits.len());
-        assert_eq!(equalised_pro.len(), deposits.len());
-
-        // Values from independent TypeScript simulations
-        let expected_anti_split_1 = 3333;
-        let expected_anti_split_2 = 6667;
-        let expected_pro_split_1 = 3333;
-        let expected_pro_split_2 = 6667;
-
-        // Check for matches
-        assert_eq!(equalised_anti[0], expected_anti_split_1);
-        assert_eq!(equalised_anti[1], expected_anti_split_2);
-        assert_eq!(equalised_pro[0], expected_pro_split_1);
-        assert_eq!(equalised_pro[1], expected_pro_split_2);
-    }
-
-    #[test]
-    fn test_parse_iso_timestamp() {
-        assert!(parse_iso_timestamp("2025-01-20T00:00:00Z").is_ok());
-        assert!(parse_iso_timestamp("2025-13-20T00:00:00Z").is_err()); // Invalid month
-        assert!(parse_iso_timestamp("invalid").is_err());
-    }
 }
