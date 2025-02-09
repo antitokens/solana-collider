@@ -13,6 +13,9 @@ docs/
 # Dotenv
 .env
 .config
+config.toml
+dPro
+dAnti
 
 # Packages
 node_modules
