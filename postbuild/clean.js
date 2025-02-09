@@ -1,7 +1,7 @@
 import { glob } from "glob";
 import fs from "fs/promises";
 
-function cleanProductionCode(sourceCode) {
+function clean(sourceCode) {
   try {
     let lines = sourceCode.split("\n");
     let cleanedLines = [];
@@ -89,7 +89,7 @@ function cleanProductionCode(sourceCode) {
 }
 
 // Function to process multiple files
-async function processFiles(patterns) {
+async function process(patterns) {
   try {
     const patternArray = Array.isArray(patterns) ? patterns : [patterns];
 
@@ -107,7 +107,7 @@ async function processFiles(patterns) {
           console.log(`Processing: ${filePath}`);
           const content = await fs.readFile(filePath, "utf8");
 
-          const cleanedContent = cleanProductionCode(content);
+          const cleanedContent = clean(content);
 
           if (content.trim() === cleanedContent.trim()) {
             console.log(`No changes needed for: ${filePath}`);
@@ -139,4 +139,4 @@ async function processFiles(patterns) {
   }
 }
 
-export { cleanProductionCode, processFiles };
+export { clean, process };

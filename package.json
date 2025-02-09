@@ -34,6 +34,7 @@
     "test-cargo-log": "RUST_LOG=info cargo test-sbf -- --nocapture",
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
-    "prepare-prod": "node postbuild/prepareProduction.js"
+    "prepare-prod": "node postbuild/prepareProduction.js",
+    "init-program": "ts-node postbuild/initialiser.ts"
   }
 }
