@@ -1,1 +1,1 @@
-console.log("Note: No testing available for production branch. Please switch to 'localnet' branch for testing");
+console.log("\nNote: No testing available for production branch. Please switch to 'localnet' branch for testing");
