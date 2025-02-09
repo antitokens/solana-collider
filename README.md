@@ -2,11 +2,11 @@
 
 Before beginning, you'll need to install the following core dependencies for a complete runtime environment:
 
-- `rustc`
-
-- `solana`
-
-- `anchor` (preferably with `avm`)
+| Tool     | Mac       | Linux     |
+|----------|-----------|-----------|
+| `rustc`  | `1.83.0`  | `1.75.0`  |
+| `solana` | `1.18.26` | `1.18.26` |
+| `anchor` | `0.29.0`  | `0.29.0`  |
 
 Please follow these instructions to set up your environment: [`https://solana.com/docs/intro/installation`](https://solana.com/docs/intro/installation)
 
@@ -52,4 +52,24 @@ anchor build
 
 ```
 anchor test
+```
+
+## Presets:
+
+```json
+"build-anchor-apple": "anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+"build-anchor-full-apple": "RUST_LOG=trace anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+"build-cargo-apple": "cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+"build-cargo-full-apple": "RUST_LOG=trace cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+"build-anchor-linux": "anchor build && sed -i 's/version = 4/version = 3/' Cargo.lock",
+"build-anchor-full-linux": "RUST_LOG=trace anchor build && sed -i 's/version = 4/version = 3/' Cargo.lock",
+"build-cargo-linux": "cargo build-bpf && sed -i 's/version = 4/version = 3/' Cargo.lock",
+"build-cargo-full-linux": "RUST_LOG=trace cargo build-bpf && sed -i :'s/version = 4/version = 3/' Cargo.lock",
+"test-anchor": "anchor test",
+"test-anchor-full": "RUST_LOG=trace anchor test",
+"test-anchor-fast": "RUST_LOG=trace anchor test --skip-build --skip-deploy",
+"test-cargo": "RUST_LOG=error cargo test-sbf",
+"test-cargo-log": "RUST_LOG=info cargo test-sbf -- --nocapture",
+"test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
+"test-cargo-full": "RUST_LOG=trace cargo test-sbf",
 ```
