@@ -1,6 +1,6 @@
 import { glob } from "glob";
 import fs from "fs/promises";
-import { processFiles } from "./cleanProductionCode.js";
+import { process } from "./clean.js";
 
 async function replaceCargoTestFilesContent(pattern) {
     try {
@@ -88,7 +88,7 @@ async function cleanupBackupFiles(pattern) {
 
 async function main() {
     // Process test files with the specific pattern
-    await processFiles(["programs/collider-beta/src/**/*.rs"]);
+    await process(["programs/collider-beta/src/**/*.rs"]);
 
     // Replace test file content for all Cargo test files
     await replaceCargoTestFilesContent("programs/collider-beta/tests/*.rs");
