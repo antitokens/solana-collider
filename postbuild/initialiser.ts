@@ -24,7 +24,7 @@ async function main() {
 
   // Load the program
   const programId = new PublicKey(
-    "8vSqfBjQfNhpX9SPLvmQDfBLTpJSyVjzEUPDNXQHYkJm"
+    "AMXPSQ9nWyHUqq7dB1KaPf3Wm9SMTofi7jFFGYp6pfFW"
   );
   const program = new Program(
     idl,
