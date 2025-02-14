@@ -1010,6 +1010,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "solana-security-txt",
  "spl-token-2022 0.9.0",
  "thiserror",
  "tokio",

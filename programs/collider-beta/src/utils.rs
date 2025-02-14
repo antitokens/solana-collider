@@ -11,6 +11,7 @@
 use crate::state::*;
 use anchor_lang::prelude::*;
 use chrono::NaiveDateTime;
+use solana_security_txt;
 
 pub const POLL_CREATION_FEE: u64 = 100_000_000; // Fee to create poll (0.1 SOL)
 pub const MAX_TITLE_LENGTH: u64 = 256; // Maximum title length
@@ -25,6 +26,26 @@ pub const ANTI_MINT_ADDRESS: Pubkey =
 pub const PRO_MINT_ADDRESS: Pubkey =
     solana_program::pubkey!("6bDmnBGtGo9pb2vhVkrzQD9uHYcYpBCCSgU61534MyTm");
 pub const PROGRAM_ID: &str = "5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G";
+
+#[cfg(not(feature = "no-entrypoint"))]
+use solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    // Required fields
+    name: "Antitoken Collider",
+    project_url: "https://antitoken.pro",
+    contacts: "email:dev@antitoken.pro,link:https://antitoken.pro/security",
+    policy: "https://github.com/antitokens/solana-collider/SECURITY.md",
+
+    // Optional Fields
+    preferred_languages: "English",
+    source_code: "https://github.com/antitokens/solana-collider",
+    source_revision: "748c281a21fd5cce3ea75d9908cc516694450833",
+    source_release: "v1.0.0-alpha",
+    auditors: "None",
+    acknowledgements: "Claude Haiku/3.5 Sonnet, ChatGPT o1/o3-mini"
+}
 
 #[error_code]
 pub enum PredictError {
