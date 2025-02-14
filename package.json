@@ -15,14 +15,19 @@
     "glob": "^11.0.1",
     "mocha": "^10.0.0",
     "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },
   "type": "module",
   "scripts": {
-    "build-anchor": "anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-anchor-full": "RUST_LOG=trace anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-cargo": "cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-cargo-full": "RUST_LOG=trace cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "build-anchor-apple": "anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "build-anchor-full-apple": "RUST_LOG=trace anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "build-cargo-apple": "cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "build-cargo-full-apple": "RUST_LOG=trace cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "build-anchor-linux": "anchor build && sed -i 's/version = 4/version = 3/' Cargo.lock",
+    "build-anchor-full-linux": "RUST_LOG=trace anchor build && sed -i 's/version = 4/version = 3/' Cargo.lock",
+    "build-cargo-linux": "cargo build-bpf && sed -i 's/version = 4/version = 3/' Cargo.lock",
+    "build-cargo-full-linux": "RUST_LOG=trace cargo build-bpf && sed -i :'s/version = 4/version = 3/' Cargo.lock",
     "test-anchor": "anchor test",
     "test-anchor-full": "RUST_LOG=trace anchor test",
     "test-anchor-fast": "RUST_LOG=trace anchor test --skip-build --skip-deploy",
@@ -30,6 +35,7 @@
     "test-cargo-log": "RUST_LOG=info cargo test-sbf -- --nocapture",
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
-    "prepare-for-production": "node postbuild/index.js"
+    "prepare-prod": "node postbuild/prepare.js",
+    "init-program": "node --loader ts-node/esm postbuild/initialiser.ts"
   }
 }
