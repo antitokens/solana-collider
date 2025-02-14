@@ -35,6 +35,6 @@
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
     "prepare-prod": "node postbuild/prepare.js",
-    "init-program": "ts-node postbuild/initialiser.ts"
+    "init-program": "node --loader ts-node/esm postbuild/initialiser.ts"
   }
 }
