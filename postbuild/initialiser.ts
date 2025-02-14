@@ -1,19 +1,23 @@
+import * as fs from "node:fs/promises";
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import { Program, Idl } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { ColliderBeta } from "../target/types/collider_beta";
+import { ColliderBeta } from "../target/types/collider_beta.ts";
 
-// Configure your RPC endpoint
-const ENDPOINT = "https://api.devnet.solana.com"; // Change this to your desired endpoint
+async function loadJson<T>(path: string): Promise<T> {
+  const data = await fs.readFile(path, "utf8");
+  return JSON.parse(data) as T;
+}
 
 async function main() {
-  // Setup connection and wallet
-  const connection = new Connection(ENDPOINT);
-  const keypairFile = require("../.config/id.json");
-  const wallet = new anchor.Wallet(
-    Keypair.fromSecretKey(new Uint8Array(keypairFile))
-  );
+  // Load JSON files manually
+  const keypairFile = await loadJson<number[]>("./.config/id.json");
+  const idl = await loadJson<Idl>("./target/idl/collider_beta.json");
 
+  // Setup connection and wallet
+  const secretKey = new Uint8Array(keypairFile);
+  const wallet = new anchor.Wallet(Keypair.fromSecretKey(secretKey));
+  const connection = new Connection("https://api.devnet.solana.com");
   const provider = new anchor.AnchorProvider(connection, wallet, {
     commitment: "confirmed",
   });
@@ -23,9 +27,10 @@ async function main() {
     "AMXPSQ9nWyHUqq7dB1KaPf3Wm9SMTofi7jFFGYp6pfFW"
   );
   const program = new Program(
-    require("../target/idl/collider_beta.json"),
-    programId
-  ) as Program<ColliderBeta>;
+    idl,
+    programId,
+    provider
+  ) as unknown as Program<ColliderBeta>;
 
   try {
     // Find state PDA
@@ -34,7 +39,7 @@ async function main() {
       program.programId
     );
 
-    // Initialize program
+    // Initialise program
     const tx = await program.methods
       .initialiser()
       .accounts({
@@ -47,7 +52,7 @@ async function main() {
     console.log("Program initialised successfully!");
     console.log("Transaction signature:", tx);
 
-    // Verify initialization
+    // Verify initialisation
     const state = await program.account.stateAccount.fetch(statePda);
     console.log("State account:", {
       pollIndex: state.pollIndex.toString(),
