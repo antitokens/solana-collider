@@ -15,6 +15,7 @@
     "glob": "^11.0.1",
     "mocha": "^10.0.0",
     "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },
   "type": "module",
@@ -35,6 +36,6 @@
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
     "prepare-prod": "node postbuild/prepare.js",
-    "init-program": "ts-node postbuild/initialiser.ts"
+    "init-program": "node --loader ts-node/esm postbuild/initialiser.ts"
   }
 }

@@ -7,11 +7,20 @@
       "./node_modules/@types"
     ],
     "lib": [
-      "es2015",
+      "ES2020",
       "dom"
     ],
-    "module": "commonjs",
-    "target": "es6",
-    "esModuleInterop": true
+    "module": "NodeNext",
+    "target": "ES2020",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "nodenext",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true
+  },
+  "ts-node": {
+    "esm": true
   }
 }

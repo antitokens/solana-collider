@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program, Idl, BN } from "@coral-xyz/anchor";
-import { ColliderBeta } from "../target/types/collider_beta";
+import { ColliderBeta } from "../target/types/collider_beta.ts";
 import {
   PublicKey,
   SystemProgram,
@@ -213,7 +213,7 @@ describe("collider-beta", () => {
 
       const state = await program.account.stateAccount.fetch(statePda);
       expect(Number(state.pollIndex)).to.equal(0);
-      expect(state.authority.toString()).to.equal(manager.publicKey.toString());
+      expect(state.authority?.toString()).to.equal(manager.publicKey.toString());
     });
   });
 
