@@ -1,0 +1,53 @@
+import * as fs from "node:fs/promises";
+import * as anchor from "@coral-xyz/anchor";
+import { Program, Idl } from "@coral-xyz/anchor";
+import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { ColliderBeta } from "../target/types/collider_beta.ts";
+
+async function loadJson<T>(path: string): Promise<T> {
+  const data = await fs.readFile(path, "utf8");
+  return JSON.parse(data) as T;
+}
+
+async function main() {
+  // Load JSON files manually
+  const keypairFile = await loadJson<number[]>("./.config/id.json");
+  const idl = await loadJson<Idl>("./target/idl/collider_beta.json");
+
+  // Setup connection and wallet
+  const secretKey = new Uint8Array(keypairFile);
+  const wallet = new anchor.Wallet(Keypair.fromSecretKey(secretKey));
+  const connection = new Connection("https://api.devnet.solana.com");
+  const provider = new anchor.AnchorProvider(connection, wallet, {
+    commitment: "confirmed",
+  });
+
+  // Load the program
+  const programId = new PublicKey(
+    "AMXPSQ9nWyHUqq7dB1KaPf3Wm9SMTofi7jFFGYp6pfFW"
+  );
+  const program = new Program(
+    idl,
+    programId,
+    provider
+  ) as unknown as Program<ColliderBeta>;
+
+  try {
+    // Find state PDA
+    const [statePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("state")],
+      program.programId
+    );
+
+    // Verify initialisation
+    const state = await program.account.stateAccount.fetch(statePda);
+    console.log("✅ State account:", {
+      pollIndex: state.pollIndex.toString(),
+      authority: state.authority.toString(),
+    });
+  } catch (error) {
+    console.error("❌ Verification failed:", error);
+  }
+}
+
+main().catch(console.error);
