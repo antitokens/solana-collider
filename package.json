@@ -30,6 +30,8 @@
     "build-anchor-full-linux": "yarn clean-lock-linux && RUST_LOG=trace anchor build",
     "build-cargo-linux": "yarn clean-lock-linux && cargo build-bpf",
     "build-cargo-full-linux": "yarn clean-lock-linux && RUST_LOG=trace cargo build-bpf",
+    "build-verify-apple": "yarn clean-lock-apple && anchor build --verifiable",
+    "build-verify-linux": "yarn clean-lock-linux && anchor build --verifiable",
     "test-anchor": "anchor test",
     "test-anchor-full": "RUST_LOG=trace anchor test",
     "test-anchor-fast": "RUST_LOG=trace anchor test --skip-build --skip-deploy",
@@ -38,7 +40,6 @@
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
     "prepare-prod": "node postbuild/prepare.js",
-    "verify-build": "solana-verify build",
     "query-txt": "query-security-txt target/deploy/collider_beta.so",
     "init-program": "node --loader ts-node/esm postbuild/initialiser.ts",
     "verify-init": "node --loader ts-node/esm postbuild/verifier.ts"
