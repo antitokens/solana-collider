@@ -15,18 +15,21 @@
     "glob": "^11.0.1",
     "mocha": "^10.0.0",
     "ts-mocha": "^10.0.0",
+    "ts-node": "^10.0.0",
     "typescript": "^5.7.3"
   },
   "type": "module",
   "scripts": {
-    "build-anchor-apple": "anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-anchor-full-apple": "RUST_LOG=trace anchor build && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-cargo-apple": "cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-cargo-full-apple": "RUST_LOG=trace cargo build-bpf && sed -i '' 's/version = 4/version = 3/' Cargo.lock",
-    "build-anchor-linux": "anchor build && sed -i 's/version = 4/version = 3/' Cargo.lock",
-    "build-anchor-full-linux": "RUST_LOG=trace anchor build && sed -i 's/version = 4/version = 3/' Cargo.lock",
-    "build-cargo-linux": "cargo build-bpf && sed -i 's/version = 4/version = 3/' Cargo.lock",
-    "build-cargo-full-linux": "RUST_LOG=trace cargo build-bpf && sed -i :'s/version = 4/version = 3/' Cargo.lock",
+    "clean-lock-apple": "sed -i '' 's/version = 4/version = 3/' Cargo.lock",
+    "clean-lock-linux": "sed -i 's/version = 4/version = 3/' Cargo.lock",
+    "build-anchor-apple": "yarn clean-lock-apple && anchor build",
+    "build-anchor-full-apple": "yarn clean-lock-apple && RUST_LOG=trace anchor build",
+    "build-cargo-apple": "yarn clean-lock-apple && cargo build-bpf",
+    "build-cargo-full-apple": "yarn clean-lock-apple && RUST_LOG=trace cargo build-bpf",
+    "build-anchor-linux": "yarn clean-lock-linux && anchor build",
+    "build-anchor-full-linux": "yarn clean-lock-linux && RUST_LOG=trace anchor build",
+    "build-cargo-linux": "yarn clean-lock-linux && cargo build-bpf",
+    "build-cargo-full-linux": "yarn clean-lock-linux && RUST_LOG=trace cargo build-bpf",
     "test-anchor": "anchor test",
     "test-anchor-full": "RUST_LOG=trace anchor test",
     "test-anchor-fast": "RUST_LOG=trace anchor test --skip-build --skip-deploy",
@@ -35,7 +38,9 @@
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
     "prepare-prod": "node postbuild/prepare.js",
+    "verify-build": "solana-verify build",
+    "query-txt": "query-security-txt target/deploy/collider_beta.so",
     "init-program": "node --loader ts-node/esm postbuild/initialiser.ts",
-    "verify-program": "node --loader ts-node/esm postbuild/verifier.ts"
+    "verify-init": "node --loader ts-node/esm postbuild/verifier.ts"
   }
 }
