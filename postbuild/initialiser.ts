@@ -49,17 +49,10 @@ async function main() {
       })
       .rpc();
 
-    console.log("Program initialised successfully!");
-    console.log("Transaction signature:", tx);
-
-    // Verify initialisation
-    const state = await program.account.stateAccount.fetch(statePda);
-    console.log("State account:", {
-      pollIndex: state.pollIndex.toString(),
-      authority: state.authority.toString(),
-    });
+    console.log("✅ Program initialised successfully!");
+    console.log("✅ Transaction signature:", tx);
   } catch (error) {
-    console.error("Initialisation failed:", error);
+    console.error("❌ Initialisation failed:", error);
   }
 }
 
