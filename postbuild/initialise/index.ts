@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as anchor from "@coral-xyz/anchor";
 import { Program, Idl } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { ColliderBeta } from "../target/types/collider_beta.ts";
+import { ColliderBeta } from "../../target/types/collider_beta.ts";
 
 async function loadJson<T>(path: string): Promise<T> {
   const data = await fs.readFile(path, "utf8");
