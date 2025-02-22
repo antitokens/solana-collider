@@ -22,7 +22,7 @@ async function main() {
   // Setup connection and wallet
   const secretKey = new Uint8Array(keypairFile);
   const wallet = new anchor.Wallet(Keypair.fromSecretKey(secretKey));
-  const connection = new Connection("https://api.devnet.solana.com");
+  const connection = new Connection("http://localhost:8899");
   const provider = new anchor.AnchorProvider(connection, wallet, {
     commitment: "confirmed",
   });
