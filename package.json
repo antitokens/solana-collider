@@ -38,7 +38,7 @@
     "test-cargo-log": "RUST_LOG=info cargo test-sbf -- --nocapture",
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
-    "prepare-production": "node postbuild/prepare/index.js",
+    "prepare": "node postbuild/prepare/index.js",
     "query-txt": "query-security-txt target/deploy/collider_beta.so",
     "initialise": "node --loader ts-node/esm postbuild/initialise/index.ts",
     "create": "node --loader ts-node/esm postbuild/create/index.ts",
