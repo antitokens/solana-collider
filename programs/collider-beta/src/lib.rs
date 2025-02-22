@@ -185,7 +185,7 @@ pub struct CreatePoll<'info> {
         owner = crate::ID, 
         constraint = state.to_account_info().data_len() >= 8 + StateAccount::LEN as usize
     )]
-    pub state: Account<'info, StateAccount>,
+    pub state: Box<Account<'info, StateAccount>>,
     #[account(
         init,
         payer = authority,
@@ -193,7 +193,7 @@ pub struct CreatePoll<'info> {
         seeds = [b"poll", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
-    pub poll: Account<'info, PollAccount>,
+    pub poll: Box<Account<'info, PollAccount>>,
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
@@ -204,7 +204,7 @@ pub struct CreatePoll<'info> {
         seeds = [b"anti_token", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
-    pub poll_anti_token: Account<'info, TokenAccount>,
+    pub poll_anti_token: Box<Account<'info, TokenAccount>>,
     #[account(
         init,
         payer = authority,
@@ -213,7 +213,7 @@ pub struct CreatePoll<'info> {
         seeds = [b"pro_token", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
-    pub poll_pro_token: Account<'info, TokenAccount>,
+    pub poll_pro_token: Box<Account<'info, TokenAccount>>,
     #[account(constraint = anti_mint.key() == ANTI_MINT_ADDRESS @ PredictError::InvalidTokenAccount)]
     /// CHECK: This is Antitoken CA
     pub anti_mint: AccountInfo<'info>,
