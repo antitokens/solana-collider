@@ -7,6 +7,7 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
+use crate::utils::PROGRAM_ID;
 use crate::utils::ANTI_MINT_ADDRESS;
 use crate::utils::PRO_MINT_ADDRESS;
 use anchor_lang::prelude::*;
@@ -17,7 +18,7 @@ pub mod instructions;
 pub mod state;
 pub mod utils;
 
-declare_id!("5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G");
+declare_id!(PROGRAM_ID);
 
 #[program]
 pub mod collider_beta {
@@ -153,6 +154,7 @@ pub struct Admin<'info> {
         bump
     )]
     pub admin: Account<'info, AdminAccount>,
+    
     #[account(mut)]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -162,6 +164,7 @@ pub struct Admin<'info> {
 pub struct Update<'info> {
     #[account(mut, seeds = [b"admin"], bump)]
     pub admin: Account<'info, AdminAccount>,
+    
     #[account(signer)]
     pub authority: Signer<'info>,
 }
@@ -170,6 +173,7 @@ pub struct Update<'info> {
 pub struct Initialise<'info> {
     #[account(init, payer = authority, space = 8 + StateAccount::LEN as usize, seeds = [b"state"], bump)]
     pub state: Account<'info, StateAccount>,
+    
     #[account(mut)]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -185,7 +189,8 @@ pub struct CreatePoll<'info> {
         owner = crate::ID, 
         constraint = state.to_account_info().data_len() >= 8 + StateAccount::LEN as usize
     )]
-    pub state: Box<Account<'info, StateAccount>>,
+    pub state: Account<'info, StateAccount>,
+    
     #[account(
         init,
         payer = authority,
@@ -193,9 +198,11 @@ pub struct CreatePoll<'info> {
         seeds = [b"poll", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
-    pub poll: Box<Account<'info, PollAccount>>,
+    pub poll: Account<'info, PollAccount>,
+    
     #[account(mut)]
     pub authority: Signer<'info>,
+    
     #[account(
         init,
         payer = authority,
@@ -204,7 +211,8 @@ pub struct CreatePoll<'info> {
         seeds = [b"anti_token", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
-    pub poll_anti_token: Box<Account<'info, TokenAccount>>,
+    pub poll_anti_token: Account<'info, TokenAccount>,
+    
     #[account(
         init,
         payer = authority,
@@ -213,15 +221,18 @@ pub struct CreatePoll<'info> {
         seeds = [b"pro_token", state.poll_index.to_le_bytes().as_ref()],
         bump
     )]
-    pub poll_pro_token: Box<Account<'info, TokenAccount>>,
+    pub poll_pro_token: Account<'info, TokenAccount>,
+    
     #[account(constraint = anti_mint.key() == ANTI_MINT_ADDRESS @ PredictError::InvalidTokenAccount)]
     /// CHECK: This is Antitoken CA
     pub anti_mint: AccountInfo<'info>,
+    
     #[account(constraint = pro_mint.key() == PRO_MINT_ADDRESS @ PredictError::InvalidTokenAccount)]
     /// CHECK: This is Protoken CA
     pub pro_mint: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    
     #[account(mut, address = ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount)]
     /// CHECK: This is Antitoken squads vault
     pub vault: AccountInfo<'info>,
@@ -255,20 +266,24 @@ pub struct DepositTokens<'info> {
         bump
     )]
     pub poll: Account<'info, PollAccount>,
+    
     #[account(mut)]
     pub authority: Signer<'info>,
+    
     #[account(
         mut,
         constraint = user_anti_token.owner == authority.key() @ PredictError::InvalidTokenAccount,
         constraint = user_anti_token.mint == poll_anti_token.mint @ PredictError::InvalidTokenAccount
     )]
     pub user_anti_token: Account<'info, TokenAccount>,
+    
     #[account(
         mut,
         constraint = user_pro_token.owner == authority.key() @ PredictError::InvalidTokenAccount,
         constraint = user_pro_token.mint == poll_pro_token.mint @ PredictError::InvalidTokenAccount
     )]
     pub user_pro_token: Account<'info, TokenAccount>,
+    
     #[account(
         mut,
         seeds = [b"anti_token", poll.index.to_le_bytes().as_ref()],
@@ -276,6 +291,7 @@ pub struct DepositTokens<'info> {
         constraint = poll_anti_token.owner == ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount
     )]
     pub poll_anti_token: Account<'info, TokenAccount>,
+    
     #[account(
         mut,
         seeds = [b"pro_token", poll.index.to_le_bytes().as_ref()],
@@ -290,14 +306,19 @@ pub struct DepositTokens<'info> {
 pub struct EqualiseTokens<'info> {
     #[account(mut)]
     pub poll: Account<'info, PollAccount>,
+    
     #[account(mut)]
     pub authority: Signer<'info>,
+    
     #[account(mut)]
     pub user_anti_token: Account<'info, TokenAccount>,
+    
     #[account(mut)]
     pub user_pro_token: Account<'info, TokenAccount>,
+    
     #[account(mut)]
     pub poll_anti_token: Account<'info, TokenAccount>,
+    
     #[account(mut)]
     pub poll_pro_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
@@ -312,8 +333,10 @@ pub struct BulkWithdrawTokens<'info> {
         bump
     )]
     pub poll: Account<'info, PollAccount>,
+    
     #[account(mut)]
     pub authority: Signer<'info>,
+    
     #[account(
         mut,
         seeds = [b"anti_token", poll_index.to_le_bytes().as_ref()],
@@ -321,6 +344,7 @@ pub struct BulkWithdrawTokens<'info> {
         constraint = poll_anti_token.owner == ANTITOKEN_MULTISIG @ PredictError::InvalidTokenAccount
     )]
     pub poll_anti_token: Account<'info, TokenAccount>,
+    
     #[account(
         mut,
         seeds = [b"pro_token", poll_index.to_le_bytes().as_ref()],
@@ -341,30 +365,36 @@ pub struct UserWithdrawTokens<'info> {
         bump,
     )]
     pub state: Account<'info, StateAccount>,
+    
     #[account(
         mut,
         seeds = [b"poll", poll_index.to_le_bytes().as_ref()],
         bump
     )]
     pub poll: Account<'info, PollAccount>,
+    
     #[account(mut)]
     pub authority: Signer<'info>,
+    
     #[account(
         mut,
         constraint = user_anti_token.owner == authority.key() @ PredictError::InvalidTokenAccount
     )]
     pub user_anti_token: Account<'info, TokenAccount>,
+    
     #[account(
         mut,
         constraint = user_pro_token.owner == authority.key() @ PredictError::InvalidTokenAccount
     )]
     pub user_pro_token: Account<'info, TokenAccount>,
+    
     #[account(
         mut,
         seeds = [b"anti_token", poll_index.to_le_bytes().as_ref()],
         bump,
     )]
     pub poll_anti_token: Account<'info, TokenAccount>,
+    
     #[account(
         mut,
         seeds = [b"pro_token", poll_index.to_le_bytes().as_ref()],
@@ -373,6 +403,7 @@ pub struct UserWithdrawTokens<'info> {
     pub poll_pro_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    
     #[account(mut)]
     /// CHECK: This is Antitoken squads vault 
     pub vault: AccountInfo<'info>,
@@ -387,8 +418,10 @@ pub struct SetPollTokenAuthority<'info> {
     )]
     pub state: Account<'info, StateAccount>,
     pub poll: Account<'info, PollAccount>,
+    
     #[account(mut)]
     pub authority: Signer<'info>,
+    
     #[account(
         mut,
         seeds = [b"anti_token", poll_index.to_le_bytes().as_ref()],
@@ -396,6 +429,7 @@ pub struct SetPollTokenAuthority<'info> {
         constraint = poll_anti_token.owner == ANTITOKEN_MULTISIG @ PredictError::Unauthorised
     )]
     pub poll_anti_token: Account<'info, TokenAccount>,
+    
     #[account(
         mut,
         seeds = [b"pro_token", poll_index.to_le_bytes().as_ref()],

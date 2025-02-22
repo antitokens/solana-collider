@@ -526,7 +526,7 @@ mod tests {
 
     #[test]
     fn test_admin_initialisation<'info>() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
         let manager = Keypair::new();
 
         // Create test accounts
@@ -634,7 +634,7 @@ mod tests {
     // Additional test for double initialisation prevention
     #[test]
     fn test_double_initialisation_prevented() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
         let manager = Keypair::new();
 
         // Create test accounts
@@ -683,7 +683,7 @@ mod tests {
     // Test unauthorised updates
     #[test]
     fn test_unauthorised_updates() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
         let unauthorised_user = Keypair::new();
 
         // Create test accounts
@@ -726,7 +726,7 @@ mod tests {
     // Test successful updates
     #[test]
     fn test_successful_updates() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
 
         // Create test accounts with multisig authority
         let (admin_pda, admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
@@ -771,7 +771,7 @@ mod tests {
 
     #[test]
     fn test_set_token_authority() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
         let manager: Pubkey = Pubkey::new_unique();
         let mut token_program = TestAccountData::new_token_program();
 

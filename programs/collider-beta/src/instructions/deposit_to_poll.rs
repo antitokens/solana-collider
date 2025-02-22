@@ -142,7 +142,7 @@ mod tests {
 
     // Fixed test IDs - these should be consistent across tests
     fn program_id() -> Pubkey {
-        Pubkey::from_str(PROGRAM_ID).unwrap()
+        Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap()
     }
 
     struct TestAccountData {

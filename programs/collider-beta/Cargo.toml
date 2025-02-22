@@ -12,9 +12,9 @@ test-bpf = []
 
 [dependencies]
 solana-program = { workspace = true }
-thiserror = "2.0.11"
-spl-token-2022 = { version = "5.0.2", features = ["no-entrypoint"] }
-borsh = "1.5.5"
+thiserror = "1.0"
+spl-token-2022 = { version = "=0.9.0", features = ["no-entrypoint"] }
+borsh = "0.10"
 anchor-lang = { workspace = true }
 anchor-spl = { workspace = true }
 chrono = "0.4"
