@@ -7,9 +7,9 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
-// instructions/create_poll.rs
+// instructions/create_prediction.rs
 use crate::utils::*;
-use crate::CreatePoll;
+use crate::CreatePrediction;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::token;
@@ -17,7 +17,7 @@ use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::SetAuthority;
 
 pub fn create(
-    ctx: Context<CreatePoll>,
+    ctx: Context<CreatePrediction>,
     title: String,
     description: String,
     start_time: String,
@@ -27,7 +27,7 @@ pub fn create(
 ) -> Result<()> {
     // Ensure payment is sufficient
     require!(
-        ctx.accounts.authority.lamports() >= POLL_CREATION_FEE,
+        ctx.accounts.authority.lamports() >= CREATION_FEE,
         PredictError::InsufficientPayment
     );
 
@@ -61,7 +61,7 @@ pub fn create(
     require!(start > now, PredictError::StartTimeInPast);
 
     // Transfer payment to state account
-    let payment_amount = POLL_CREATION_FEE;
+    let payment_amount = CREATION_FEE;
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -75,7 +75,7 @@ pub fn create(
 
     // Set the token account authority to ANTITOKEN_MULTISIG using token instruction
     let cpi_accounts = SetAuthority {
-        account_or_mint: ctx.accounts.poll_anti_token.to_account_info(),
+        account_or_mint: ctx.accounts.prediction_anti_token.to_account_info(),
         current_authority: ctx.accounts.authority.to_account_info(),
     };
 
@@ -86,7 +86,7 @@ pub fn create(
     )?;
 
     let cpi_accounts = SetAuthority {
-        account_or_mint: ctx.accounts.poll_pro_token.to_account_info(),
+        account_or_mint: ctx.accounts.prediction_pro_token.to_account_info(),
         current_authority: ctx.accounts.authority.to_account_info(),
     };
 
@@ -98,37 +98,37 @@ pub fn create(
 
     // Get account infos for manual serialisation
     let state_info = &ctx.accounts.state.to_account_info();
-    let poll_info = &ctx.accounts.poll.to_account_info();
+    let prediction_info = &ctx.accounts.prediction.to_account_info();
     let mut data_state = state_info.try_borrow_mut_data()?;
-    let mut data_poll = poll_info.try_borrow_mut_data()?;
+    let mut data_prediction = prediction_info.try_borrow_mut_data()?;
 
-    // Set poll data
-    ctx.accounts.poll.index = ctx.accounts.state.poll_index;
-    ctx.accounts.poll.title = title.clone();
-    ctx.accounts.poll.description = description;
-    ctx.accounts.poll.start_time = start_time.clone();
-    ctx.accounts.poll.end_time = end_time.clone();
-    ctx.accounts.poll.etc = etc;
-    ctx.accounts.poll.anti = 0;
-    ctx.accounts.poll.pro = 0;
-    ctx.accounts.poll.deposits = vec![];
-    ctx.accounts.poll.equalised = false;
-    ctx.accounts.poll.equalisation_results = None;
+    // Set prediction data
+    ctx.accounts.prediction.index = ctx.accounts.state.index;
+    ctx.accounts.prediction.title = title.clone();
+    ctx.accounts.prediction.description = description;
+    ctx.accounts.prediction.start_time = start_time.clone();
+    ctx.accounts.prediction.end_time = end_time.clone();
+    ctx.accounts.prediction.etc = etc;
+    ctx.accounts.prediction.anti = 0;
+    ctx.accounts.prediction.pro = 0;
+    ctx.accounts.prediction.deposits = vec![];
+    ctx.accounts.prediction.equalised = false;
+    ctx.accounts.prediction.equalisation = None;
 
     // Manual serialisation
-    let serialised_poll = ctx.accounts.poll.try_to_vec()?;
-    data_poll[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+    let serialised_prediction = ctx.accounts.prediction.try_to_vec()?;
+    data_prediction[8..8 + serialised_prediction.len()].copy_from_slice(&serialised_prediction);
 
-    // Increment poll index
-    ctx.accounts.state.poll_index += 1;
+    // Increment prediction index
+    ctx.accounts.state.index += 1;
 
     // Manual serialisation for state
     let serialised_state = ctx.accounts.state.try_to_vec()?;
     data_state[8..8 + serialised_state.len()].copy_from_slice(&serialised_state);
 
     // Emit event
-    emit!(PollCreatedEvent {
-        poll_index: ctx.accounts.poll.index,
+    emit!(CreationEvent {
+        index: ctx.accounts.prediction.index,
         address: ctx.accounts.authority.key(),
         title,
         start_time,
@@ -143,8 +143,8 @@ pub fn create(
 mod tests {
     use super::*;
     use crate::utils::PROGRAM_ID;
-    use crate::CreatePollBumps;
-    use crate::{PollAccount, StateAccount};
+    use crate::CreatePredictionBumps;
+    use crate::{PredictionAccount, StateAccount};
     use anchor_lang::system_program;
     use anchor_lang::Discriminator;
     use anchor_spl::token::{
@@ -177,7 +177,7 @@ mod tests {
             Self {
                 key,
                 lamports: 1_000_000,
-                data: vec![0; 8 + PollAccount::LEN],
+                data: vec![0; 8 + PredictionAccount::LEN],
                 owner,
                 executable: true,
                 rent_epoch: 0,
@@ -276,14 +276,14 @@ mod tests {
             Ok(())
         }
 
-        fn init_poll_data(&mut self, poll: &PollAccount) -> Result<()> {
-            self.data = vec![0; 8 + PollAccount::LEN];
+        fn init_prediction_data(&mut self, prediction: &PredictionAccount) -> Result<()> {
+            self.data = vec![0; 8 + PredictionAccount::LEN];
             let data = self.data.as_mut_slice();
 
-            let disc = PollAccount::discriminator();
+            let disc = PredictionAccount::discriminator();
             data[..8].copy_from_slice(&disc);
 
-            let account_data = poll.try_to_vec()?;
+            let account_data = prediction.try_to_vec()?;
             data[8..8 + account_data.len()].copy_from_slice(&account_data);
 
             Ok(())
@@ -325,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_poll_success() -> Result<()> {
+    fn test_create_prediction_success() -> Result<()> {
         /* Common Setup Begins Here */
         let program_id = program_id();
 
@@ -347,7 +347,7 @@ mod tests {
             TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
-                poll_index: 0,
+                index: 0,
                 authority: manager,
             })
             .unwrap();
@@ -355,8 +355,8 @@ mod tests {
         // Derive PDAs and bumps
         let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
 
-        let (poll_pda, poll_bump) = Pubkey::find_program_address(
-            &[b"poll", state.data[8..16].try_into().unwrap()],
+        let (prediction_pda, prediction_bump) = Pubkey::find_program_address(
+            &[b"prediction", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
@@ -370,25 +370,29 @@ mod tests {
             &program_id,
         );
 
-        let mut poll =
-            TestAccountData::new_account_with_key_and_owner::<PollAccount>(poll_pda, program_id);
-        poll.init_poll_data(&PollAccount::default()).unwrap();
+        let mut prediction = TestAccountData::new_account_with_key_and_owner::<PredictionAccount>(
+            prediction_pda,
+            program_id,
+        );
+        prediction
+            .init_prediction_data(&PredictionAccount::default())
+            .unwrap();
 
         // Initialise creator account
         let mut creator = TestAccountData::new_authority_account(Pubkey::new_unique());
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token_account(pro_token_pda);
+        let mut prediction_anti_token = TestAccountData::new_token_account(anti_token_pda);
+        let mut prediction_pro_token = TestAccountData::new_token_account(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
 
         // Initialise token accounts
-        poll_anti_token
+        prediction_anti_token
             .init_token_account(creator.key, anti_mint.key)
             .unwrap();
-        poll_pro_token
+        prediction_pro_token
             .init_token_account(creator.key, pro_mint.key)
             .unwrap();
 
@@ -398,24 +402,24 @@ mod tests {
 
         // Prepare account infos
         let state_info = state.to_account_info(false);
-        let poll_info = poll.to_account_info(false);
+        let prediction_info = prediction.to_account_info(false);
         let authority_info = creator.to_account_info(true);
         let system_info = system_program.to_account_info(false);
         let anti_mint_info = anti_mint.to_account_info(false);
         let pro_mint_info = pro_mint.to_account_info(false);
-        let poll_anti_token_info = poll_anti_token.to_account_info(false);
-        let poll_pro_token_info = poll_pro_token.to_account_info(false);
+        let prediction_anti_token_info = prediction_anti_token.to_account_info(false);
+        let prediction_pro_token_info = prediction_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let rent_account_info = rent_account.to_account_info(false);
         let vault_info = vault.to_account_info(false);
 
-        // Set up CreatePoll context
-        let mut accounts = CreatePoll {
+        // Set up CreatePrediction context
+        let mut accounts = CreatePrediction {
             state: Account::try_from(&state_info).unwrap(),
-            poll: Account::try_from(&poll_info).unwrap(),
+            prediction: Account::try_from(&prediction_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
-            poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
+            prediction_anti_token: Account::try_from(&prediction_anti_token_info).unwrap(),
+            prediction_pro_token: Account::try_from(&prediction_pro_token_info).unwrap(),
             anti_mint: anti_mint_info.clone(),
             pro_mint: pro_mint_info.clone(),
             vault: vault_info,
@@ -424,19 +428,19 @@ mod tests {
             rent: Sysvar::<Rent>::from_account_info(&rent_account_info)?,
         };
 
-        // Include the CreatePollBumps with the bump for the poll account
-        let bumps = CreatePollBumps {
+        // Include the CreatePredictionBumps with the bump for the prediction account
+        let bumps = CreatePredictionBumps {
             state: state_bump,
-            poll: poll_bump,
-            poll_anti_token: anti_token_bump,
-            poll_pro_token: pro_token_bump,
+            prediction: prediction_bump,
+            prediction_anti_token: anti_token_bump,
+            prediction_pro_token: pro_token_bump,
         };
         /* Common Setup Ends Here */
 
         // Call the create function
         let result = create(
             Context::new(&program_id, &mut accounts, &[], bumps),
-            "Test Poll".to_string(),
+            "Test Prediction".to_string(),
             "Test Description".to_string(),
             "2025-02-01T00:00:00Z".to_string(),
             "2025-02-02T00:00:00Z".to_string(),
@@ -451,30 +455,31 @@ mod tests {
             assert!(result.is_ok());
         }
 
-        // Verify poll data
-        let poll_info_borrowed = poll_info.try_borrow_data()?;
-        let poll_account = PollAccount::try_deserialize(&mut &poll_info_borrowed[..])?;
+        // Verify prediction data
+        let prediction_info_borrowed = prediction_info.try_borrow_data()?;
+        let prediction_account =
+            PredictionAccount::try_deserialize(&mut &prediction_info_borrowed[..])?;
 
-        assert_eq!(poll_account.index, 0);
-        assert_eq!(poll_account.title, "Test Poll");
-        assert_eq!(poll_account.description, "Test Description");
-        assert_eq!(poll_account.start_time, "2025-02-01T00:00:00Z");
-        assert_eq!(poll_account.end_time, "2025-02-02T00:00:00Z");
-        assert_eq!(poll_account.anti, 0);
-        assert_eq!(poll_account.pro, 0);
-        assert!(poll_account.deposits.is_empty());
-        assert!(!poll_account.equalised);
-        assert!(poll_account.equalisation_results.is_none());
+        assert_eq!(prediction_account.index, 0);
+        assert_eq!(prediction_account.title, "Test Prediction");
+        assert_eq!(prediction_account.description, "Test Description");
+        assert_eq!(prediction_account.start_time, "2025-02-01T00:00:00Z");
+        assert_eq!(prediction_account.end_time, "2025-02-02T00:00:00Z");
+        assert_eq!(prediction_account.anti, 0);
+        assert_eq!(prediction_account.pro, 0);
+        assert!(prediction_account.deposits.is_empty());
+        assert!(!prediction_account.equalised);
+        assert!(prediction_account.equalisation.is_none());
         // Verify state update
         let state_account: StateAccount =
             StateAccount::try_deserialize(&mut state_info.try_borrow_data().unwrap().as_ref())
                 .unwrap();
-        assert_eq!(state_account.poll_index, 1);
+        assert_eq!(state_account.index, 1);
         Ok(())
     }
 
     #[test]
-    fn test_create_poll_with_insufficient_payment() -> Result<()> {
+    fn test_create_prediction_with_insufficient_payment() -> Result<()> {
         /* Common Setup Begins Here */
         let program_id = program_id();
 
@@ -496,7 +501,7 @@ mod tests {
             TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
-                poll_index: 0,
+                index: 0,
                 authority: manager,
             })
             .unwrap();
@@ -504,8 +509,8 @@ mod tests {
         // Derive PDAs and bumps
         let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
 
-        let (poll_pda, poll_bump) = Pubkey::find_program_address(
-            &[b"poll", state.data[8..16].try_into().unwrap()],
+        let (prediction_pda, prediction_bump) = Pubkey::find_program_address(
+            &[b"prediction", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
@@ -519,9 +524,13 @@ mod tests {
             &program_id,
         );
 
-        let mut poll =
-            TestAccountData::new_account_with_key_and_owner::<PollAccount>(poll_pda, program_id);
-        poll.init_poll_data(&PollAccount::default()).unwrap();
+        let mut prediction = TestAccountData::new_account_with_key_and_owner::<PredictionAccount>(
+            prediction_pda,
+            program_id,
+        );
+        prediction
+            .init_prediction_data(&PredictionAccount::default())
+            .unwrap();
 
         // Initialise creator account
         let mut creator = TestAccountData {
@@ -534,17 +543,17 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token_account(pro_token_pda);
+        let mut prediction_anti_token = TestAccountData::new_token_account(anti_token_pda);
+        let mut prediction_pro_token = TestAccountData::new_token_account(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
 
         // Initialise token accounts
-        poll_anti_token
+        prediction_anti_token
             .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
-        poll_pro_token
+        prediction_pro_token
             .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
@@ -554,24 +563,24 @@ mod tests {
 
         // Prepare account infos
         let state_info = state.to_account_info(false);
-        let poll_info = poll.to_account_info(false);
+        let prediction_info = prediction.to_account_info(false);
         let authority_info = creator.to_account_info(true);
         let system_info = system_program.to_account_info(false);
         let anti_mint_info = anti_mint.to_account_info(false);
         let pro_mint_info = pro_mint.to_account_info(false);
-        let poll_anti_token_info = poll_anti_token.to_account_info(false);
-        let poll_pro_token_info = poll_pro_token.to_account_info(false);
+        let prediction_anti_token_info = prediction_anti_token.to_account_info(false);
+        let prediction_pro_token_info = prediction_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let rent_account_info = rent_account.to_account_info(false);
         let vault_info = vault.to_account_info(false);
 
-        // Set up CreatePoll context
-        let mut accounts = CreatePoll {
+        // Set up CreatePrediction context
+        let mut accounts = CreatePrediction {
             state: Account::try_from(&state_info).unwrap(),
-            poll: Account::try_from(&poll_info).unwrap(),
+            prediction: Account::try_from(&prediction_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
-            poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
+            prediction_anti_token: Account::try_from(&prediction_anti_token_info).unwrap(),
+            prediction_pro_token: Account::try_from(&prediction_pro_token_info).unwrap(),
             anti_mint: anti_mint_info.clone(),
             pro_mint: pro_mint_info.clone(),
             vault: vault_info,
@@ -580,12 +589,12 @@ mod tests {
             rent: Sysvar::<Rent>::from_account_info(&rent_account_info)?,
         };
 
-        // Include the CreatePollBumps with the bump for the poll account
-        let bumps = CreatePollBumps {
+        // Include the CreatePredictionBumps with the bump for the prediction account
+        let bumps = CreatePredictionBumps {
             state: state_bump,
-            poll: poll_bump,
-            poll_anti_token: anti_token_bump,
-            poll_pro_token: pro_token_bump,
+            prediction: prediction_bump,
+            prediction_anti_token: anti_token_bump,
+            prediction_pro_token: pro_token_bump,
         };
         /* Common Setup Ends Here */
 
@@ -593,7 +602,7 @@ mod tests {
         {
             let result = create(
                 Context::new(&program_id, &mut accounts, &[], bumps),
-                "Test Poll".to_string(),
+                "Test Prediction".to_string(),
                 "Test Description".to_string(),
                 "2025-02-01T00:00:00Z".to_string(),
                 "2025-02-02T00:00:00Z".to_string(),
@@ -609,7 +618,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_poll_with_title_and_description_too_long() -> Result<()> {
+    fn test_create_prediction_with_title_and_description_too_long() -> Result<()> {
         /* Common Setup Begins Here */
         let program_id = program_id();
 
@@ -631,7 +640,7 @@ mod tests {
             TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
-                poll_index: 0,
+                index: 0,
                 authority: manager,
             })
             .unwrap();
@@ -639,8 +648,8 @@ mod tests {
         // Derive PDAs and bumps
         let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
 
-        let (poll_pda, poll_bump) = Pubkey::find_program_address(
-            &[b"poll", state.data[8..16].try_into().unwrap()],
+        let (prediction_pda, prediction_bump) = Pubkey::find_program_address(
+            &[b"prediction", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
@@ -654,9 +663,13 @@ mod tests {
             &program_id,
         );
 
-        let mut poll =
-            TestAccountData::new_account_with_key_and_owner::<PollAccount>(poll_pda, program_id);
-        poll.init_poll_data(&PollAccount::default()).unwrap();
+        let mut prediction = TestAccountData::new_account_with_key_and_owner::<PredictionAccount>(
+            prediction_pda,
+            program_id,
+        );
+        prediction
+            .init_prediction_data(&PredictionAccount::default())
+            .unwrap();
 
         // Initialise creator account
         let mut creator = TestAccountData {
@@ -669,17 +682,17 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token_account(pro_token_pda);
+        let mut prediction_anti_token = TestAccountData::new_token_account(anti_token_pda);
+        let mut prediction_pro_token = TestAccountData::new_token_account(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
 
         // Initialise token accounts
-        poll_anti_token
+        prediction_anti_token
             .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
-        poll_pro_token
+        prediction_pro_token
             .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
@@ -689,24 +702,24 @@ mod tests {
 
         // Prepare account infos
         let state_info = state.to_account_info(false);
-        let poll_info = poll.to_account_info(false);
+        let prediction_info = prediction.to_account_info(false);
         let authority_info = creator.to_account_info(true);
         let system_info = system_program.to_account_info(false);
         let anti_mint_info = anti_mint.to_account_info(false);
         let pro_mint_info = pro_mint.to_account_info(false);
-        let poll_anti_token_info = poll_anti_token.to_account_info(false);
-        let poll_pro_token_info = poll_pro_token.to_account_info(false);
+        let prediction_anti_token_info = prediction_anti_token.to_account_info(false);
+        let prediction_pro_token_info = prediction_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let rent_account_info = rent_account.to_account_info(false);
         let vault_info = vault.to_account_info(false);
 
-        // Set up CreatePoll context
-        let mut accounts = CreatePoll {
+        // Set up CreatePrediction context
+        let mut accounts = CreatePrediction {
             state: Account::try_from(&state_info).unwrap(),
-            poll: Account::try_from(&poll_info).unwrap(),
+            prediction: Account::try_from(&prediction_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
-            poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
+            prediction_anti_token: Account::try_from(&prediction_anti_token_info).unwrap(),
+            prediction_pro_token: Account::try_from(&prediction_pro_token_info).unwrap(),
             anti_mint: anti_mint_info.clone(),
             pro_mint: pro_mint_info.clone(),
             vault: vault_info,
@@ -718,12 +731,12 @@ mod tests {
 
         // Test title too long
         {
-            // Include the CreatePollBumps with the bump for the poll account
-            let bumps = CreatePollBumps {
+            // Include the CreatePredictionBumps with the bump for the prediction account
+            let bumps = CreatePredictionBumps {
                 state: state_bump,
-                poll: poll_bump,
-                poll_anti_token: anti_token_bump,
-                poll_pro_token: pro_token_bump,
+                prediction: prediction_bump,
+                prediction_anti_token: anti_token_bump,
+                prediction_pro_token: pro_token_bump,
             };
             let long_title = "a".repeat((MAX_TITLE_LENGTH + 1) as usize);
             let result = create(
@@ -740,17 +753,17 @@ mod tests {
 
         // Test description too long
         {
-            // Include the CreatePollBumps with the bump for the poll account
-            let bumps = CreatePollBumps {
+            // Include the CreatePredictionBumps with the bump for the prediction account
+            let bumps = CreatePredictionBumps {
                 state: state_bump,
-                poll: poll_bump,
-                poll_anti_token: anti_token_bump,
-                poll_pro_token: pro_token_bump,
+                prediction: prediction_bump,
+                prediction_anti_token: anti_token_bump,
+                prediction_pro_token: pro_token_bump,
             };
             let long_description = "a".repeat((MAX_DESCRIPTION_LENGTH + 1) as usize);
             let result = create(
                 Context::new(&program_id, &mut accounts, &[], bumps),
-                "Test Poll".to_string(),
+                "Test Prediction".to_string(),
                 long_description,
                 "2025-02-01T00:00:00Z".to_string(),
                 "2025-02-02T00:00:00Z".to_string(),
@@ -767,7 +780,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_poll_with_bad_schedule() -> Result<()> {
+    fn test_create_prediction_with_bad_schedule() -> Result<()> {
         /* Common Setup Begins Here */
         let program_id = program_id();
 
@@ -789,7 +802,7 @@ mod tests {
             TestAccountData::new_account_with_key_and_owner::<StateAccount>(manager, program_id);
         state
             .init_state_data(&StateAccount {
-                poll_index: 0,
+                index: 0,
                 authority: manager,
             })
             .unwrap();
@@ -797,8 +810,8 @@ mod tests {
         // Derive PDAs and bumps
         let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
 
-        let (poll_pda, poll_bump) = Pubkey::find_program_address(
-            &[b"poll", state.data[8..16].try_into().unwrap()],
+        let (prediction_pda, prediction_bump) = Pubkey::find_program_address(
+            &[b"prediction", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
@@ -812,9 +825,13 @@ mod tests {
             &program_id,
         );
 
-        let mut poll =
-            TestAccountData::new_account_with_key_and_owner::<PollAccount>(poll_pda, program_id);
-        poll.init_poll_data(&PollAccount::default()).unwrap();
+        let mut prediction = TestAccountData::new_account_with_key_and_owner::<PredictionAccount>(
+            prediction_pda,
+            program_id,
+        );
+        prediction
+            .init_prediction_data(&PredictionAccount::default())
+            .unwrap();
 
         // Initialise creator account
         let mut creator = TestAccountData {
@@ -827,17 +844,17 @@ mod tests {
         };
 
         // Create token accounts
-        let mut poll_anti_token = TestAccountData::new_token_account(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token_account(pro_token_pda);
+        let mut prediction_anti_token = TestAccountData::new_token_account(anti_token_pda);
+        let mut prediction_pro_token = TestAccountData::new_token_account(pro_token_pda);
 
         // Rent for accounts
         let mut rent_account = TestAccountData::init_rent_account();
 
         // Initialise token accounts
-        poll_anti_token
+        prediction_anti_token
             .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
-        poll_pro_token
+        prediction_pro_token
             .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
@@ -847,24 +864,24 @@ mod tests {
 
         // Prepare account infos
         let state_info = state.to_account_info(true);
-        let poll_info = poll.to_account_info(true);
+        let prediction_info = prediction.to_account_info(true);
         let authority_info = creator.to_account_info(true);
         let system_info = system_program.to_account_info(false);
         let anti_mint_info = anti_mint.to_account_info(false);
         let pro_mint_info = pro_mint.to_account_info(false);
-        let poll_anti_token_info = poll_anti_token.to_account_info(false);
-        let poll_pro_token_info = poll_pro_token.to_account_info(false);
+        let prediction_anti_token_info = prediction_anti_token.to_account_info(false);
+        let prediction_pro_token_info = prediction_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let rent_account_info = rent_account.to_account_info(false);
         let vault_info = vault.to_account_info(false);
 
-        // Set up CreatePoll context
-        let mut accounts = CreatePoll {
+        // Set up CreatePrediction context
+        let mut accounts = CreatePrediction {
             state: Account::try_from(&state_info).unwrap(),
-            poll: Account::try_from(&poll_info).unwrap(),
+            prediction: Account::try_from(&prediction_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
-            poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
+            prediction_anti_token: Account::try_from(&prediction_anti_token_info).unwrap(),
+            prediction_pro_token: Account::try_from(&prediction_pro_token_info).unwrap(),
             anti_mint: anti_mint_info.clone(),
             pro_mint: pro_mint_info.clone(),
             vault: vault_info,
@@ -876,16 +893,16 @@ mod tests {
 
         // Test invalid time range
         {
-            // Include the CreatePollBumps with the bump for the poll account
-            let bumps = CreatePollBumps {
+            // Include the CreatePredictionBumps with the bump for the prediction account
+            let bumps = CreatePredictionBumps {
                 state: state_bump,
-                poll: poll_bump,
-                poll_anti_token: anti_token_bump,
-                poll_pro_token: pro_token_bump,
+                prediction: prediction_bump,
+                prediction_anti_token: anti_token_bump,
+                prediction_pro_token: pro_token_bump,
             };
             let result = create(
                 Context::new(&program_id, &mut accounts, &[], bumps),
-                "Test Poll".to_string(),
+                "Test Prediction".to_string(),
                 "Test Description".to_string(),
                 "2025-02-02T00:00:00Z".to_string(), // End before start
                 "2025-02-01T00:00:00Z".to_string(),
@@ -900,16 +917,16 @@ mod tests {
 
         // Test start time in past
         {
-            // Include the CreatePollBumps with the bump for the poll account
-            let bumps = CreatePollBumps {
+            // Include the CreatePredictionBumps with the bump for the prediction account
+            let bumps = CreatePredictionBumps {
                 state: state_bump,
-                poll: poll_bump,
-                poll_anti_token: anti_token_bump,
-                poll_pro_token: pro_token_bump,
+                prediction: prediction_bump,
+                prediction_anti_token: anti_token_bump,
+                prediction_pro_token: pro_token_bump,
             };
             let result = create(
                 Context::new(&program_id, &mut accounts, &[], bumps),
-                "Test Poll".to_string(),
+                "Test Prediction".to_string(),
                 "Test Description".to_string(),
                 "2024-01-01T00:00:00Z".to_string(), // Past date
                 "2025-02-01T00:00:00Z".to_string(),

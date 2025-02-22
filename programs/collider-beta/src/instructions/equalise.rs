@@ -14,23 +14,23 @@ use anchor_lang::prelude::*;
 
 pub fn equalise(
     ctx: Context<EqualiseTokens>,
-    poll_index: u64,
+    index: u64,
     truth: Vec<u64>,
     unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
 ) -> Result<()> {
-    let poll = &mut ctx.accounts.poll;
+    let prediction = &mut ctx.accounts.prediction;
 
-    // Verify poll has ended
+    // Verify prediction has ended
     // Get current time, supporting local testing override
     let now = match unix_timestamp {
         Some(ts) => ts,
         None => Clock::get()?.unix_timestamp,
     }; // CRITICAL: Remove block in production!
-       
+
     // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
-    
-    let end_time = parse_iso_timestamp(&poll.end_time)?;
-    require!(now >= end_time, PredictError::PollActive);
+
+    let end_time = parse_iso_timestamp(&prediction.end_time)?;
+    require!(now >= end_time, PredictError::PredictionActive);
 
     // Validate truth values
     require!(
@@ -38,15 +38,20 @@ pub fn equalise(
         PredictError::InvalidTruthValues
     );
 
-    // Check if poll not already equalised
-    require!(!poll.equalised, PredictError::AlreadyEqualised);
+    // Check if prediction not already equalised
+    require!(!prediction.equalised, PredictError::AlreadyEqualised);
 
     // Calculate distributions and returns
-    let (anti, pro) = equalise_with_truth(&poll.deposits, poll.anti, poll.pro, &truth)?;
+    let (anti, pro) = equalise_with_truth(
+        &prediction.deposits,
+        prediction.anti,
+        prediction.pro,
+        &truth,
+    )?;
 
-    // Update poll state with equalisation results
-    poll.equalised = true;
-    poll.equalisation_results = Some(EqualisationResult {
+    // Update prediction state with equalisation results
+    prediction.equalised = true;
+    prediction.equalisation = Some(Equalisation {
         anti,
         pro,
         truth: truth.clone(),
@@ -54,17 +59,17 @@ pub fn equalise(
     });
 
     // Get account info and serialise
-    let poll_info = poll.to_account_info();
-    let mut data = poll_info.try_borrow_mut_data()?;
-    let serialised_poll = poll.try_to_vec()?;
-    data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+    let prediction_info = prediction.to_account_info();
+    let mut data = prediction_info.try_borrow_mut_data()?;
+    let serialised_prediction = prediction.try_to_vec()?;
+    data[8..8 + serialised_prediction.len()].copy_from_slice(&serialised_prediction);
 
     // Emit equalisation event
     emit!(EqualisationEvent {
-        poll_index,
+        index,
         truth,
-        anti: poll.anti,
-        pro: poll.pro,
+        anti: prediction.anti,
+        pro: prediction.pro,
         timestamp: now,
     });
 
@@ -106,7 +111,7 @@ mod tests {
             Self {
                 key,
                 lamports: 1_000_000,
-                data: vec![0; 8 + PollAccount::LEN],
+                data: vec![0; 8 + PredictionAccount::LEN],
                 owner,
                 executable: true,
                 rent_epoch: 0,
@@ -197,75 +202,75 @@ mod tests {
             }
         }
 
-        // Reusable method to create a test poll
-        fn create_test_poll(authority: Pubkey) -> PollAccount {
-            PollAccount {
+        // Reusable method to create a test prediction
+        fn create_test_prediction(authority: Pubkey) -> PredictionAccount {
+            PredictionAccount {
                 index: 0,
-                title: "Test Poll".to_string(),
+                title: "Test Prediction".to_string(),
                 description: "Test Description".to_string(),
                 start_time: "2025-01-01T00:00:00Z".to_string(),
                 end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
                 etc: None,
                 anti: 70000,
                 pro: 30000,
-                deposits: vec![UserDeposit {
+                deposits: vec![Deposit {
                     address: authority,
                     anti: 70000,
                     pro: 30000,
-                    u: 40000,
-                    s: 100000,
+                    mean: 40000,
+                    stddev: 100000,
                     withdrawn: false,
                 }],
                 equalised: false,
-                equalisation_results: None,
+                equalisation: None,
             }
         }
 
-        // Reusable method to create an active test poll
-        fn create_active_test_poll(authority: Pubkey) -> PollAccount {
-            PollAccount {
+        // Reusable method to create an active test prediction
+        fn create_active_test_prediction(authority: Pubkey) -> PredictionAccount {
+            PredictionAccount {
                 index: 0,
-                title: "Test Poll".to_string(),
+                title: "Test Prediction".to_string(),
                 description: "Test Description".to_string(),
                 start_time: "2025-02-01T00:00:00Z".to_string(),
                 end_time: "2025-03-01T00:00:00Z".to_string(), // Still active
                 etc: None,
                 anti: 70000,
                 pro: 30000,
-                deposits: vec![UserDeposit {
+                deposits: vec![Deposit {
                     address: authority,
                     anti: 70000,
                     pro: 30000,
-                    u: 40000,
-                    s: 100000,
+                    mean: 40000,
+                    stddev: 100000,
                     withdrawn: false,
                 }],
                 equalised: false,
-                equalisation_results: None,
+                equalisation: None,
             }
         }
 
-        // Reusable method to create an equalised test poll
-        fn create_equalised_test_poll(authority: Pubkey) -> PollAccount {
-            PollAccount {
+        // Reusable method to create an equalised test prediction
+        fn create_equalised_test_prediction(authority: Pubkey) -> PredictionAccount {
+            PredictionAccount {
                 index: 0,
-                title: "Test Poll".to_string(),
+                title: "Test Prediction".to_string(),
                 description: "Test Description".to_string(),
                 start_time: "2025-01-01T00:00:00Z".to_string(),
                 end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
                 etc: None,
                 anti: 70000,
                 pro: 30000,
-                deposits: vec![UserDeposit {
+                deposits: vec![Deposit {
                     address: authority,
                     anti: 70000,
                     pro: 30000,
-                    u: 40000,
-                    s: 100000,
+                    mean: 40000,
+                    stddev: 100000,
                     withdrawn: false,
                 }],
                 equalised: true,
-                equalisation_results: Some(EqualisationResult {
+                equalisation: Some(Equalisation {
                     truth: vec![60000, 40000],
                     anti: vec![70000],
                     pro: vec![30000],
@@ -285,7 +290,7 @@ mod tests {
         }
 
         // Create test accounts
-        let mut poll = TestAccountData::new_account_with_key_and_owner::<PollAccount>(
+        let mut prediction = TestAccountData::new_account_with_key_and_owner::<PredictionAccount>(
             Pubkey::new_unique(),
             program_id,
         );
@@ -297,8 +302,8 @@ mod tests {
 
         let mut user_anti = TestAccountData::new_token();
         let mut user_pro = TestAccountData::new_token();
-        let mut poll_anti = TestAccountData::new_token();
-        let mut poll_pro = TestAccountData::new_token();
+        let mut prediction_anti = TestAccountData::new_token();
+        let mut prediction_pro = TestAccountData::new_token();
 
         user_anti
             .init_token_account(user_authority_key, mint_key)
@@ -306,41 +311,41 @@ mod tests {
         user_pro
             .init_token_account(user_authority_key, mint_key)
             .unwrap();
-        poll_anti
+        prediction_anti
             .init_token_account(Pubkey::new_unique(), mint_key)
             .unwrap();
-        poll_pro
+        prediction_pro
             .init_token_account(Pubkey::new_unique(), mint_key)
             .unwrap();
 
         let mut token_program = TestAccountData::new_token_program();
 
-        // Create poll with deposits
-        let poll_data = TestAccountData::create_test_poll(authority.key);
+        // Create prediction with deposits
+        let prediction_data = TestAccountData::create_test_prediction(authority.key);
 
         // Write discriminator
-        poll.data[..8].copy_from_slice(&PollAccount::discriminator());
+        prediction.data[..8].copy_from_slice(&PredictionAccount::discriminator());
 
-        // Serialise initial poll data
-        let serialised_poll = poll_data.try_to_vec().unwrap();
-        poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+        // Serialise initial prediction data
+        let serialised_prediction = prediction_data.try_to_vec().unwrap();
+        prediction.data[8..8 + serialised_prediction.len()].copy_from_slice(&serialised_prediction);
 
         // Get account infos
-        let poll_info = poll.to_account_info(false);
+        let prediction_info = prediction.to_account_info(false);
         let authority_info = authority.to_account_info(true);
         let user_anti_info = user_anti.to_account_info(false);
         let user_pro_info = user_pro.to_account_info(false);
-        let poll_anti_info = poll_anti.to_account_info(false);
-        let poll_pro_info = poll_pro.to_account_info(false);
+        let prediction_anti_info = prediction_anti.to_account_info(false);
+        let prediction_pro_info = prediction_pro.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
 
         let mut accounts = EqualiseTokens {
-            poll: Account::try_from(&poll_info).unwrap(),
+            prediction: Account::try_from(&prediction_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
             user_anti_token: TestAccountData::into_token_account(&user_anti_info),
             user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-            poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-            poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+            prediction_anti_token: TestAccountData::into_token_account(&prediction_anti_info),
+            prediction_pro_token: TestAccountData::into_token_account(&prediction_pro_info),
             token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
         };
 
@@ -357,15 +362,16 @@ mod tests {
             assert!(result.is_ok());
         }
 
-        // Verify poll state after equalisation
-        let poll_account: PollAccount =
-            PollAccount::try_deserialize(&mut poll_info.try_borrow_data().unwrap().as_ref())
-                .unwrap();
+        // Verify prediction state after equalisation
+        let prediction_account: PredictionAccount = PredictionAccount::try_deserialize(
+            &mut prediction_info.try_borrow_data().unwrap().as_ref(),
+        )
+        .unwrap();
 
-        assert!(poll_account.equalised);
-        assert!(poll_account.equalisation_results.is_some());
+        assert!(prediction_account.equalised);
+        assert!(prediction_account.equalisation.is_some());
 
-        let results = poll_account.equalisation_results.unwrap();
+        let results = prediction_account.equalisation.unwrap();
         assert_eq!(results.truth, truth);
         assert!(!results.anti.is_empty());
         assert!(!results.pro.is_empty());
@@ -385,7 +391,7 @@ mod tests {
         }
 
         // Create test accounts
-        let mut poll = TestAccountData::new_account_with_key_and_owner::<PollAccount>(
+        let mut prediction = TestAccountData::new_account_with_key_and_owner::<PredictionAccount>(
             Pubkey::new_unique(),
             program_id,
         );
@@ -395,48 +401,49 @@ mod tests {
         let user = Pubkey::new_unique();
         let mut user_anti = TestAccountData::new_token();
         let mut user_pro = TestAccountData::new_token();
-        let mut poll_anti = TestAccountData::new_token();
-        let mut poll_pro = TestAccountData::new_token();
+        let mut prediction_anti = TestAccountData::new_token();
+        let mut prediction_pro = TestAccountData::new_token();
 
         user_anti.init_token_account(user, anti_mint.key).unwrap();
         user_pro.init_token_account(user, pro_mint.key).unwrap();
-        poll_anti
+        prediction_anti
             .init_token_account(Pubkey::new_unique(), anti_mint.key)
             .unwrap();
-        poll_pro
+        prediction_pro
             .init_token_account(Pubkey::new_unique(), pro_mint.key)
             .unwrap();
 
         let mut token_program = TestAccountData::new_token_program();
 
-        // Test active poll (should fail)
+        // Test active prediction (should fail)
         {
-            // Create poll with deposits
-            let poll_data = TestAccountData::create_active_test_poll(authority.key);
+            // Create prediction with deposits
+            let prediction_data = TestAccountData::create_active_test_prediction(authority.key);
 
             // Write discriminator
-            poll.data[..8].copy_from_slice(&PollAccount::discriminator());
+            prediction.data[..8].copy_from_slice(&PredictionAccount::discriminator());
 
-            // Serialise initial poll data
-            let serialised_poll = poll_data.try_to_vec().unwrap();
-            poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+            // Serialise initial prediction data
+            let serialised_prediction = prediction_data.try_to_vec().unwrap();
+            prediction.data[8..8 + serialised_prediction.len()]
+                .copy_from_slice(&serialised_prediction);
 
             // Get account infos
-            let poll_info = poll.to_account_info(false);
+            let prediction_info = prediction.to_account_info(false);
             let authority_info = authority.to_account_info(true);
             let user_anti_info = user_anti.to_account_info(false);
             let user_pro_info = user_pro.to_account_info(false);
-            let poll_anti_info = poll_anti.to_account_info(false);
-            let poll_pro_info = poll_pro.to_account_info(false);
+            let prediction_anti_info = prediction_anti.to_account_info(false);
+            let prediction_pro_info = prediction_pro.to_account_info(false);
             let token_program_info = token_program.to_account_info(false);
 
             let mut accounts = EqualiseTokens {
-                poll: Account::try_from(&poll_info).unwrap(),
+                prediction: Account::try_from(&prediction_info).unwrap(),
                 authority: Signer::try_from(&authority_info).unwrap(),
                 user_anti_token: TestAccountData::into_token_account(&user_anti_info),
                 user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-                poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-                poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+                prediction_anti_token: TestAccountData::into_token_account(&prediction_anti_info),
+                prediction_pro_token: TestAccountData::into_token_account(&prediction_pro_info),
                 token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
             };
 
@@ -444,39 +451,40 @@ mod tests {
             let truth = vec![6000, 4000];
             let result = equalise(ctx, 0, truth, Some(1736899200));
             match result {
-                Err(err) => assert_eq!(err, PredictError::PollActive.into()),
-                _ => panic!("Expected poll active error"),
+                Err(err) => assert_eq!(err, PredictError::PredictionActive.into()),
+                _ => panic!("Expected prediction active error"),
             }
         }
 
         // Test invalid truth values
         {
-            // Create poll with deposits
-            let poll_data = TestAccountData::create_test_poll(authority.key);
+            // Create prediction with deposits
+            let prediction_data = TestAccountData::create_test_prediction(authority.key);
 
             // Write discriminator
-            poll.data[..8].copy_from_slice(&PollAccount::discriminator());
+            prediction.data[..8].copy_from_slice(&PredictionAccount::discriminator());
 
-            // Serialise initial poll data
-            let serialised_poll = poll_data.try_to_vec().unwrap();
-            poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+            // Serialise initial prediction data
+            let serialised_prediction = prediction_data.try_to_vec().unwrap();
+            prediction.data[8..8 + serialised_prediction.len()]
+                .copy_from_slice(&serialised_prediction);
 
             // Get account infos
-            let poll_info = poll.to_account_info(false);
+            let prediction_info = prediction.to_account_info(false);
             let authority_info = authority.to_account_info(true);
             let user_anti_info = user_anti.to_account_info(false);
             let user_pro_info = user_pro.to_account_info(false);
-            let poll_anti_info = poll_anti.to_account_info(false);
-            let poll_pro_info = poll_pro.to_account_info(false);
+            let prediction_anti_info = prediction_anti.to_account_info(false);
+            let prediction_pro_info = prediction_pro.to_account_info(false);
             let token_program_info = token_program.to_account_info(false);
 
             let mut accounts = EqualiseTokens {
-                poll: Account::try_from(&poll_info).unwrap(),
+                prediction: Account::try_from(&prediction_info).unwrap(),
                 authority: Signer::try_from(&authority_info).unwrap(),
                 user_anti_token: TestAccountData::into_token_account(&user_anti_info),
                 user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-                poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-                poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+                prediction_anti_token: TestAccountData::into_token_account(&prediction_anti_info),
+                prediction_pro_token: TestAccountData::into_token_account(&prediction_pro_info),
                 token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
             };
 
@@ -489,34 +497,35 @@ mod tests {
             }
         }
 
-        // Test already equalised poll
+        // Test already equalised prediction
         {
-            // Create poll with deposits
-            let poll_data = TestAccountData::create_equalised_test_poll(authority.key);
+            // Create prediction with deposits
+            let prediction_data = TestAccountData::create_equalised_test_prediction(authority.key);
 
             // Write discriminator
-            poll.data[..8].copy_from_slice(&PollAccount::discriminator());
+            prediction.data[..8].copy_from_slice(&PredictionAccount::discriminator());
 
-            // Serialise initial poll data
-            let serialised_poll = poll_data.try_to_vec().unwrap();
-            poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+            // Serialise initial prediction data
+            let serialised_prediction = prediction_data.try_to_vec().unwrap();
+            prediction.data[8..8 + serialised_prediction.len()]
+                .copy_from_slice(&serialised_prediction);
 
             // Get account infos
-            let poll_info = poll.to_account_info(false);
+            let prediction_info = prediction.to_account_info(false);
             let authority_info = authority.to_account_info(true);
             let user_anti_info = user_anti.to_account_info(false);
             let user_pro_info = user_pro.to_account_info(false);
-            let poll_anti_info = poll_anti.to_account_info(false);
-            let poll_pro_info = poll_pro.to_account_info(false);
+            let prediction_anti_info = prediction_anti.to_account_info(false);
+            let prediction_pro_info = prediction_pro.to_account_info(false);
             let token_program_info = token_program.to_account_info(false);
 
             let mut accounts = EqualiseTokens {
-                poll: Account::try_from(&poll_info).unwrap(),
+                prediction: Account::try_from(&prediction_info).unwrap(),
                 authority: Signer::try_from(&authority_info).unwrap(),
                 user_anti_token: TestAccountData::into_token_account(&user_anti_info),
                 user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-                poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-                poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+                prediction_anti_token: TestAccountData::into_token_account(&prediction_anti_info),
+                prediction_pro_token: TestAccountData::into_token_account(&prediction_pro_info),
                 token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
             };
 

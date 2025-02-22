@@ -15,10 +15,10 @@ pub fn initialise(ctx: Context<Initialise>) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
     // Prevent unnecessary state writes if already initialised
-    require!(state.poll_index == 0, PredictError::AlreadyInitialised);
+    require!(state.index == 0, PredictError::AlreadyInitialised);
 
     // Directly set values without redundant references
-    state.poll_index = 0;
+    state.index = 0;
     state.authority = ctx.accounts.authority.key();
 
     Ok(())
@@ -29,8 +29,8 @@ mod tests {
     use super::*;
     use crate::utils::PROGRAM_ID;
     use crate::InitialiseBumps;
-    use crate::PollAccount;
     use crate::PredictError;
+    use crate::PredictionAccount;
     use crate::StateAccount;
     use anchor_lang::prelude::AccountInfo;
     use anchor_lang::solana_program::system_program;
@@ -60,7 +60,7 @@ mod tests {
             Self {
                 key,
                 lamports: 1_000_000,
-                data: vec![0; 8 + PollAccount::LEN],
+                data: vec![0; 8 + PredictionAccount::LEN],
                 owner,
                 executable: false,
                 rent_epoch: 0,
@@ -130,7 +130,7 @@ mod tests {
 
         // Initialise state account
         let state_data = StateAccount {
-            poll_index: 0,
+            index: 0,
             authority: authority.key,
         };
         state.init_state_data(&state_data).unwrap();
@@ -170,7 +170,7 @@ mod tests {
 
         // Initialise state account
         let state_data = StateAccount {
-            poll_index: 0,
+            index: 0,
             authority: authority_key,
         };
         state.init_state_data(&state_data).unwrap();
@@ -198,7 +198,7 @@ mod tests {
 
         // Update state
         let updated_state = StateAccount {
-            poll_index: 1,
+            index: 1,
             authority: authority_key,
         };
         state.init_state_data(&updated_state).unwrap();
@@ -243,7 +243,7 @@ mod tests {
         let different_authority = Pubkey::new_unique();
 
         let state_data = StateAccount {
-            poll_index: 0,
+            index: 0,
             authority: different_authority,
         };
         state.init_state_data(&state_data).unwrap();
@@ -288,7 +288,7 @@ mod tests {
         let mut system = TestAccountData::new_system_account();
 
         let state_data = StateAccount {
-            poll_index: 0,
+            index: 0,
             authority: authority.key,
         };
 
@@ -320,7 +320,7 @@ mod tests {
             StateAccount::try_deserialize(&mut state_info.try_borrow_data().unwrap().as_ref())
                 .unwrap();
 
-        assert_eq!(state.poll_index, 0);
+        assert_eq!(state.index, 0);
         assert_eq!(state.authority, authority_info.key());
     }
 }

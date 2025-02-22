@@ -16,12 +16,12 @@ use anchor_spl::token::{self, Transfer};
 
 pub fn deposit(
     ctx: Context<DepositTokens>,
-    poll_index: u64,
+    index: u64,
     anti: u64,
     pro: u64,
     unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
 ) -> Result<()> {
-    let poll = &mut ctx.accounts.poll;
+    let prediction = &mut ctx.accounts.prediction;
 
     // Get current time, supporting local testing override
     let now = match unix_timestamp {
@@ -31,8 +31,8 @@ pub fn deposit(
 
     // CRITICAL: Add line in production!let now = Clock::get()?.unix_timestamp;
 
-    // Verify poll is active
-    require!(poll.is_active(now), PredictError::PollInactive);
+    // Verify prediction is active
+    require!(prediction.is_active(now), PredictError::PredictionInactive);
 
     // Verify minimum deposit
     require!(
@@ -40,13 +40,13 @@ pub fn deposit(
         PredictError::InsufficientDeposit
     );
 
-    // Check poll token account authorities
+    // Check prediction token account authorities
     require!(
-        ctx.accounts.poll_anti_token.owner == ANTITOKEN_MULTISIG,
+        ctx.accounts.prediction_anti_token.owner == ANTITOKEN_MULTISIG,
         PredictError::InvalidTokenAccount
     );
     require!(
-        ctx.accounts.poll_pro_token.owner == ANTITOKEN_MULTISIG,
+        ctx.accounts.prediction_pro_token.owner == ANTITOKEN_MULTISIG,
         PredictError::InvalidTokenAccount
     );
 
@@ -57,7 +57,7 @@ pub fn deposit(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.user_anti_token.to_account_info(),
-                    to: ctx.accounts.poll_anti_token.to_account_info(),
+                    to: ctx.accounts.prediction_anti_token.to_account_info(),
                     authority: ctx.accounts.authority.to_account_info(),
                 },
             ),
@@ -72,7 +72,7 @@ pub fn deposit(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.user_pro_token.to_account_info(),
-                    to: ctx.accounts.poll_pro_token.to_account_info(),
+                    to: ctx.accounts.prediction_pro_token.to_account_info(),
                     authority: ctx.accounts.authority.to_account_info(),
                 },
             ),
@@ -80,46 +80,46 @@ pub fn deposit(
         )?;
     }
 
-    // Calculate metrics (u and s values)
-    let (u, s) = collide(anti, pro)?;
+    // Calculate metrics (mean and stddev values)
+    let (mean, stddev) = collide(anti, pro)?;
 
-    // Serialise and update poll data
-    let poll_info = poll.to_account_info();
-    let mut data_poll = poll_info.try_borrow_mut_data()?;
+    // Serialise and update prediction data
+    let prediction_info = prediction.to_account_info();
+    let mut data_prediction = prediction_info.try_borrow_mut_data()?;
 
     // Create deposit record
-    let deposit = UserDeposit {
+    let deposit = Deposit {
         address: ctx.accounts.authority.key(),
         anti,
         pro,
-        u,
-        s,
+        mean,
+        stddev,
         withdrawn: false,
     };
 
-    // Update poll state
-    poll.deposits.push(deposit);
-    poll.anti = poll
+    // Update prediction state
+    prediction.deposits.push(deposit);
+    prediction.anti = prediction
         .anti
         .checked_add(anti)
         .ok_or(error!(PredictError::MathError))?;
-    poll.pro = poll
+    prediction.pro = prediction
         .pro
         .checked_add(pro)
         .ok_or(error!(PredictError::MathError))?;
 
-    // Serialise updated poll state
-    let serialised_poll = poll.try_to_vec()?;
-    data_poll[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+    // Serialise updated prediction state
+    let serialised_prediction = prediction.try_to_vec()?;
+    data_prediction[8..8 + serialised_prediction.len()].copy_from_slice(&serialised_prediction);
 
     // Emit deposit event
     emit!(DepositEvent {
-        poll_index,
+        index,
         address: ctx.accounts.authority.key(),
         anti,
         pro,
-        u,
-        s,
+        mean,
+        stddev,
         timestamp: now,
     });
 
@@ -173,7 +173,7 @@ mod tests {
             Self {
                 key,
                 lamports: 1_000_000,
-                data: vec![0; 8 + PollAccount::LEN],
+                data: vec![0; 8 + PredictionAccount::LEN],
                 owner,
                 executable: true,
                 rent_epoch: 0,
@@ -221,14 +221,14 @@ mod tests {
             Ok(())
         }
 
-        fn init_poll_data(&mut self, poll: &PollAccount) -> Result<()> {
-            self.data = vec![0; 8 + PollAccount::LEN];
+        fn init_prediction_data(&mut self, prediction: &PredictionAccount) -> Result<()> {
+            self.data = vec![0; 8 + PredictionAccount::LEN];
             let data = self.data.as_mut_slice();
 
-            let disc = PollAccount::discriminator();
+            let disc = PredictionAccount::discriminator();
             data[..8].copy_from_slice(&disc);
 
-            let account_data = poll.try_to_vec()?;
+            let account_data = prediction.try_to_vec()?;
             data[8..8 + account_data.len()].copy_from_slice(&account_data);
 
             Ok(())
@@ -260,24 +260,25 @@ mod tests {
 
     // Struct to hold all test accounts
     struct TestAccounts {
-        pub poll_data: TestAccountData,
+        pub prediction_data: TestAccountData,
         pub authority: TestAccountData,
         pub user_anti_token: TestAccountData,
         pub user_pro_token: TestAccountData,
-        pub poll_anti_token: TestAccountData,
-        pub poll_pro_token: TestAccountData,
+        pub prediction_anti_token: TestAccountData,
+        pub prediction_pro_token: TestAccountData,
         pub token_program: TestAccountData,
     }
 
     fn create_test_accounts(
-        poll_pda: Pubkey,
+        prediction_pda: Pubkey,
         anti_token_pda: Pubkey,
         pro_token_pda: Pubkey,
         program_id: Pubkey,
     ) -> TestAccounts {
         TestAccounts {
-            poll_data: TestAccountData::new_account_with_key_and_owner::<StateAccount>(
-                poll_pda, program_id,
+            prediction_data: TestAccountData::new_account_with_key_and_owner::<StateAccount>(
+                prediction_pda,
+                program_id,
             ),
             authority: TestAccountData::new_account_with_key_and_owner::<StateAccount>(
                 ANTITOKEN_MULTISIG,
@@ -285,8 +286,8 @@ mod tests {
             ),
             user_anti_token: TestAccountData::new_token(Pubkey::new_unique()),
             user_pro_token: TestAccountData::new_token(Pubkey::new_unique()),
-            poll_anti_token: TestAccountData::new_token(anti_token_pda),
-            poll_pro_token: TestAccountData::new_token(pro_token_pda),
+            prediction_anti_token: TestAccountData::new_token(anti_token_pda),
+            prediction_pro_token: TestAccountData::new_token(pro_token_pda),
 
             // Correct SPL Token Program ID
             token_program: TestAccountData {
@@ -300,11 +301,11 @@ mod tests {
         }
     }
 
-    // Reusable method to create a test poll
-    fn create_test_poll(start_time: &str, end_time: &str) -> PollAccount {
-        PollAccount {
+    // Reusable method to create a test prediction
+    fn create_test_prediction(start_time: &str, end_time: &str) -> PredictionAccount {
+        PredictionAccount {
             index: 0,
-            title: "Test Poll".to_string(),
+            title: "Test Prediction".to_string(),
             description: "Test Description".to_string(),
             start_time: start_time.to_string(),
             end_time: end_time.to_string(),
@@ -313,7 +314,7 @@ mod tests {
             pro: 0,
             deposits: vec![],
             equalised: false,
-            equalisation_results: None,
+            equalisation: None,
         }
     }
 
@@ -337,14 +338,14 @@ mod tests {
             TestAccountData::new_account_with_key_and_owner::<StateAccount>(root, program_id);
         state
             .init_state_data(&StateAccount {
-                poll_index: 0,
+                index: 0,
                 authority: root,
             })
             .unwrap();
 
         // Derive PDAs and bumps
-        let (poll_pda, poll_bump) = Pubkey::find_program_address(
-            &[b"poll", state.data[8..16].try_into().unwrap()],
+        let (prediction_pda, prediction_bump) = Pubkey::find_program_address(
+            &[b"prediction", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
@@ -359,7 +360,7 @@ mod tests {
         );
 
         let mut accounts =
-            create_test_accounts(poll_pda, anti_token_pda, pro_token_pda, program_id);
+            create_test_accounts(prediction_pda, anti_token_pda, pro_token_pda, program_id);
 
         let authority_key = Pubkey::new_unique();
 
@@ -372,13 +373,13 @@ mod tests {
             .user_pro_token
             .init_token_account(authority_key, pro_mint.key)
             .unwrap();
-        // Initialise poll token accounts
+        // Initialise prediction token accounts
         accounts
-            .poll_anti_token
+            .prediction_anti_token
             .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
         accounts
-            .poll_pro_token
+            .prediction_pro_token
             .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
@@ -397,53 +398,58 @@ mod tests {
         let user_anti_token = TestAccountData::into_token_account(&binding_user_anti);
         let binding_user_pro = accounts.user_pro_token.to_account_info(false);
         let user_pro_token = TestAccountData::into_token_account(&binding_user_pro);
-        let binding_poll_anti = accounts.poll_anti_token.to_account_info(false);
-        let poll_anti_token = TestAccountData::into_token_account(&binding_poll_anti);
-        let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
-        let poll_pro_token = TestAccountData::into_token_account(&binding_poll_pro);
+        let binding_prediction_anti = accounts.prediction_anti_token.to_account_info(false);
+        let prediction_anti_token = TestAccountData::into_token_account(&binding_prediction_anti);
+        let binding_prediction_pro = accounts.prediction_pro_token.to_account_info(false);
+        let prediction_pro_token = TestAccountData::into_token_account(&binding_prediction_pro);
 
         // Verify initialisation
         assert_eq!(user_anti_token.amount, 0);
         assert_eq!(user_pro_token.amount, 0);
-        assert_eq!(poll_anti_token.amount, 0);
-        assert_eq!(poll_pro_token.amount, 0);
+        assert_eq!(prediction_anti_token.amount, 0);
+        assert_eq!(prediction_pro_token.amount, 0);
 
         // Get account infos
         let authority_info = accounts.authority.to_account_info(true);
         let user_anti_info = accounts.user_anti_token.to_account_info(false);
         let user_pro_info = accounts.user_pro_token.to_account_info(false);
-        let poll_anti_info = accounts.poll_anti_token.to_account_info(false);
-        let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
+        let prediction_anti_info = accounts.prediction_anti_token.to_account_info(false);
+        let prediction_pro_info = accounts.prediction_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        // Create and initialise the poll account
-        let poll = create_test_poll("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
-        accounts.poll_data.init_poll_data(&poll).unwrap();
+        // Create and initialise the prediction account
+        let prediction = create_test_prediction("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
+        accounts
+            .prediction_data
+            .init_prediction_data(&prediction)
+            .unwrap();
 
-        let poll_account_info = accounts.poll_data.to_account_info(false);
+        let prediction_account_info = accounts.prediction_data.to_account_info(false);
 
         // Check that the buffer is correctly allocated
-        assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
+        assert!(
+            prediction_account_info.try_borrow_data().unwrap().len() >= 8 + PredictionAccount::LEN
+        );
 
         // Create deposit accounts
         let mut accounts = DepositTokens {
-            poll: Account::try_from(&poll_account_info).unwrap(),
+            prediction: Account::try_from(&prediction_account_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
             user_anti_token: TestAccountData::into_token_account(&user_anti_info),
             user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-            poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-            poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+            prediction_anti_token: TestAccountData::into_token_account(&prediction_anti_info),
+            prediction_pro_token: TestAccountData::into_token_account(&prediction_pro_info),
             token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
         };
 
         // Create bumps
         let bumps = DepositTokensBumps {
-            poll: poll_bump,
-            poll_anti_token: anti_token_bump,
-            poll_pro_token: pro_token_bump,
+            prediction: prediction_bump,
+            prediction_anti_token: anti_token_bump,
+            prediction_pro_token: pro_token_bump,
         };
 
-        // Create context with bump for poll PDA
+        // Create context with bump for prediction PDA
         let ctx = Context::new(&program_id, &mut accounts, &[], bumps);
         /* Common Setup Ends Here */
 
@@ -457,15 +463,16 @@ mod tests {
             assert!(result.is_ok());
         }
 
-        // Verify poll state updates
-        let poll_info_borrowed = poll_account_info.try_borrow_data().unwrap();
-        let updated_poll = PollAccount::try_deserialize(&mut &poll_info_borrowed[..]).unwrap();
+        // Verify prediction state updates
+        let prediction_info_borrowed = prediction_account_info.try_borrow_data().unwrap();
+        let updated_prediction =
+            PredictionAccount::try_deserialize(&mut &prediction_info_borrowed[..]).unwrap();
 
-        assert_eq!(updated_poll.anti, 50_000);
-        assert_eq!(updated_poll.pro, 50_000);
-        assert_eq!(updated_poll.deposits.len(), 1);
+        assert_eq!(updated_prediction.anti, 50_000);
+        assert_eq!(updated_prediction.pro, 50_000);
+        assert_eq!(updated_prediction.deposits.len(), 1);
 
-        let deposit_record = &updated_poll.deposits[0];
+        let deposit_record = &updated_prediction.deposits[0];
         assert_eq!(deposit_record.address, authority_info.key());
         assert_eq!(deposit_record.anti, 50_000);
         assert_eq!(deposit_record.pro, 50_000);
@@ -492,14 +499,14 @@ mod tests {
             TestAccountData::new_account_with_key_and_owner::<StateAccount>(root, program_id);
         state
             .init_state_data(&StateAccount {
-                poll_index: 0,
+                index: 0,
                 authority: root,
             })
             .unwrap();
 
         // Derive PDAs and bumps
-        let (poll_pda, poll_bump) = Pubkey::find_program_address(
-            &[b"poll", state.data[8..16].try_into().unwrap()],
+        let (prediction_pda, prediction_bump) = Pubkey::find_program_address(
+            &[b"prediction", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
@@ -514,7 +521,7 @@ mod tests {
         );
 
         let mut accounts =
-            create_test_accounts(poll_pda, anti_token_pda, pro_token_pda, program_id);
+            create_test_accounts(prediction_pda, anti_token_pda, pro_token_pda, program_id);
 
         let authority_key = Pubkey::new_unique();
 
@@ -527,13 +534,13 @@ mod tests {
             .user_pro_token
             .init_token_account(authority_key, pro_mint.key)
             .unwrap();
-        // Initialise poll token accounts
+        // Initialise prediction token accounts
         accounts
-            .poll_anti_token
+            .prediction_anti_token
             .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
         accounts
-            .poll_pro_token
+            .prediction_pro_token
             .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
@@ -552,56 +559,61 @@ mod tests {
         let user_anti_token = TestAccountData::into_token_account(&binding_user_anti);
         let binding_user_pro = accounts.user_pro_token.to_account_info(false);
         let user_pro_token = TestAccountData::into_token_account(&binding_user_pro);
-        let binding_poll_anti = accounts.poll_anti_token.to_account_info(false);
-        let poll_anti_token = TestAccountData::into_token_account(&binding_poll_anti);
-        let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
-        let poll_pro_token = TestAccountData::into_token_account(&binding_poll_pro);
+        let binding_prediction_anti = accounts.prediction_anti_token.to_account_info(false);
+        let prediction_anti_token = TestAccountData::into_token_account(&binding_prediction_anti);
+        let binding_prediction_pro = accounts.prediction_pro_token.to_account_info(false);
+        let prediction_pro_token = TestAccountData::into_token_account(&binding_prediction_pro);
 
         // Verify initialisation
         assert_eq!(user_anti_token.amount, 0);
         assert_eq!(user_pro_token.amount, 0);
-        assert_eq!(poll_anti_token.amount, 0);
-        assert_eq!(poll_pro_token.amount, 0);
+        assert_eq!(prediction_anti_token.amount, 0);
+        assert_eq!(prediction_pro_token.amount, 0);
 
         // Get account infos
         let authority_info = accounts.authority.to_account_info(true);
         let user_anti_info = accounts.user_anti_token.to_account_info(false);
         let user_pro_info = accounts.user_pro_token.to_account_info(false);
-        let poll_anti_info = accounts.poll_anti_token.to_account_info(false);
-        let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
+        let prediction_anti_info = accounts.prediction_anti_token.to_account_info(false);
+        let prediction_pro_info = accounts.prediction_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        // Create and initialise the poll account
-        let poll = create_test_poll("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
-        accounts.poll_data.init_poll_data(&poll).unwrap();
+        // Create and initialise the prediction account
+        let prediction = create_test_prediction("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
+        accounts
+            .prediction_data
+            .init_prediction_data(&prediction)
+            .unwrap();
 
-        let poll_account_info = accounts.poll_data.to_account_info(false);
+        let prediction_account_info = accounts.prediction_data.to_account_info(false);
 
         // Check that the buffer is correctly allocated
-        assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
+        assert!(
+            prediction_account_info.try_borrow_data().unwrap().len() >= 8 + PredictionAccount::LEN
+        );
         /* Common Setup Begins Here */
 
         // Test minimum deposit validation
         {
             // Create deposit accounts
             let mut accounts = DepositTokens {
-                poll: Account::try_from(&poll_account_info).unwrap(),
+                prediction: Account::try_from(&prediction_account_info).unwrap(),
                 authority: Signer::try_from(&authority_info).unwrap(),
                 user_anti_token: TestAccountData::into_token_account(&user_anti_info),
                 user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-                poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-                poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+                prediction_anti_token: TestAccountData::into_token_account(&prediction_anti_info),
+                prediction_pro_token: TestAccountData::into_token_account(&prediction_pro_info),
                 token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
             };
 
             // Create bumps
             let bumps = DepositTokensBumps {
-                poll: poll_bump,
-                poll_anti_token: anti_token_bump,
-                poll_pro_token: pro_token_bump,
+                prediction: prediction_bump,
+                prediction_anti_token: anti_token_bump,
+                prediction_pro_token: pro_token_bump,
             };
 
-            // Create context with bump for poll PDA
+            // Create context with bump for prediction PDA
             let ctx = Context::new(&program_id, &mut accounts, &[], bumps);
 
             let result = deposit(ctx, 0, 100, 100, Some(1736899200)); // Below MIN_DEPOSIT
@@ -657,14 +669,14 @@ mod tests {
             TestAccountData::new_account_with_key_and_owner::<StateAccount>(root, program_id);
         state
             .init_state_data(&StateAccount {
-                poll_index: 0,
+                index: 0,
                 authority: root,
             })
             .unwrap();
 
         // Derive PDAs and bumps
-        let (poll_pda, poll_bump) = Pubkey::find_program_address(
-            &[b"poll", state.data[8..16].try_into().unwrap()],
+        let (prediction_pda, prediction_bump) = Pubkey::find_program_address(
+            &[b"prediction", state.data[8..16].try_into().unwrap()],
             &program_id,
         );
 
@@ -679,7 +691,7 @@ mod tests {
         );
 
         let mut accounts =
-            create_test_accounts(poll_pda, anti_token_pda, pro_token_pda, program_id);
+            create_test_accounts(prediction_pda, anti_token_pda, pro_token_pda, program_id);
 
         let authority_key = Pubkey::new_unique();
 
@@ -692,13 +704,13 @@ mod tests {
             .user_pro_token
             .init_token_account(authority_key, pro_mint.key)
             .unwrap();
-        // Initialise poll token accounts
+        // Initialise prediction token accounts
         accounts
-            .poll_anti_token
+            .prediction_anti_token
             .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
         accounts
-            .poll_pro_token
+            .prediction_pro_token
             .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
@@ -717,53 +729,58 @@ mod tests {
         let user_anti_token = TestAccountData::into_token_account(&binding_user_anti);
         let binding_user_pro = accounts.user_pro_token.to_account_info(false);
         let user_pro_token = TestAccountData::into_token_account(&binding_user_pro);
-        let binding_poll_anti = accounts.poll_anti_token.to_account_info(false);
-        let poll_anti_token = TestAccountData::into_token_account(&binding_poll_anti);
-        let binding_poll_pro = accounts.poll_pro_token.to_account_info(false);
-        let poll_pro_token = TestAccountData::into_token_account(&binding_poll_pro);
+        let binding_prediction_anti = accounts.prediction_anti_token.to_account_info(false);
+        let prediction_anti_token = TestAccountData::into_token_account(&binding_prediction_anti);
+        let binding_prediction_pro = accounts.prediction_pro_token.to_account_info(false);
+        let prediction_pro_token = TestAccountData::into_token_account(&binding_prediction_pro);
 
         // Verify initialisation
         assert_eq!(user_anti_token.amount, 0);
         assert_eq!(user_pro_token.amount, 0);
-        assert_eq!(poll_anti_token.amount, 0);
-        assert_eq!(poll_pro_token.amount, 0);
+        assert_eq!(prediction_anti_token.amount, 0);
+        assert_eq!(prediction_pro_token.amount, 0);
 
         // Get account infos
         let authority_info = accounts.authority.to_account_info(true);
         let user_anti_info = accounts.user_anti_token.to_account_info(false);
         let user_pro_info = accounts.user_pro_token.to_account_info(false);
-        let poll_anti_info = accounts.poll_anti_token.to_account_info(false);
-        let poll_pro_info = accounts.poll_pro_token.to_account_info(false);
+        let prediction_anti_info = accounts.prediction_anti_token.to_account_info(false);
+        let prediction_pro_info = accounts.prediction_pro_token.to_account_info(false);
         let token_program_info = accounts.token_program.to_account_info(false);
 
-        // Create and initialise the poll account
-        let poll = create_test_poll("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
-        accounts.poll_data.init_poll_data(&poll).unwrap();
+        // Create and initialise the prediction account
+        let prediction = create_test_prediction("2025-01-01T00:00:00Z", "2025-02-01T00:00:00Z");
+        accounts
+            .prediction_data
+            .init_prediction_data(&prediction)
+            .unwrap();
 
-        let poll_account_info = accounts.poll_data.to_account_info(false);
+        let prediction_account_info = accounts.prediction_data.to_account_info(false);
 
         // Check that the buffer is correctly allocated
-        assert!(poll_account_info.try_borrow_data().unwrap().len() >= 8 + PollAccount::LEN);
+        assert!(
+            prediction_account_info.try_borrow_data().unwrap().len() >= 8 + PredictionAccount::LEN
+        );
 
         // Create deposit accounts
         let mut accounts = DepositTokens {
-            poll: Account::try_from(&poll_account_info).unwrap(),
+            prediction: Account::try_from(&prediction_account_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
             user_anti_token: TestAccountData::into_token_account(&user_anti_info),
             user_pro_token: TestAccountData::into_token_account(&user_pro_info),
-            poll_anti_token: TestAccountData::into_token_account(&poll_anti_info),
-            poll_pro_token: TestAccountData::into_token_account(&poll_pro_info),
+            prediction_anti_token: TestAccountData::into_token_account(&prediction_anti_info),
+            prediction_pro_token: TestAccountData::into_token_account(&prediction_pro_info),
             token_program: Program::<Token>::try_from(&token_program_info).unwrap(),
         };
 
         // Create bumps
         let bumps = DepositTokensBumps {
-            poll: poll_bump,
-            poll_anti_token: anti_token_bump,
-            poll_pro_token: pro_token_bump,
+            prediction: prediction_bump,
+            prediction_anti_token: anti_token_bump,
+            prediction_pro_token: pro_token_bump,
         };
 
-        // Create context with bump for poll PDA
+        // Create context with bump for prediction PDA
         let ctx = Context::new(&program_id, &mut accounts, &[], bumps);
         /* Common Setup Ends Here */
 
@@ -773,17 +790,18 @@ mod tests {
         let result = deposit(ctx, 0, anti, pro, Some(1736899200));
         assert!(result.is_ok());
 
-        let poll_info_borrowed = poll_account_info.try_borrow_data().unwrap();
-        let updated_poll = PollAccount::try_deserialize(&mut &poll_info_borrowed[..]).unwrap();
+        let prediction_info_borrowed = prediction_account_info.try_borrow_data().unwrap();
+        let updated_prediction =
+            PredictionAccount::try_deserialize(&mut &prediction_info_borrowed[..]).unwrap();
 
-        assert_eq!(updated_poll.anti, anti);
-        assert_eq!(updated_poll.pro, pro);
+        assert_eq!(updated_prediction.anti, anti);
+        assert_eq!(updated_prediction.pro, pro);
 
-        let deposit = &updated_poll.deposits[0];
+        let deposit = &updated_prediction.deposits[0];
         let (expected_u, expected_s) = collide(anti, pro).unwrap();
 
-        assert_eq!(deposit.u, expected_u);
-        assert_eq!(deposit.s, expected_s);
+        assert_eq!(deposit.mean, expected_u);
+        assert_eq!(deposit.stddev, expected_s);
         assert_eq!(deposit.anti, anti);
         assert_eq!(deposit.pro, pro);
         assert!(!deposit.withdrawn);

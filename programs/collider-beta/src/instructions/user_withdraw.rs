@@ -7,11 +7,11 @@ use borsh::BorshSerialize;
 
 pub fn user_withdraw<'a, 'b, 'c: 'info, 'info>(
     ctx: Context<'a, 'b, 'c, 'info, UserWithdrawTokens<'info>>,
-    poll_index: u64,
+    index: u64,
 ) -> Result<()> {
     // Check token account authorities
-    let anti_token_authority = ctx.accounts.poll_anti_token.owner;
-    let pro_token_authority = ctx.accounts.poll_pro_token.owner;
+    let anti_token_authority = ctx.accounts.prediction_anti_token.owner;
+    let pro_token_authority = ctx.accounts.prediction_pro_token.owner;
 
     // Both token accounts must have the same authority
     require!(
@@ -30,13 +30,16 @@ pub fn user_withdraw<'a, 'b, 'c: 'info, 'info>(
     let state_pda = ctx.accounts.state.key();
     require!(current_authority == state_pda, PredictError::Unauthorised);
 
-    // Verify poll has been equalised
-    require!(&ctx.accounts.poll.equalised, PredictError::NotEqualised);
+    // Verify prediction has been equalised
+    require!(
+        &ctx.accounts.prediction.equalised,
+        PredictError::NotEqualised
+    );
 
     let equalisation = &ctx
         .accounts
-        .poll
-        .equalisation_results
+        .prediction
+        .equalisation
         .clone()
         .ok_or(error!(PredictError::NotEqualised))?;
 
@@ -44,13 +47,13 @@ pub fn user_withdraw<'a, 'b, 'c: 'info, 'info>(
     let user_key = ctx.accounts.authority.key();
     let deposit_index = ctx
         .accounts
-        .poll
+        .prediction
         .deposits
         .iter()
         .position(|d| d.address == user_key)
         .ok_or(error!(PredictError::NoDeposit))?;
 
-    let deposit = ctx.accounts.poll.deposits[deposit_index].clone();
+    let deposit = ctx.accounts.prediction.deposits[deposit_index].clone();
     require!(!deposit.withdrawn, PredictError::AlreadyWithdrawn);
 
     // Get withdrawal amounts
@@ -76,7 +79,7 @@ pub fn user_withdraw<'a, 'b, 'c: 'info, 'info>(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
-                    from: ctx.accounts.poll_anti_token.to_account_info(),
+                    from: ctx.accounts.prediction_anti_token.to_account_info(),
                     to: ctx.accounts.user_anti_token.to_account_info(),
                     authority: ctx.accounts.state.to_account_info(),
                 },
@@ -92,7 +95,7 @@ pub fn user_withdraw<'a, 'b, 'c: 'info, 'info>(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
-                    from: ctx.accounts.poll_pro_token.to_account_info(),
+                    from: ctx.accounts.prediction_pro_token.to_account_info(),
                     to: ctx.accounts.user_pro_token.to_account_info(),
                     authority: ctx.accounts.state.to_account_info(),
                 },
@@ -103,18 +106,18 @@ pub fn user_withdraw<'a, 'b, 'c: 'info, 'info>(
     }
 
     // Mark deposit as withdrawn
-    let poll = &mut ctx.accounts.poll;
-    poll.deposits[deposit_index].withdrawn = true;
+    let prediction = &mut ctx.accounts.prediction;
+    prediction.deposits[deposit_index].withdrawn = true;
 
-    // Serialise updated poll state
-    let poll_info = poll.to_account_info();
-    let mut poll_data = poll_info.try_borrow_mut_data()?;
-    let serialised_poll = poll.try_to_vec()?;
-    poll_data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+    // Serialise updated prediction state
+    let prediction_info = prediction.to_account_info();
+    let mut prediction_data = prediction_info.try_borrow_mut_data()?;
+    let serialised_prediction = prediction.try_to_vec()?;
+    prediction_data[8..8 + serialised_prediction.len()].copy_from_slice(&serialised_prediction);
 
     // Emit withdrawal event
     emit!(WithdrawEvent {
-        poll_index,
+        index,
         address: user_key,
         anti: anti_return,
         pro: pro_return,
@@ -128,10 +131,10 @@ pub fn user_withdraw<'a, 'b, 'c: 'info, 'info>(
 mod tests {
     use super::*;
     use crate::utils::PROGRAM_ID;
-    use crate::EqualisationResult;
-    use crate::PollAccount;
+    use crate::Deposit;
+    use crate::Equalisation;
+    use crate::PredictionAccount;
     use crate::StateAccount;
-    use crate::UserDeposit;
     use crate::UserWithdrawTokensBumps;
     use anchor_lang::Discriminator;
     use anchor_spl::token::spl_token;
@@ -163,7 +166,7 @@ mod tests {
             Self {
                 key,
                 lamports: 1_000_000,
-                data: vec![0; 8 + PollAccount::LEN],
+                data: vec![0; 8 + PredictionAccount::LEN],
                 owner,
                 executable: true,
                 rent_epoch: 0,
@@ -285,27 +288,27 @@ mod tests {
             }
         }
 
-        // Reusable method to create an equalised test poll
-        fn create_equalised_test_poll(authority: Pubkey) -> PollAccount {
-            PollAccount {
+        // Reusable method to create an equalised test prediction
+        fn create_equalised_test_prediction(authority: Pubkey) -> PredictionAccount {
+            PredictionAccount {
                 index: 0,
-                title: "Test Poll".to_string(),
+                title: "Test Prediction".to_string(),
                 description: "Test Description".to_string(),
                 start_time: "2025-01-01T00:00:00Z".to_string(),
                 end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
                 etc: None,
                 anti: 70000,
                 pro: 30000,
-                deposits: vec![UserDeposit {
+                deposits: vec![Deposit {
                     address: authority,
                     anti: 70000,
                     pro: 30000,
-                    u: 40000,
-                    s: 100000,
+                    mean: 40000,
+                    stddev: 100000,
                     withdrawn: false,
                 }],
                 equalised: true,
-                equalisation_results: Some(EqualisationResult {
+                equalisation: Some(Equalisation {
                     truth: vec![60000, 40000],
                     anti: vec![70000],
                     pro: vec![30000],
@@ -318,14 +321,14 @@ mod tests {
     #[test]
     fn test_user_withdrawal() {
         let program_id = program_id();
-        let poll_index: u64 = 0;
+        let index: u64 = 0;
 
         // Create mints
         let anti_mint = TestAccountData::new_mint(ANTI_MINT_ADDRESS);
         let pro_mint = TestAccountData::new_mint(PRO_MINT_ADDRESS);
 
         // Create test accounts
-        let mut poll = TestAccountData::new_account_with_key_and_owner::<PollAccount>(
+        let mut prediction = TestAccountData::new_account_with_key_and_owner::<PredictionAccount>(
             Pubkey::new_unique(),
             program_id,
         );
@@ -339,17 +342,17 @@ mod tests {
         // Initialise token accounts
         let mut user_anti = TestAccountData::new_token();
         let mut user_pro = TestAccountData::new_token();
-        let mut poll_anti = TestAccountData::new_token();
-        let mut poll_pro = TestAccountData::new_token();
+        let mut prediction_anti = TestAccountData::new_token();
+        let mut prediction_pro = TestAccountData::new_token();
 
         user_anti
             .init_token_account(user.key, anti_mint.key)
             .unwrap();
         user_pro.init_token_account(user.key, pro_mint.key).unwrap();
-        poll_anti
+        prediction_anti
             .init_token_account(state.key, anti_mint.key)
             .unwrap(); // Note: state PDA is the authority
-        poll_pro
+        prediction_pro
             .init_token_account(state.key, pro_mint.key)
             .unwrap(); // Note: state PDA is the authority
 
@@ -358,54 +361,54 @@ mod tests {
 
         // Create state data
         let state_data = StateAccount {
-            poll_index,
+            index,
             authority: Pubkey::new_unique(),
         };
         state.init_state_data(&state_data).unwrap();
 
-        // Create poll with user's deposit and equalisation results
-        let poll_data = TestAccountData::create_equalised_test_poll(user.key);
+        // Create prediction with user's deposit and equalisation results
+        let prediction_data = TestAccountData::create_equalised_test_prediction(user.key);
 
-        // Write discriminator and serialise poll data
-        poll.data[..8].copy_from_slice(&PollAccount::discriminator());
-        let serialised_poll = poll_data.try_to_vec().unwrap();
-        poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+        // Write discriminator and serialise prediction data
+        prediction.data[..8].copy_from_slice(&PredictionAccount::discriminator());
+        let serialised_prediction = prediction_data.try_to_vec().unwrap();
+        prediction.data[8..8 + serialised_prediction.len()].copy_from_slice(&serialised_prediction);
 
         // Get account infos
         let state_info = state.to_account_info(false);
-        let poll_info = poll.to_account_info(false);
+        let prediction_info = prediction.to_account_info(false);
         let user_info = user.to_account_info(true);
         let user_anti_info = user_anti.to_account_info(false);
         let user_pro_info = user_pro.to_account_info(false);
-        let poll_anti_info = poll_anti.to_account_info(false);
-        let poll_pro_info = poll_pro.to_account_info(false);
+        let prediction_anti_info = prediction_anti.to_account_info(false);
+        let prediction_pro_info = prediction_pro.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
         let system_program_info = system_program.to_account_info(false);
         let vault_info = vault.to_account_info(false);
 
         // Derive PDAs and bumps
         let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
-        let (_poll_pda, poll_bump) = Pubkey::find_program_address(
-            &[b"poll", poll_index.to_le_bytes().as_ref()],
+        let (_prediction_pda, prediction_bump) = Pubkey::find_program_address(
+            &[b"prediction", index.to_le_bytes().as_ref()],
             &program_id,
         );
         let (_anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
-            &[b"anti_token", poll_data.index.to_le_bytes().as_ref()],
+            &[b"anti_token", prediction_data.index.to_le_bytes().as_ref()],
             &program_id,
         );
         let (_pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
-            &[b"pro_token", poll_data.index.to_le_bytes().as_ref()],
+            &[b"pro_token", prediction_data.index.to_le_bytes().as_ref()],
             &program_id,
         );
 
         let mut accounts = UserWithdrawTokens {
             state: Account::try_from(&state_info).unwrap(),
-            poll: Account::try_from(&poll_info).unwrap(),
+            prediction: Account::try_from(&prediction_info).unwrap(),
             authority: Signer::try_from(&user_info).unwrap(),
             user_anti_token: Account::try_from(&user_anti_info).unwrap(),
             user_pro_token: Account::try_from(&user_pro_info).unwrap(),
-            poll_anti_token: Account::try_from(&poll_anti_info).unwrap(),
-            poll_pro_token: Account::try_from(&poll_pro_info).unwrap(),
+            prediction_anti_token: Account::try_from(&prediction_anti_info).unwrap(),
+            prediction_pro_token: Account::try_from(&prediction_pro_info).unwrap(),
             token_program: Program::try_from(&token_program_info).unwrap(),
             system_program: Program::try_from(&system_program_info).unwrap(),
             vault: vault_info,
@@ -413,9 +416,9 @@ mod tests {
 
         let bumps = UserWithdrawTokensBumps {
             state: state_bump,
-            poll: poll_bump,
-            poll_anti_token: anti_token_bump,
-            poll_pro_token: pro_token_bump,
+            prediction: prediction_bump,
+            prediction_anti_token: anti_token_bump,
+            prediction_pro_token: pro_token_bump,
         };
 
         let _ = user_withdraw(Context::new(&program_id, &mut accounts, &[], bumps), 0);
