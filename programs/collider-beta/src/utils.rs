@@ -8,10 +8,10 @@
 //! Contact: dev@antitoken.pro
 
 // utils.rs
-use solana_security_txt;
 use crate::state::*;
 use anchor_lang::prelude::*;
 use chrono::NaiveDateTime;
+use solana_security_txt;
 
 pub const POLL_CREATION_FEE: u64 = 100_000_000; // Fee to create poll (0.1 SOL)
 pub const MAX_TITLE_LENGTH: u64 = 256; // Maximum title length
@@ -25,7 +25,8 @@ pub const ANTI_MINT_ADDRESS: Pubkey =
     solana_program::pubkey!("5LfuwEF4SCTxijmmXoc8KpK5osLEPfxcma4QRiTVVJyt");
 pub const PRO_MINT_ADDRESS: Pubkey =
     solana_program::pubkey!("DqF2BkNYro78v84xBbJPdRPy619qAzz8do39gA1DC5k");
-pub const PROGRAM_ID: &str = "AMXPSQ9nWyHUqq7dB1KaPf3Wm9SMTofi7jFFGYp6pfFW";
+pub const PROGRAM_ID: Pubkey =
+    solana_program::pubkey!("3zKqVU2RiWXPe3bvTjQ869UF6qng2LoGBKEFmUqh8BzA");
 
 #[cfg(not(feature = "no-entrypoint"))]
 use solana_security_txt::security_txt;

@@ -39,9 +39,19 @@
     "test-cargo-log": "RUST_LOG=info cargo test-sbf -- --nocapture",
     "test-cargo-debug": "RUST_LOG=debug cargo test-sbf",
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
-    "prepare-prod": "node postbuild/prepare.js",
+    "prepare-production": "node postbuild/prepare/index.js",
     "query-txt": "query-security-txt target/deploy/collider_beta.so",
-    "init-program": "node --loader ts-node/esm postbuild/initialiser.ts",
-    "verify-init": "node --loader ts-node/esm postbuild/verifier.ts"
+    "initialise-program": "node --loader ts-node/esm postbuild/initialise/index.ts",
+    "create-prediction": "node --loader ts-node/esm postbuild/create_poll/index.ts",
+    "deposit-prediction": "node --loader ts-node/esm postbuild/deposit/index.ts",
+    "equalise-prediction": "node --loader ts-node/esm postbuild/equalise/index.ts",
+    "withdraw-bulk": "node --loader ts-node/esm postbuild/withdraw/bulk_withdraw/index.ts",
+    "withdraw-single": "node --loader ts-node/esm postbuild/withdraw/user_withdraw/index.ts",
+    "verify-initialise": "node --loader ts-node/esm postbuild/initialise/verifier.ts",
+    "verify-create": "node --loader ts-node/esm postbuild/create_poll/verifier.ts",
+    "verify-deposit": "node --loader ts-node/esm postbuild/deposit/verifier.ts",
+    "verify-equalise": "node --loader ts-node/esm postbuild/equalise/verifier.ts",
+    "verify-withdraw-bulk": "node --loader ts-node/esm postbuild/withdraw/bulk_withdraw/verifier.ts",
+    "verify-withdraw-single": "node --loader ts-node/esm postbuild/withdraw/user_withdraw/verifier.ts"
   }
 }
