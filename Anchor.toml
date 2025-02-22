@@ -1,14 +1,14 @@
 [features]
 seeds = false
 
-[programs.localnet]
+[programs.devnet]
 collider_beta = "3zKqVU2RiWXPe3bvTjQ869UF6qng2LoGBKEFmUqh8BzA"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "./.config/id.json"
 
 [scripts]
