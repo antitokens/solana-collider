@@ -9,8 +9,10 @@ overflow-checks = true
 [workspace.dependencies]
 solana-program = "=1.18"
 solana-program-test = "=1.18"
+solana-security-txt = "1.1.1"
 solana-sdk = "=1.18"
 solana-security-txt = "1.1.1"
 anchor-lang = "0.29.0"
 anchor-spl = "0.29.0"
 tokio = { version = "=1.43.0", features = ["full"] }
+

@@ -13,7 +13,6 @@ use crate::utils::PRO_MINT_ADDRESS;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
-
 pub mod instructions;
 pub mod state;
 pub mod utils;
