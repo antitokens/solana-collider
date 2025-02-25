@@ -15,6 +15,7 @@ docs/
 .config
 dPro
 dAnti
+dTest
 
 # Packages
 node_modules
