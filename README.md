@@ -18,10 +18,17 @@ Once on `sim` branch, you'll need to install the following core dependencies for
 | `solana` | `1.18.26` | `1.18.26` |
 | `anchor` | `0.29.0`  | `0.29.0`  |
 
+<<<<<<< HEAD
 Try to install the required versions of the tools using a script forked from [`solana-install`](https://github.com/solana-developers/solana-install/blob/main/install.sh):
 
 ```
 yarn env
+=======
+Try to install the required versions of the tools using a script I've forked from [`solana-install`](https://github.com/solana-developers/solana-install/blob/main/install.sh):
+
+```
+curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/antitokens/solana-collider/main/install.sh | bash
+>>>>>>> 8ee31246684fb48723b85f372a35ec4ee62b85c1
 ```
 
 Alternatively, follow these instructions to set up your environment: [`https://solana.com/docs/intro/installation`](https://solana.com/docs/intro/installation)
@@ -114,7 +121,10 @@ ANTI_TOKEN_MINT=
 PRO_TOKEN_MINT=
 VAULT=
 ```
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8ee31246684fb48723b85f372a35ec4ee62b85c1
 ### 4. Deploy to cluster
 
 #### 4.1. Prepare for production
@@ -155,7 +165,11 @@ yarn create-new
 
 ## `DEVNET`
 
+<<<<<<< HEAD
 We will deploy explicitly to the devnet for testing.
+=======
+We will deploy explicitly to the devnet for testing. 
+>>>>>>> 8ee31246684fb48723b85f372a35ec4ee62b85c1
 
 > You don't need to run a local validator
 
@@ -181,16 +195,28 @@ SOLANA_API="https://api.mainnet-beta.solana.com"
 
 Follow the same steps as localnet/devnet, but make sure you're deploying to the mainnet.
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8ee31246684fb48723b85f372a35ec4ee62b85c1
 ---
 
 # Presets:
 
+<<<<<<< HEAD
 > You may need to issue some commands with `sudo` if your `target` directory is protected. Alternatively, you can issue `sudo chmod -R a+rx target` once
 
 | Command                       | Script                                                                                                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `yarn env`                    | `bash install.sh \|\| curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/antitokens/solana-collider/main/install.sh \| bash`        |
 | `yarn clean-lock`             | `sh -c "if [[ $(uname) == 'Darwin' ]]; then sed -i '' 's/version = 4/version = 3/' Cargo.lock; else sed -i 's/version = 4/version = 3/' Cargo.lock; fi"` |
+=======
+> You may need to issue some commands with `sudo` if your `.config` directory is protected
+
+| Command                       | Script                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `yarn clean-lock`          | `sh -c "if [[ $(uname) == 'Darwin' ]]; then sed -i '' 's/version = 4/version = 3/' Cargo.lock; else sed -i 's/version = 4/version = 3/' Cargo.lock; fi"` |
+>>>>>>> 8ee31246684fb48723b85f372a35ec4ee62b85c1
 | `yarn build-anchor`           | `yarn clean-lock && anchor build`                                                                                                                        |
 | `yarn build-anchor-full`      | `yarn clean-lock && RUST_LOG=trace anchor build`                                                                                                         |
 | `yarn build-cargo`            | `yarn clean-lock && cargo build-bpf`                                                                                                                     |
@@ -220,4 +246,8 @@ Follow the same steps as localnet/devnet, but make sure you're deploying to the 
 | `yarn verify-deposit`         | `node --loader ts-node/esm postbuild/deposit/verifier.ts`                                                                                                |
 | `yarn verify-equalise`        | `node --loader ts-node/esm postbuild/equalise/verifier.ts`                                                                                               |
 | `yarn verify-withdraw-bulk`   | `node --loader ts-node/esm postbuild/withdraw/bulk_withdraw/verifier.ts`                                                                                 |
+<<<<<<< HEAD
 | `yarn verify-withdraw-single` | `node --loader ts-node/esm postbuild/withdraw/user_withdraw/verifier.ts`                                                                                 |
+=======
+| `yarn verify-withdraw-single` | `node --loader ts-node/esm postbuild/withdraw/user_withdraw/verifier.ts`                                                                                |
+>>>>>>> 8ee31246684fb48723b85f372a35ec4ee62b85c1

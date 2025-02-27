@@ -401,9 +401,12 @@ main() {
 
     print_versions
 
+<<<<<<< HEAD
     log_info "Setting .config/id.json as Solana wallet"
     solana config set --url "$LOCALNET_RPC" --keypair "$WALLET"
     echo ""
+=======
+>>>>>>> 8ee31246684fb48723b85f372a35ec4ee62b85c1
     echo "✅ Installation complete. Please restart your terminal to apply all changes"
 }
 
