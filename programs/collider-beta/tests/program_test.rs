@@ -83,23 +83,19 @@ async fn test_full_collider_flow() {
     let creator = Keypair::new();
     let user = Keypair::new();
 
-    // Derive PDAs for poll token accounts
-    let poll_index = 0u64;
+    // Derive PDAs for prediction token accounts
+    let index = 0u64;
 
     let (admin_pda, _) = Pubkey::find_program_address(&[b"admin"], &program_id);
 
-    let (poll_pda, _) =
-        Pubkey::find_program_address(&[b"poll", poll_index.to_le_bytes().as_ref()], &program_id);
+    let (prediction_pda, _) =
+        Pubkey::find_program_address(&[b"prediction", index.to_le_bytes().as_ref()], &program_id);
 
-    let (poll_anti_token_pda, _) = Pubkey::find_program_address(
-        &[b"anti_token", poll_index.to_le_bytes().as_ref()],
-        &program_id,
-    );
+    let (prediction_anti_token_pda, _) =
+        Pubkey::find_program_address(&[b"anti_token", index.to_le_bytes().as_ref()], &program_id);
 
-    let (poll_pro_token_pda, _) = Pubkey::find_program_address(
-        &[b"pro_token", poll_index.to_le_bytes().as_ref()],
-        &program_id,
-    );
+    let (prediction_pro_token_pda, _) =
+        Pubkey::find_program_address(&[b"pro_token", index.to_le_bytes().as_ref()], &program_id);
 
     // Initialise accounts with 10 SOL each
     program_test.add_account(
@@ -285,14 +281,14 @@ async fn test_full_collider_flow() {
     banks_client.process_transaction(tx).await.unwrap();
     println!("✅ Admin initialisation passing ...");
 
-    // Test updating poll creation fee
+    // Test updating prediction creation fee
     let ix = Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(admin_pda, false),
             AccountMeta::new(antitoken_multisig.pubkey(), true),
         ],
-        data: collider_beta::instruction::UpdatePollCreationFee {
+        data: collider_beta::instruction::UpdateCreationFee {
             new_fee: 200_000_000,
         }
         .data(),
@@ -305,7 +301,7 @@ async fn test_full_collider_flow() {
         recent_blockhash,
     );
     banks_client.process_transaction(tx).await.unwrap();
-    println!("✅ Poll creation fee update passing ...");
+    println!("✅ Prediction creation fee update passing ...");
 
     // Test updating max title length
     let ix = Instruction {
@@ -494,15 +490,15 @@ async fn test_full_collider_flow() {
     banks_client.process_transaction(tx).await.unwrap();
     println!("✅ Initialisation passing ...");
 
-    // Create poll instruction
-    let create_poll_ix = Instruction {
+    // Create prediction instruction
+    let create_prediction_ix = Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(state_pda, false),
-            AccountMeta::new(poll_pda, false),
+            AccountMeta::new(prediction_pda, false),
             AccountMeta::new(creator.pubkey(), true),
-            AccountMeta::new(poll_anti_token_pda, false),
-            AccountMeta::new(poll_pro_token_pda, false),
+            AccountMeta::new(prediction_anti_token_pda, false),
+            AccountMeta::new(prediction_pro_token_pda, false),
             AccountMeta::new(anti_mint.pubkey(), false),
             AccountMeta::new(pro_mint.pubkey(), false),
             AccountMeta::new_readonly(token::ID, false),
@@ -510,8 +506,8 @@ async fn test_full_collider_flow() {
             AccountMeta::new(ANTITOKEN_MULTISIG, false),
             AccountMeta::new_readonly(sysvar::rent::ID, false),
         ],
-        data: collider_beta::instruction::CreatePoll {
-            title: "Test Poll".to_string(),
+        data: collider_beta::instruction::CreatePrediction {
+            title: "Test Prediction".to_string(),
             description: "Test Description".to_string(),
             start_time: "2025-02-01T00:00:00Z".to_string(),
             end_time: "2025-03-01T00:00:00Z".to_string(),
@@ -522,28 +518,28 @@ async fn test_full_collider_flow() {
     };
 
     let tx = Transaction::new_signed_with_payer(
-        &[create_poll_ix],
+        &[create_prediction_ix],
         Some(&creator.pubkey()),
         &[&creator],
         recent_blockhash,
     );
     banks_client.process_transaction(tx).await.unwrap();
-    println!("✅ CreatePoll passing ...");
+    println!("✅ CreatePrediction passing ...");
 
     // Deposit tokens
     let deposit_ix = Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(poll_pda, false),
+            AccountMeta::new(prediction_pda, false),
             AccountMeta::new(user.pubkey(), true),
             AccountMeta::new(user_anti_token.pubkey(), false),
             AccountMeta::new(user_pro_token.pubkey(), false),
-            AccountMeta::new(poll_anti_token_pda, false),
-            AccountMeta::new(poll_pro_token_pda, false),
+            AccountMeta::new(prediction_anti_token_pda, false),
+            AccountMeta::new(prediction_pro_token_pda, false),
             AccountMeta::new_readonly(token::ID, false),
         ],
         data: collider_beta::instruction::DepositTokens {
-            poll_index,
+            index,
             anti: 7_000_000_000,
             pro: 3_000_000_000,
             unix_timestamp: Some(1739577600), // 2025-02-15T00:00:00Z for testing
@@ -561,20 +557,20 @@ async fn test_full_collider_flow() {
     banks_client.process_transaction(tx).await.unwrap();
     println!("✅ Deposits passing ...");
 
-    // Equalise poll
+    // Equalise prediction
     let equalise_ix = Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(poll_pda, false),
+            AccountMeta::new(prediction_pda, false),
             AccountMeta::new(manager.pubkey(), true),
             AccountMeta::new(user_anti_token.pubkey(), false),
             AccountMeta::new(user_pro_token.pubkey(), false),
-            AccountMeta::new(poll_anti_token_pda, false),
-            AccountMeta::new(poll_pro_token_pda, false),
+            AccountMeta::new(prediction_anti_token_pda, false),
+            AccountMeta::new(prediction_pro_token_pda, false),
             AccountMeta::new_readonly(token::ID, false),
         ],
         data: collider_beta::instruction::EqualiseTokens {
-            poll_index,
+            index,
             truth: vec![6000, 4000],
             unix_timestamp: Some(1741996800), // 2025-03-15T00:00:00Z for testing
         }
@@ -592,10 +588,10 @@ async fn test_full_collider_flow() {
 
     // Withdraw tokens
     let mut withdraw_accounts = vec![
-        AccountMeta::new(poll_pda, false),
+        AccountMeta::new(prediction_pda, false),
         AccountMeta::new(antitoken_multisig.pubkey(), true), // Only the multisig can withdraw
-        AccountMeta::new(poll_anti_token_pda, false),        // Anti Token PDA
-        AccountMeta::new(poll_pro_token_pda, false),         // Pro Token PDA
+        AccountMeta::new(prediction_anti_token_pda, false),  // Anti Token PDA
+        AccountMeta::new(prediction_pro_token_pda, false),   // Pro Token PDA
         AccountMeta::new_readonly(token::ID, false),
     ];
 
@@ -608,7 +604,7 @@ async fn test_full_collider_flow() {
     let withdraw_ix = Instruction {
         program_id,
         accounts: withdraw_accounts,
-        data: collider_beta::instruction::BulkWithdrawTokens { poll_index }.data(),
+        data: collider_beta::instruction::BulkWithdrawTokens { index }.data(),
     };
 
     let tx = Transaction::new_signed_with_payer(

@@ -10,7 +10,7 @@
 
 use crate::utils::*;
 use crate::Admin;
-use crate::SetPollTokenAuthority;
+use crate::SetPredictionTokenAuthority;
 use crate::Update;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
@@ -26,7 +26,7 @@ pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
     require!(!config.initialised, PredictError::AlreadyInitialised);
 
     config.initialised = true;
-    config.poll_creation_fee = 100_000_000;
+    config.creation_fee = 100_000_000;
     config.max_title_length = MAX_TITLE_LENGTH;
     config.max_description_length = MAX_DESCRIPTION_LENGTH;
     config.truth_basis = TRUTH_BASIS;
@@ -45,7 +45,7 @@ pub fn initialise_admin(ctx: Context<Admin>) -> Result<()> {
     Ok(())
 }
 
-pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()> {
+pub fn update_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
 
     // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
@@ -54,10 +54,10 @@ pub fn update_poll_creation_fee(ctx: Context<Update>, new_fee: u64) -> Result<()
         ctx.accounts.authority.key() == ctx.accounts.admin.antitoken_multisig,
         ErrorCode::Unauthorised
     );
-    ctx.accounts.admin.poll_creation_fee = new_fee;
+    ctx.accounts.admin.creation_fee = new_fee;
 
     emit!(AdminEvent {
-        action: "update_poll_creation_fee".to_string(),
+        action: "update_creation_fee".to_string(),
         args: vec![KeyValue {
             key: "new_fee".to_string(),
             value: new_fee.to_string(),
@@ -252,7 +252,7 @@ pub fn update_multisig(ctx: Context<Update>, new_multisig: Pubkey) -> Result<()>
     Ok(())
 }
 
-pub fn set_token_authority(ctx: Context<SetPollTokenAuthority>, poll_index: u64) -> Result<()> {
+pub fn set_token_authority(ctx: Context<SetPredictionTokenAuthority>, index: u64) -> Result<()> {
     let now: i64 = 1736899200; // CRITICAL: Remove line in production!
 
     // CRITICAL: Add line in production!let now: i64 = Clock::get()?.unix_timestamp;
@@ -269,7 +269,7 @@ pub fn set_token_authority(ctx: Context<SetPollTokenAuthority>, poll_index: u64)
             ctx.accounts.token_program.to_account_info(),
             SetAuthority {
                 current_authority: ctx.accounts.authority.to_account_info(),
-                account_or_mint: ctx.accounts.poll_anti_token.to_account_info(),
+                account_or_mint: ctx.accounts.prediction_anti_token.to_account_info(),
             },
         ),
         AuthorityType::AccountOwner,
@@ -282,7 +282,7 @@ pub fn set_token_authority(ctx: Context<SetPollTokenAuthority>, poll_index: u64)
             ctx.accounts.token_program.to_account_info(),
             SetAuthority {
                 current_authority: ctx.accounts.authority.to_account_info(),
-                account_or_mint: ctx.accounts.poll_pro_token.to_account_info(),
+                account_or_mint: ctx.accounts.prediction_pro_token.to_account_info(),
             },
         ),
         AuthorityType::AccountOwner,
@@ -292,8 +292,8 @@ pub fn set_token_authority(ctx: Context<SetPollTokenAuthority>, poll_index: u64)
     emit!(AdminEvent {
         action: "set_token_authority".to_string(),
         args: vec![KeyValue {
-            key: "poll_index".to_string(),
-            value: poll_index.to_string()
+            key: "index".to_string(),
+            value: index.to_string()
         }],
         timestamp: now,
     });
@@ -313,8 +313,8 @@ mod tests {
     use super::*;
     use crate::{state::AdminAccount, utils::PROGRAM_ID, AdminBumps};
     use crate::{
-        EqualisationResult, PollAccount, SetPollTokenAuthorityBumps, StateAccount, UpdateBumps,
-        UserDeposit,
+        Deposit, Equalisation, PredictionAccount, SetPredictionTokenAuthorityBumps, StateAccount,
+        UpdateBumps,
     };
     use anchor_lang::{system_program, Discriminator};
     use anchor_spl::token::{
@@ -342,7 +342,7 @@ mod tests {
             Self {
                 key,
                 lamports: 1_000_000,
-                data: vec![0; 8 + PollAccount::LEN],
+                data: vec![0; 8 + PredictionAccount::LEN],
                 owner,
                 executable: true,
                 rent_epoch: 0,
@@ -480,27 +480,27 @@ mod tests {
             Ok(())
         }
 
-        // Reusable method to create an equalised test poll
-        fn create_equalised_test_poll(authority: Pubkey, poll_index: u64) -> PollAccount {
-            PollAccount {
-                index: poll_index,
-                title: "Test Poll".to_string(),
+        // Reusable method to create an equalised test prediction
+        fn create_equalised_test_prediction(authority: Pubkey, index: u64) -> PredictionAccount {
+            PredictionAccount {
+                index: index,
+                title: "Test Prediction".to_string(),
                 description: "Test Description".to_string(),
                 start_time: "2025-01-01T00:00:00Z".to_string(),
                 end_time: "2025-01-02T00:00:00Z".to_string(), // Already ended
                 etc: None,
                 anti: 70000,
                 pro: 30000,
-                deposits: vec![UserDeposit {
+                deposits: vec![Deposit {
                     address: authority,
                     anti: 70000,
                     pro: 30000,
-                    u: 40000,
-                    s: 100000,
+                    mean: 40000,
+                    stddev: 100000,
                     withdrawn: false,
                 }],
                 equalised: true,
-                equalisation_results: Some(EqualisationResult {
+                equalisation: Some(Equalisation {
                     truth: vec![60000, 40000],
                     anti: vec![70000],
                     pro: vec![30000],
@@ -512,7 +512,7 @@ mod tests {
         // Initialise admin config
         const ADMIN_DATA: AdminAccount = AdminAccount {
             initialised: false,
-            poll_creation_fee: 100_000_000,
+            creation_fee: 100_000_000,
             max_title_length: MAX_TITLE_LENGTH,
             max_description_length: MAX_DESCRIPTION_LENGTH,
             truth_basis: TRUTH_BASIS,
@@ -526,7 +526,7 @@ mod tests {
 
     #[test]
     fn test_admin_initialisation<'info>() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
         let manager = Keypair::new();
 
         // Create test accounts
@@ -570,8 +570,8 @@ mod tests {
 
         // Basic administrative config
         assert_eq!(
-            admin_account.poll_creation_fee, 100_000_000,
-            "Poll creation fee should be 0.1 SOL"
+            admin_account.creation_fee, 100_000_000,
+            "Prediction creation fee should be 0.1 SOL"
         );
         assert_eq!(
             admin_account.max_title_length, MAX_TITLE_LENGTH,
@@ -634,7 +634,7 @@ mod tests {
     // Additional test for double initialisation prevention
     #[test]
     fn test_double_initialisation_prevented() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
         let manager = Keypair::new();
 
         // Create test accounts
@@ -683,7 +683,7 @@ mod tests {
     // Test unauthorised updates
     #[test]
     fn test_unauthorised_updates() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
         let unauthorised_user = Keypair::new();
 
         // Create test accounts
@@ -706,7 +706,7 @@ mod tests {
         let bumps: UpdateBumps = UpdateBumps { admin: admin_bump };
 
         // Test unauthorised fee update
-        let result = update_poll_creation_fee(
+        let result = update_creation_fee(
             Context::new(&program_id, &mut accounts, &[], bumps),
             200_000_000,
         );
@@ -726,7 +726,7 @@ mod tests {
     // Test successful updates
     #[test]
     fn test_successful_updates() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
 
         // Create test accounts with multisig authority
         let (admin_pda, admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
@@ -751,7 +751,7 @@ mod tests {
             };
 
             let new_fee = 200_000_000;
-            let result = update_poll_creation_fee(
+            let result = update_creation_fee(
                 Context::new(&program_id, &mut accounts, &[], bumps),
                 new_fee,
             );
@@ -759,11 +759,11 @@ mod tests {
             assert!(result.is_ok(), "Authorised fee update should succeed");
 
             assert_eq!(
-                accounts.admin.poll_creation_fee, new_fee,
+                accounts.admin.creation_fee, new_fee,
                 "Fee should be updated"
             );
             assert_ne!(
-                POLL_CREATION_FEE, accounts.admin.poll_creation_fee,
+                CREATION_FEE, accounts.admin.creation_fee,
                 "Fee should have changed"
             );
         }
@@ -771,14 +771,15 @@ mod tests {
 
     #[test]
     fn test_set_token_authority() {
-        let program_id = Pubkey::from_str(PROGRAM_ID).unwrap();
+        let program_id = Pubkey::from_str(&PROGRAM_ID.to_string()).unwrap();
         let manager: Pubkey = Pubkey::new_unique();
         let mut token_program = TestAccountData::new_token_program();
 
-        let poll_index: u64 = 0;
+        let index: u64 = 0;
 
-        // Create poll with user's deposit and equalisation results
-        let poll_data = TestAccountData::create_equalised_test_poll(manager.key(), poll_index);
+        // Create prediction with user's deposit and equalisation results
+        let prediction_data =
+            TestAccountData::create_equalised_test_prediction(manager.key(), index);
 
         // Create mints
         let anti_mint = TestAccountData::new_mint(ANTI_MINT_ADDRESS);
@@ -792,7 +793,7 @@ mod tests {
         );
         state
             .init_state_data(&StateAccount {
-                poll_index: 0,
+                index: 0,
                 authority: manager,
             })
             .unwrap();
@@ -801,64 +802,64 @@ mod tests {
         let (admin_pda, _admin_bump) = Pubkey::find_program_address(&[b"admin"], &program_id);
         let (_state_pda, state_bump) = Pubkey::find_program_address(&[b"state"], &program_id);
         let (anti_token_pda, anti_token_bump) = Pubkey::find_program_address(
-            &[b"anti_token", poll_index.to_le_bytes().as_ref()],
+            &[b"anti_token", index.to_le_bytes().as_ref()],
             &program_id,
         );
         let (pro_token_pda, pro_token_bump) = Pubkey::find_program_address(
-            &[b"pro_token", poll_index.to_le_bytes().as_ref()],
+            &[b"pro_token", index.to_le_bytes().as_ref()],
             &program_id,
         );
 
         let mut admin = TestAccountData::new_owned_admin::<AdminAccount>(admin_pda, program_id);
         admin.init_admin_data(&TestAccountData::ADMIN_DATA).unwrap();
 
-        // Create test poll account
-        let mut poll = TestAccountData::new_account_with_key_and_owner::<PollAccount>(
+        // Create test prediction account
+        let mut prediction = TestAccountData::new_account_with_key_and_owner::<PredictionAccount>(
             Pubkey::new_unique(),
             program_id,
         );
-        let mut poll_anti_token = TestAccountData::new_token(anti_token_pda);
-        let mut poll_pro_token = TestAccountData::new_token(pro_token_pda);
+        let mut prediction_anti_token = TestAccountData::new_token(anti_token_pda);
+        let mut prediction_pro_token = TestAccountData::new_token(pro_token_pda);
 
-        poll_anti_token
+        prediction_anti_token
             .init_token_account(ANTITOKEN_MULTISIG, anti_mint.key)
             .unwrap();
-        poll_pro_token
+        prediction_pro_token
             .init_token_account(ANTITOKEN_MULTISIG, pro_mint.key)
             .unwrap();
 
-        // Write discriminator and serialise poll data
-        poll.data[..8].copy_from_slice(&PollAccount::discriminator());
-        let serialised_poll = poll_data.try_to_vec().unwrap();
-        poll.data[8..8 + serialised_poll.len()].copy_from_slice(&serialised_poll);
+        // Write discriminator and serialise prediction data
+        prediction.data[..8].copy_from_slice(&PredictionAccount::discriminator());
+        let serialised_prediction = prediction_data.try_to_vec().unwrap();
+        prediction.data[8..8 + serialised_prediction.len()].copy_from_slice(&serialised_prediction);
 
         // Get account infos
         let state_info = state.to_account_info(false);
-        let poll_info = poll.to_account_info(false);
+        let prediction_info = prediction.to_account_info(false);
         let mut authority_binding = TestAccountData::new_authority_account(ANTITOKEN_MULTISIG);
         let authority_info = authority_binding.to_account_info(true);
         let token_data = {
-            let data_slice = &poll_anti_token.data[..];
+            let data_slice = &prediction_anti_token.data[..];
             SplTokenAccount::unpack(data_slice).expect("Failed to unpack token account")
         };
-        let poll_anti_token_info = poll_anti_token.to_account_info(false);
-        let poll_pro_token_info = poll_pro_token.to_account_info(false);
+        let prediction_anti_token_info = prediction_anti_token.to_account_info(false);
+        let prediction_pro_token_info = prediction_pro_token.to_account_info(false);
         let token_program_info = token_program.to_account_info(false);
 
         // Accounts for transaction
-        let mut accounts = SetPollTokenAuthority {
+        let mut accounts = SetPredictionTokenAuthority {
             state: Account::try_from(&state_info).unwrap(),
-            poll: Account::try_from(&poll_info).unwrap(),
+            prediction: Account::try_from(&prediction_info).unwrap(),
             authority: Signer::try_from(&authority_info).unwrap(),
-            poll_anti_token: Account::try_from(&poll_anti_token_info).unwrap(),
-            poll_pro_token: Account::try_from(&poll_pro_token_info).unwrap(),
+            prediction_anti_token: Account::try_from(&prediction_anti_token_info).unwrap(),
+            prediction_pro_token: Account::try_from(&prediction_pro_token_info).unwrap(),
             token_program: Program::try_from(&token_program_info).unwrap(),
         };
 
-        let bumps = SetPollTokenAuthorityBumps {
+        let bumps = SetPredictionTokenAuthorityBumps {
             state: state_bump,
-            poll_anti_token: anti_token_bump,
-            poll_pro_token: pro_token_bump,
+            prediction_anti_token: anti_token_bump,
+            prediction_pro_token: pro_token_bump,
         };
 
         assert_eq!(
@@ -867,26 +868,21 @@ mod tests {
         );
 
         // Test with correct authority (ANTITOKEN_MULTISIG)
-        let _ = set_token_authority(
-            Context::new(&program_id, &mut accounts, &[], bumps),
-            poll_index,
-        );
+        let _ = set_token_authority(Context::new(&program_id, &mut accounts, &[], bumps), index);
 
         // Test unauthorised call
         let mut unauthorised_keypair = TestAccountData::new_authority_account(Pubkey::new_unique());
         let unauthorised_keypair_info = unauthorised_keypair.to_account_info(true);
         accounts.authority = Signer::try_from(&unauthorised_keypair_info).unwrap();
 
-        let bumps = SetPollTokenAuthorityBumps {
+        let bumps = SetPredictionTokenAuthorityBumps {
             state: state_bump,
-            poll_anti_token: anti_token_bump,
-            poll_pro_token: pro_token_bump,
+            prediction_anti_token: anti_token_bump,
+            prediction_pro_token: pro_token_bump,
         };
 
-        let result_unauthorised = set_token_authority(
-            Context::new(&program_id, &mut accounts, &[], bumps),
-            poll_index,
-        );
+        let result_unauthorised =
+            set_token_authority(Context::new(&program_id, &mut accounts, &[], bumps), index);
         assert!(
             result_unauthorised.is_err(),
             "Unauthorised call should fail"

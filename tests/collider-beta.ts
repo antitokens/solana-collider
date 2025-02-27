@@ -63,15 +63,15 @@ describe("collider-beta", () => {
   // PDAs and accounts
   let adminPda: PublicKey;
   let statePda: PublicKey;
-  let pollPda: PublicKey;
-  let pollPda2: PublicKey;
-  let pollAntiTokenPda: PublicKey;
-  let pollProTokenPda: PublicKey;
+  let predictionPda: PublicKey;
+  let predictionPda2: PublicKey;
+  let predictionAntiTokenPda: PublicKey;
+  let predictionProTokenPda: PublicKey;
 
   let userAntiToken: PublicKey;
   let userProToken: PublicKey;
 
-  const pollIndex = new BN(0);
+  const index = new BN(0);
 
   before(async () => {
     // Create test keypairs
@@ -109,18 +109,18 @@ describe("collider-beta", () => {
       program.programId
     );
 
-    [pollPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("poll"), pollIndex.toArrayLike(Buffer, "le", 8)],
+    [predictionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("prediction"), index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
 
-    [pollAntiTokenPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("anti_token"), pollIndex.toArrayLike(Buffer, "le", 8)],
+    [predictionAntiTokenPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("anti_token"), index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
 
-    [pollProTokenPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("pro_token"), pollIndex.toArrayLike(Buffer, "le", 8)],
+    [predictionProTokenPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("pro_token"), index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
 
@@ -212,20 +212,22 @@ describe("collider-beta", () => {
         .rpc();
 
       const state = await program.account.stateAccount.fetch(statePda);
-      expect(Number(state.pollIndex)).to.equal(0);
-      expect(state.authority?.toString()).to.equal(manager.publicKey.toString());
+      expect(Number(state.index)).to.equal(0);
+      expect(state.authority?.toString()).to.equal(
+        manager.publicKey.toString()
+      );
     });
   });
 
-  describe("Poll Creation", () => {
-    it("Creates a new poll", async () => {
+  describe("Prediction Creation", () => {
+    it("Creates a new prediction", async () => {
       const now = Math.floor(Date.now() / 1000);
       const startTime = "2025-02-01T00:00:00Z";
       const endTime = "2025-03-01T00:00:00Z";
 
       await program.methods
-        .createPoll(
-          "Test Poll",
+        .createPrediction(
+          "Test Prediction",
           "Test Description",
           startTime,
           endTime,
@@ -234,10 +236,10 @@ describe("collider-beta", () => {
         )
         .accounts({
           state: statePda,
-          poll: pollPda,
+          prediction: predictionPda,
           authority: creator.publicKey,
-          pollAntiToken: pollAntiTokenPda,
-          pollProToken: pollProTokenPda,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
           antiMint: antiMintKeypair.publicKey,
           proMint: proMintKeypair.publicKey,
           vault: antitokenMultisigKeypair.publicKey,
@@ -247,12 +249,14 @@ describe("collider-beta", () => {
         .signers([creator])
         .rpc();
 
-      const poll = await program.account.pollAccount.fetch(pollPda);
-      expect(Number(poll.index)).to.equal(0);
-      expect(poll.title).to.equal("Test Poll");
-      expect(poll.description).to.equal("Test Description");
-      expect(poll.startTime).to.equal(startTime);
-      expect(poll.endTime).to.equal(endTime);
+      const prediction = await program.account.predictionAccount.fetch(
+        predictionPda
+      );
+      expect(Number(prediction.index)).to.equal(0);
+      expect(prediction.title).to.equal("Test Prediction");
+      expect(prediction.description).to.equal("Test Description");
+      expect(prediction.startTime).to.equal(startTime);
+      expect(prediction.endTime).to.equal(endTime);
     });
   });
 
@@ -262,49 +266,49 @@ describe("collider-beta", () => {
       const pro = new BN(3_000_000_000);
 
       await program.methods
-        .depositTokens(pollIndex, anti, pro, new BN(1739577600))
+        .depositTokens(index, anti, pro, new BN(1739577600))
         .accounts({
-          poll: pollPda,
+          prediction: predictionPda,
           authority: user.publicKey,
           userAntiToken: userAntiToken,
           userProToken: userProToken,
-          pollAntiToken: pollAntiTokenPda,
-          pollProToken: pollProTokenPda,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .signers([user])
         .rpc();
 
-      const poll = await program.account.pollAccount.fetch(pollPda);
-      expect(Number(poll.anti)).to.equal(anti.toNumber());
-      expect(Number(poll.pro)).to.equal(pro.toNumber());
-      expect(poll.deposits).to.have.lengthOf(1);
+      const prediction = await program.account.predictionAccount.fetch(
+        predictionPda
+      );
+      expect(Number(prediction.anti)).to.equal(anti.toNumber());
+      expect(Number(prediction.pro)).to.equal(pro.toNumber());
+      expect(prediction.deposits).to.have.lengthOf(1);
     });
   });
 
-  describe("Poll Equalisation", () => {
-    it("Equalises poll with truth", async () => {
+  describe("Prediction Equalisation", () => {
+    it("Equalises prediction with truth", async () => {
       await program.methods
-        .equaliseTokens(
-          pollIndex,
-          [new BN(6000), new BN(4000)],
-          new BN(1741996800)
-        )
+        .equaliseTokens(index, [new BN(6000), new BN(4000)], new BN(1741996800))
         .accounts({
-          poll: pollPda,
+          prediction: predictionPda,
           authority: manager.publicKey,
           userAntiToken: userAntiToken,
           userProToken: userProToken,
-          pollAntiToken: pollAntiTokenPda,
-          pollProToken: pollProTokenPda,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .signers([manager])
         .rpc();
 
-      const poll = await program.account.pollAccount.fetch(pollPda);
-      expect(poll.equalised).to.be.true;
-      expect(poll.equalisationResults).to.exist;
+      const prediction = await program.account.predictionAccount.fetch(
+        predictionPda
+      );
+      expect(prediction.equalised).to.be.true;
+      expect(prediction.equalisation).to.exist;
     });
   });
 
@@ -326,20 +330,22 @@ describe("collider-beta", () => {
       ];
 
       await program.methods
-        .bulkWithdrawTokens(pollIndex)
+        .bulkWithdrawTokens(index)
         .accounts({
-          poll: pollPda,
+          prediction: predictionPda,
           authority: antitokenMultisigKeypair.publicKey,
-          pollAntiToken: pollAntiTokenPda,
-          pollProToken: pollProTokenPda,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .remainingAccounts(remainingAccounts)
         .signers([antitokenMultisigKeypair])
         .rpc();
 
-      const poll = await program.account.pollAccount.fetch(pollPda);
-      expect(poll.deposits[0].withdrawn).to.be.true;
+      const prediction = await program.account.predictionAccount.fetch(
+        predictionPda
+      );
+      expect(prediction.deposits[0].withdrawn).to.be.true;
 
       const afterAntiBalance = await getAccount(
         provider.connection,
