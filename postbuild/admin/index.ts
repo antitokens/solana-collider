@@ -36,19 +36,25 @@ async function main() {
 
   try {
     // Find state PDA
-    const [statePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("state")],
+    const [adminPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("admin")],
       program.programId
     );
 
-    // Verify initialisation
-    const state = await program.account.stateAccount.fetch(statePda);
-    console.log("✅ State account:", {
-      index: state.index.toString(),
-      authority: state.authority.toString(),
-    });
+    // Initialise program
+    const tx = await program.methods
+      .initialiseAdmin()
+      .accounts({
+        admin: adminPda,
+        authority: wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    console.log("✅ Admin initialised successfully!");
+    console.log("✅ Transaction signature:", tx);
   } catch (error) {
-    console.error("❌ Verification failed:", error);
+    console.error("❌ Initialisation failed:", error);
   }
 }
 

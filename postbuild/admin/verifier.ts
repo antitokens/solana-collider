@@ -35,17 +35,16 @@ async function main() {
   ) as unknown as Program<ColliderBeta>;
 
   try {
-    // Find state PDA
-    const [statePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("state")],
+    // Find admin PDA
+    const [adminPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("admin")],
       program.programId
     );
 
     // Verify initialisation
-    const state = await program.account.stateAccount.fetch(statePda);
-    console.log("✅ State account:", {
-      index: state.index.toString(),
-      authority: state.authority.toString(),
+    const admin = await program.account.adminAccount.fetch(adminPda);
+    console.log("✅ Admin account:", {
+      initialised: admin.initialised,
     });
   } catch (error) {
     console.error("❌ Verification failed:", error);
