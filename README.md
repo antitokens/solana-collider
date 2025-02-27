@@ -129,6 +129,12 @@ yarn prepare-prod
 yarn build-anchor
 ```
 
+##### 4.2.1. Allow access to `target` directory
+
+```
+sudo chmod -R a+rx target
+```
+
 #### 4.3. Deploy the program
 
 ```
