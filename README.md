@@ -1,6 +1,15 @@
 # Antitoken Collider
 
-Before beginning, you'll need to install the following core dependencies for a complete runtime environment:
+## Environment
+
+Checkout the `localnet` branch to a `test-branch`:
+
+```
+git checkout localnet
+git checkout -b test-branch
+```
+
+Once on `test-branch`, you'll need to install the following core dependencies for a complete runtime environment:
 
 | Tool     | Mac       | Linux     |
 | -------- | --------- | --------- |
@@ -8,7 +17,7 @@ Before beginning, you'll need to install the following core dependencies for a c
 | `solana` | `1.18.26` | `1.18.26` |
 | `anchor` | `0.29.0`  | `0.29.0`  |
 
-Try to install the latest versions of the tools using a script I've forked from [`https://github.com/solana-developers/solana-install/blob/main/install.sh`](https://github.com/solana-developers/solana-install/blob/main/install.sh):
+Try to install the latest versions of the tools using a script I've forked from [`solana-install`](https://github.com/solana-developers/solana-install/blob/main/install.sh):
 
 ```
 curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/antitokens/solana-collider/main/install.sh | bash
@@ -209,4 +218,4 @@ Follow the same steps as localnet/devnet, but make sure you're deploying to the 
 | `yarn verify-deposit`         | `node --loader ts-node/esm postbuild/deposit/verifier.ts`                                                                                                |
 | `yarn verify-equalise`        | `node --loader ts-node/esm postbuild/equalise/verifier.ts`                                                                                               |
 | `yarn verify-withdraw-bulk`   | `node --loader ts-node/esm postbuild/withdraw/bulk_withdraw/verifier.ts`                                                                                 |
-| `yarn verify-withdraw-single` | `node --loader ts-node/esm postbuild/withdraw/user_withdraw/verifier.ts`                                                       
+| `yarn verify-withdraw-single` | `node --loader ts-node/esm postbuild/withdraw/user_withdraw/verifier.ts`                                                                                |
