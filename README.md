@@ -16,7 +16,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/antitoke
 
 Alternatively, follow these instructions to set up your environment: [`https://solana.com/docs/intro/installation`](https://solana.com/docs/intro/installation)
 
-## Install
+## Install dependencies
 
 ```
 yarn install
@@ -94,7 +94,7 @@ Note down the addresses of the necessary accounts:
 
 In the next step, we will add them to the `.env` file.
 
-### 3. `.env`
+### 3. `.env` file
 
 Make sure you have the necessary fields set in your `.env` file for this step onwards.
 
@@ -104,7 +104,15 @@ ANTI_TOKEN_MINT=EfbqfuxKWTNXtZtDhS47JMqUhsfLCu3y7VcCX7H8QT6V
 PRO_TOKEN_MINT=45U2Qhg7M2261SfKrBCMuDFSbScxRwa1QhxW39f71MjF
 VAULT=BVkN9PdWJA8YYJCHdkd46Y4HUPhvSUf38qcHYgFUopBh
 ```
-### 4. Deploy the program
+### 4. Deploy to cluster
+
+#### 4.1. Prepare for production
+
+```
+yarn prepare-prod
+```
+
+#### 4.2. Deploy the program
 
 ```
 yarn deploy-anchor
