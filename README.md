@@ -17,7 +17,7 @@ Once on `test-branch`, you'll need to install the following core dependencies fo
 | `solana` | `1.18.26` | `1.18.26` |
 | `anchor` | `0.29.0`  | `0.29.0`  |
 
-Try to install the latest versions of the tools using a script I've forked from [`solana-install`](https://github.com/solana-developers/solana-install/blob/main/install.sh):
+Try to install the required versions of the tools using a script I've forked from [`solana-install`](https://github.com/solana-developers/solana-install/blob/main/install.sh):
 
 ```
 curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/antitokens/solana-collider/main/install.sh | bash
@@ -35,7 +35,7 @@ yarn install
 
 This is deep rust mode for unit testing.
 
-> You don't need to run a local validator for this. You don't need anything in the `.env` file.
+> You don't need to run a local validator for this. You don't need anything in the `.env` file
 
 ### Build
 
@@ -57,7 +57,7 @@ All tests should pass assuming the program builds successfully.
 
 This is integration mode for interface testing in TypeScript.
 
-> You don't need to run a local validator for this. Anchor does that under the hood. You don't need anything in the `.env` file.
+> You don't need to run a local validator for this. Anchor does that under the hood. You don't need anything in the `.env` file
 
 ### Build
 
@@ -85,7 +85,7 @@ You'll need a local validator running for this. In a separate terminal, simply i
 solana-test-validator -r solana-test-validator --deactivate-feature EenyoWx9UMXYKpR8mW5Jmfmy2fRjzUtM7NduYMY8bx33
 ```
 
-> This will disable the feature `EenyoWx9UMXYKpR8mW5Jmfmy2fRjzUtM7NduYMY8bx33` which makes sure that oversized instructions - larger than the `4096` byte stack limit, are not allowed and will lead to an explicit error.
+> This will disable the feature `EenyoWx9UMXYKpR8mW5Jmfmy2fRjzUtM7NduYMY8bx33` which makes sure that oversized instructions - larger than the `4096` byte stack limit, are not allowed and will lead to an explicit error
 
 Note down the validator's RPC URL (`SOLANA_API`); this should typically be `http://localhost:8899`.
 
@@ -155,7 +155,7 @@ yarn create-new
 
 We will deploy explicitly to the devnet for testing. 
 
-> You don't need to run a local validator.
+> You don't need to run a local validator
 
 All steps for devnet are the same as localnet, except the RPC URL. For devnet, you'll need to set the following in your `.env` file:
 
@@ -184,7 +184,7 @@ Follow the same steps as localnet/devnet, but make sure you're deploying to the 
 
 # Presets:
 
-> You may need to issue some commands with `sudo` if your `.config` directory is protected.
+> You may need to issue some commands with `sudo` if your `.config` directory is protected
 
 | Command                       | Script                                                                                                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
