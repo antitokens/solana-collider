@@ -74,7 +74,7 @@ If the program builds successfully, you can run the following command for testin
 yarn test-anchor
 ```
 
-## `LOCALNET`
+## `Localnet`
 
 We will deploy explicitly to the localnet for testing.
 
@@ -98,8 +98,8 @@ yarn setup
 
 Note down the addresses of the necessary accounts:
 
-- `ANTI_TOKEN_MINT`: The mint address of the anti-token.
-- `PRO_TOKEN_MINT`: The mint address of the pro-token.
+- `ANTI_TOKEN_MINT`: The mint address of `$ANTI`.
+- `PRO_TOKEN_MINT`: The mint address of `$PRO`.
 - `VAULT`: The address of the vault.
 
 In the next step, we will add them to the `.env` file.
@@ -171,7 +171,7 @@ yarn create-new
 'Program 3zKqVU2RiWXPe3bvTjQ869UF6qng2LoGBKEFmUqh8BzA failed: Access violation in stack frame 5 at address 0x200005bd8 of size 8'
 ```
 
-## `DEVNET`
+## `Devnet`
 
 We will deploy explicitly to the devnet for testing.
 
@@ -185,19 +185,19 @@ SOLANA_API="https://api.devnet.solana.com"
 
 Follow the same steps as localnet, but make sure you're deploying to the devnet.
 
-## `MAINNET`
+## `Mainnet`
 
 We will deploy explicitly to the mainnet for production.
 
 > You don't need to run a local validator
 
-All steps for mainnet are the same as localnet/devnet, except the RPC URL. For mainnet, you'll need to set the following in your `.env` file:
+All steps for mainnet are the same as localnet and/or devnet, except the RPC URL. For mainnet, you'll need to set the following in your `.env` file:
 
 ```
 SOLANA_API="https://api.mainnet-beta.solana.com"
 ```
 
-Follow the same steps as localnet/devnet, but make sure you're deploying to the mainnet.
+Follow the same steps as localnet and/or devnet, but make sure you're deploying to the mainnet.
 
 ---
 
