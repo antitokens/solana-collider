@@ -185,10 +185,11 @@ Follow the same steps as localnet/devnet, but make sure you're deploying to the 
 
 # Presets:
 
-> You may need to issue some commands with `sudo` if your `.config` directory is protected
+> You may need to issue some commands with `sudo` if your `target` directory is protected. Alternatively, you can issue `sudo chmod -R a+rx target` once
 
 | Command                       | Script                                                                                                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `yarn env`                    | `bash install.sh \|\| curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/antitokens/solana-collider/main/install.sh \| bash`        |
 | `yarn clean-lock`             | `sh -c "if [[ $(uname) == 'Darwin' ]]; then sed -i '' 's/version = 4/version = 3/' Cargo.lock; else sed -i 's/version = 4/version = 3/' Cargo.lock; fi"` |
 | `yarn build-anchor`           | `yarn clean-lock && anchor build`                                                                                                                        |
 | `yarn build-anchor-full`      | `yarn clean-lock && RUST_LOG=trace anchor build`                                                                                                         |
