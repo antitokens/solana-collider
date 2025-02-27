@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Default versions
+# Default versions; skip installation unless specified
 RUST_VERSION="1.83.0"
 SOLANA_CLI_VERSION="1.18.26"
 ANCHOR_CLI_VERSION="0.29.0"
-NODE_VERSION="" # Skip Node.js installation unless specified
-YARN_VERSION="" # Skip Yarn installation unless specified
+NODE_VERSION="22.14.0"
+YARN_VERSION=""
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
     *)
-        echo "Unknown option: $1"
+        echo "❌ Unknown option: $1"
         exit 1
         ;;
     esac
@@ -42,11 +42,11 @@ done
 # Logging Functions
 ########################################
 log_info() {
-    printf "[INFO] %s\n" "$1"
+    printf "ℹ️  [INFO] %s\n" "$1"
 }
 
 log_error() {
-    printf "[ERROR] %s\n" "$1" >&2
+    printf "❌ [ERROR] %s\n" "$1" >&2
 }
 
 ########################################
@@ -70,7 +70,7 @@ detect_os() {
 install_dependencies() {
     local os="$1"
     if [[ "$os" == "Linux" ]]; then
-        log_info "Detected Linux OS. Updating package list and installing dependencies..."
+        log_info "Detected Linux OS. Updating package list and installing dependencies ⏳"
         SUDO=""
         if command -v sudo >/dev/null 2>&1; then
             SUDO="sudo"
@@ -85,20 +85,20 @@ install_dependencies() {
             protobuf-compiler \
             libssl-dev
     elif [[ "$os" == "Darwin" ]]; then
-        log_info "Detected macOS."
+        log_info "Detected macOS"
         # Check for cargo, install with brew if not found
         if ! command -v cargo >/dev/null 2>&1; then
-            log_info "Cargo not found. Installing with Homebrew..."
+            log_info "Cargo not found. Installing with Homebrew ⏳"
             if ! command -v brew >/dev/null 2>&1; then
-                log_error "Homebrew not installed. Please install Homebrew first."
+                log_error "Homebrew not installed. Please install Homebrew first"
                 exit 1
             fi
             brew install rust
         else
-            log_info "Cargo is already installed."
+            log_info "Cargo is already installed"
         fi
     else
-        log_info "Detected $os."
+        log_info "Detected $os"
     fi
 
     echo ""
@@ -111,7 +111,7 @@ install_rust() {
     local target_version="$1"
 
     if [[ -z "$target_version" ]]; then
-        log_info "No Rust version specified. Skipping Rust installation."
+        log_info "No Rust version specified. Skipping Rust installation"
         return
     fi
 
@@ -120,16 +120,16 @@ install_rust() {
         current_version=$(rustc --version | cut -d' ' -f2)
 
         if [[ "$current_version" == "$target_version" ]]; then
-            log_info "Rust $target_version is already installed. Skipping installation."
+            log_info "Rust $target_version is already installed. Skipping installation"
         else
-            log_info "Installing specific Rust version $target_version..."
+            log_info "Installing specific Rust version $target_version ⏳"
             rustup default "$target_version"
         fi
     else
-        log_info "Installing Rust..."
+        log_info "Installing Rust ⏳"
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        log_info "Rust installation complete."
-        log_info "Installing specific Rust version $target_version..."
+        log_info "Rust installation complete"
+        log_info "Installing specific Rust version $target_version ⏳"
         rustup default "$target_version"
     fi
 
@@ -137,16 +137,16 @@ install_rust() {
     if [[ -f "$HOME/.cargo/env" ]]; then
         . "$HOME/.cargo/env"
     elif [[ -f "$HOME/.cargo/env.fish" ]]; then
-        log_info "Sourcing Rust environment for Fish shell..."
+        log_info "Sourcing Rust environment for Fish shell ⏳"
         source "$HOME/.cargo/env.fish"
     else
-        log_error "Rust environment configuration file not found."
+        log_error "Rust environment configuration file not found"
     fi
 
     if command -v rustc >/dev/null 2>&1; then
-        rustc --version
+        echo "ⓘ  $(rustc --version)"
     else
-        log_error "Rust installation failed."
+        log_error "Rust installation failed"
     fi
 
     echo ""
@@ -160,7 +160,7 @@ install_solana_cli() {
     local target_version="$2"
 
     if [[ -z "$target_version" ]]; then
-        log_info "No Solana CLI version specified. Skipping Solana CLI installation."
+        log_info "No Solana CLI version specified. Skipping Solana CLI installation"
         return
     fi
 
@@ -169,20 +169,20 @@ install_solana_cli() {
         current_version=$(solana --version | head -n1 | awk '{print $2}')
 
         if [[ "$current_version" == "$target_version" ]]; then
-            log_info "Solana CLI $target_version is already installed. Skipping installation."
+            log_info "Solana CLI $target_version is already installed. Skipping installation"
         else
-            log_info "Installing specific Solana CLI version $target_version..."
+            log_info "Installing specific Solana CLI version $target_version ⏳"
             sh -c "$(curl -sSfL https://release.anza.xyz/v$target_version/install)"
         fi
     else
-        log_info "Installing Solana CLI version $target_version..."
+        log_info "Installing Solana CLI version $target_version ⏳"
         sh -c "$(curl -sSfL https://release.anza.xyz/v$target_version/install)"
     fi
 
     if command -v solana >/dev/null 2>&1; then
-        solana --version
+        echo "ⓘ  $(solana --version)"
     else
-        log_error "Solana CLI installation failed."
+        log_error "Solana CLI installation failed"
     fi
 
     if [[ "$os" == "Linux" ]]; then
@@ -201,7 +201,7 @@ install_anchor_cli() {
     local target_version="$1"
 
     if [[ -z "$target_version" ]]; then
-        log_info "No Anchor CLI version specified. Skipping Anchor CLI installation."
+        log_info "No Anchor CLI version specified. Skipping Anchor CLI installation"
         return
     fi
 
@@ -210,28 +210,28 @@ install_anchor_cli() {
         current_version=$(anchor --version | cut -d' ' -f2)
 
         if [[ "$current_version" == "$target_version" ]]; then
-            log_info "Anchor CLI $target_version is already installed. Skipping installation."
+            log_info "Anchor CLI $target_version is already installed. Skipping installation"
         else
             if ! command -v avm >/dev/null 2>&1; then
-                log_info "AVM is not installed. Installing AVM..."
+                log_info "AVM is not installed. Installing AVM ⏳"
                 cargo install --force --git https://github.com/coral-xyz/anchor avm
             fi
-            log_info "Installing specific Anchor version $target_version..."
+            log_info "Installing specific Anchor version $target_version ⏳"
             avm install "$target_version"
             avm use "$target_version"
         fi
     else
-        log_info "Installing Anchor CLI via AVM..."
+        log_info "Installing Anchor CLI via AVM ⏳"
         cargo install --git https://github.com/coral-xyz/anchor avm
-        log_info "Installing specific Anchor version $target_version..."
+        log_info "Installing specific Anchor version $target_version ⏳"
         avm install "$target_version"
         avm use "$target_version"
     fi
 
     if command -v anchor >/dev/null 2>&1; then
-        anchor --version
+        echo "ⓘ  $(anchor --version)"
     else
-        log_error "Anchor CLI installation failed."
+        log_error "Anchor CLI installation failed"
     fi
 
     echo ""
@@ -244,14 +244,14 @@ install_nvm_and_node() {
     local target_version="$1"
 
     if [[ -z "$target_version" ]]; then
-        log_info "No Node.js version specified. Skipping Node.js installation."
+        log_info "No Node.js version specified. Skipping Node.js installation"
         return
     fi
 
     if [ -s "$HOME/.nvm/nvm.sh" ]; then
-        log_info "NVM is already installed."
+        log_info "NVM is already installed"
     else
-        log_info "Installing NVM..."
+        log_info "Installing NVM ⏳"
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
     fi
 
@@ -260,7 +260,7 @@ install_nvm_and_node() {
     if [ -s "$NVM_DIR/nvm.sh" ]; then
         . "$NVM_DIR/nvm.sh"
     else
-        log_error "nvm not found. Ensure it is installed correctly."
+        log_error "nvm not found. Ensure it is installed correctly"
         return
     fi
 
@@ -273,15 +273,15 @@ install_nvm_and_node() {
         current_node=$(node --version)
 
         if [ "$current_node" = "v$target_version" ]; then
-            log_info "Node.js $target_version is already installed. Skipping installation."
+            log_info "Node.js $target_version is already installed. Skipping installation"
         else
-            log_info "Installing Node.js version $target_version..."
+            log_info "Installing Node.js version $target_version ⏳"
             nvm install "$target_version"
             nvm alias default "$target_version"
             nvm use default
         fi
     else
-        log_info "Installing Node.js version $target_version..."
+        log_info "Installing Node.js version $target_version ⏳"
         nvm install "$target_version"
         nvm alias default "$target_version"
         nvm use default
@@ -297,7 +297,7 @@ install_yarn() {
     local target_version="$1"
 
     if [[ -z "$target_version" ]]; then
-        log_info "No Yarn version specified. Skipping Yarn installation."
+        log_info "No Yarn version specified. Skipping Yarn installation"
         return
     fi
 
@@ -308,18 +308,18 @@ install_yarn() {
         if [[ "$current_version" == "$target_version" ]]; then
             log_info "Yarn $target_version is already installed. Skipping installation."
         else
-            log_info "Installing Yarn version $target_version..."
+            log_info "Installing Yarn version $target_version ⏳"
             npm install --global yarn@"$target_version"
         fi
     else
-        log_info "Installing Yarn version $target_version..."
+        log_info "Installing Yarn version $target_version ⏳"
         npm install --global yarn@"$target_version"
     fi
 
     if command -v yarn >/dev/null 2>&1; then
         yarn --version
     else
-        log_error "Yarn installation failed."
+        log_error "Yarn installation failed"
     fi
 
     echo ""
@@ -330,12 +330,12 @@ install_yarn() {
 ########################################
 print_versions() {
     echo ""
-    echo "Installed Versions:"
-    echo "Rust: $(rustc --version 2>/dev/null || echo 'Not installed')"
-    echo "Solana CLI: $(solana --version 2>/dev/null || echo 'Not installed')"
-    echo "Anchor CLI: $(anchor --version 2>/dev/null || echo 'Not installed')"
-    echo "Node.js: $(node --version 2>/dev/null || echo 'Not installed')"
-    echo "Yarn: $(yarn --version 2>/dev/null || echo 'Not installed')"
+    echo "ℹ️  Installed Versions:"
+    echo "ⓘ  Rust: $(rustc --version 2>/dev/null || echo '⚠️  Not installed')"
+    echo "ⓘ  Solana CLI: $(solana --version 2>/dev/null || echo '⚠️  Not installed')"
+    echo "ⓘ  Anchor CLI: $(anchor --version 2>/dev/null || echo '⚠️  Not installed')"
+    echo "ⓘ  Node.js: $(node --version 2>/dev/null || echo '⚠️  Not installed')"
+    echo "ⓘ  Yarn: $(yarn --version 2>/dev/null || echo '⚠️  Not installed')"
     echo ""
 }
 
@@ -367,7 +367,7 @@ ensure_nvm_in_shell() {
             } >>"$shell_rc"
         fi
     else
-        log_info "$shell_rc does not exist, creating it with nvm initialisation."
+        log_info "$shell_rc does not exist, creating it with nvm initialisation"
         echo 'export NVM_DIR="$HOME/.nvm"' >"$shell_rc"
         echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm' >>"$shell_rc"
     fi
@@ -391,7 +391,7 @@ main() {
 
     print_versions
 
-    echo "Installation complete. Please restart your terminal to apply all changes."
+    echo "✅ Installation complete. Please restart your terminal to apply all changes"
 }
 
 main "$@"
