@@ -21,6 +21,7 @@
   },
   "type": "module",
   "scripts": {
+    "env": "bash install.sh || curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/antitokens/solana-collider/main/install.sh | bash",
     "clean-lock": "sh -c \"if [[ $(uname) == 'Darwin' ]]; then sed -i '' 's/version = 4/version = 3/' Cargo.lock; else sed -i 's/version = 4/version = 3/' Cargo.lock; fi\"",
     "build-anchor": "yarn clean-lock && anchor build",
     "build-anchor-full": "yarn clean-lock && RUST_LOG=trace anchor build",
