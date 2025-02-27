@@ -2,14 +2,15 @@
 
 ## Environment
 
-Checkout the `localnet` branch to a `test-branch`:
+Checkout the `main` branch to a test branch `sim` for a clean end-to-end simulation:
 
 ```
-git checkout localnet
-git checkout -b test-branch
+git checkout main
+git pull origin main
+git checkout -b sim
 ```
 
-Once on `test-branch`, you'll need to install the following core dependencies for a complete runtime environment:
+Once on `sim` branch, you'll need to install the following core dependencies for a complete runtime environment:
 
 | Tool     | Mac       | Linux     |
 | -------- | --------- | --------- |
