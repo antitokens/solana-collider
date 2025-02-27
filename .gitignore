@@ -12,9 +12,15 @@ docs/
 
 # Dotenv
 .env
-.config
-dPro
-dAnti
+
+# Keypairs
+.config/*.json
+!.config/example.*.json
+dPro/*.json
+!dPro/example.*.json
+dAnti/*.json
+!dAnti/example.*.json
+dTest
 
 # Packages
 node_modules
