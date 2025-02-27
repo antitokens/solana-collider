@@ -123,7 +123,13 @@ VAULT=
 yarn prepare-prod
 ```
 
-#### 4.2. Deploy the program
+#### 4.2. Build the program
+
+```
+yarn build-anchor
+```
+
+#### 4.3. Deploy the program
 
 ```
 yarn deploy
@@ -135,10 +141,22 @@ yarn deploy
 yarn initialise
 ```
 
-### 6. Call admin function
+#### 5.1. Verify initialisation
+
+```
+yarn verify-initialise
+```
+
+### 6. Initialisation the admin
 
 ```
 yarn admin
+```
+
+#### 6.1. Verify admin initialisation
+
+```
+yarn verify-admin
 ```
 
 ### 7. Create a new prediction
@@ -147,7 +165,7 @@ yarn admin
 yarn create-new
 ```
 
-❌ You should see an access error:
+❌ You should see an access violation error:
 
 ```
 'Program 3zKqVU2RiWXPe3bvTjQ869UF6qng2LoGBKEFmUqh8BzA failed: Access violation in stack frame 5 at address 0x200005bd8 of size 8'
@@ -171,7 +189,7 @@ Follow the same steps as localnet, but make sure you're deploying to the devnet.
 
 We will deploy explicitly to the mainnet for production.
 
-> You don't need to run a local validator.
+> You don't need to run a local validator
 
 All steps for mainnet are the same as localnet/devnet, except the RPC URL. For mainnet, you'll need to set the following in your `.env` file:
 
