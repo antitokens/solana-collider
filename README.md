@@ -105,7 +105,7 @@ In the next step, we will add them to the `.env` file.
 
 ### 3. `.env` file
 
-Make sure you have the necessary fields set in your `.env` file for this step onwards.
+Make sure you have copied the necessary fields from the previous step and set them in your `.env` file.
 
 ```
 SOLANA_API="http://localhost:8899"
@@ -124,7 +124,7 @@ yarn prepare-prod
 #### 4.2. Deploy the program
 
 ```
-yarn deploy-anchor
+yarn deploy
 ```
 
 ### 5. Initialise the program
