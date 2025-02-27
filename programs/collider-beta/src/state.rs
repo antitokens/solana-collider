@@ -14,7 +14,7 @@ use anchor_lang::prelude::*;
 #[account]
 pub struct AdminAccount {
     pub initialised: bool,           // Initialisation flag
-    pub creation_fee: u64,           // Fee to create prediction
+    pub poll_creation_fee: u64,      // Fee to create poll
     pub max_title_length: u64,       // Maximum title length
     pub max_description_length: u64, // Maximum description length
     pub truth_basis: u64,            // Truth limit
@@ -31,18 +31,18 @@ impl AdminAccount {
 
 #[account]
 pub struct StateAccount {
-    pub index: u64,
+    pub poll_index: u64,
     pub authority: Pubkey,
 }
 
 impl StateAccount {
     pub const LEN: usize = 8  // Discriminator
-        + 8   // index
+        + 8   // poll_index
         + 32; // authority (Pubkey)
 }
 
 #[account]
-pub struct PredictionAccount {
+pub struct PollAccount {
     pub index: u64,
     pub title: String,
     pub description: String,
@@ -51,12 +51,12 @@ pub struct PredictionAccount {
     pub etc: Option<Vec<u8>>,
     pub anti: u64,
     pub pro: u64,
-    pub deposits: Vec<Deposit>,
+    pub deposits: Vec<UserDeposit>,
     pub equalised: bool,
-    pub equalisation: Option<Equalisation>,
+    pub equalisation_results: Option<EqualisationResult>,
 }
 
-impl PredictionAccount {
+impl PollAccount {
     pub const LEN: usize = 8 + // discriminator
         8 + // index
         256 + // title max length
@@ -68,7 +68,7 @@ impl PredictionAccount {
         8 + // $PRO in pool
         1024 + // deposits vector space
         1 + // equalised
-        1024; // equalisation results
+        1024; // equalisation_results
 
     pub fn is_active(&self, current_time: i64) -> bool {
         match (
@@ -76,23 +76,23 @@ impl PredictionAccount {
             parse_iso_timestamp(&self.end_time),
         ) {
             (Ok(start), Ok(end)) => current_time >= start && current_time <= end,
-            _ => false, // If timestamps are invalid, prediction is not active
+            _ => false, // If timestamps are invalid, poll is not active
         }
     }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct Deposit {
+pub struct UserDeposit {
     pub address: Pubkey,
     pub anti: u64,
     pub pro: u64,
-    pub mean: u64,
-    pub stddev: u64,
+    pub u: u64,
+    pub s: u64,
     pub withdrawn: bool,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct Equalisation {
+pub struct EqualisationResult {
     pub anti: Vec<u64>,
     pub pro: Vec<u64>,
     pub truth: Vec<u64>,
@@ -100,33 +100,33 @@ pub struct Equalisation {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct CreatePredictionBumps {
+pub struct CreatePollBumps {
     pub state: u8,
-    pub prediction: u8,
-    pub prediction_anti_token: u8,
-    pub prediction_pro_token: u8,
+    pub poll: u8,
+    pub poll_anti_token: u8,
+    pub poll_pro_token: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct BulkWithdrawTokensBumps {
-    pub prediction: u8,
-    pub prediction_anti_token: u8,
-    pub prediction_pro_token: u8,
+    pub poll: u8,
+    pub poll_anti_token: u8,
+    pub poll_pro_token: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct UserWithdrawTokensBumps {
     pub state: u8,
-    pub prediction: u8,
-    pub prediction_anti_token: u8,
-    pub prediction_pro_token: u8,
+    pub poll: u8,
+    pub poll_anti_token: u8,
+    pub poll_pro_token: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct SetPredictionTokenAuthorityBumps {
+pub struct SetPollTokenAuthorityBumps {
     pub state: u8,
-    pub prediction_anti_token: u8,
-    pub prediction_pro_token: u8,
+    pub poll_anti_token: u8,
+    pub poll_pro_token: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]

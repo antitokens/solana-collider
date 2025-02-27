@@ -1,5 +1,5 @@
 //! Program Author: sshmatrix, for Antitoken
-//! Program Description: Collider'stddev utils
+//! Program Description: Collider's utils
 //! Version: 1.0.0-beta
 //! License: MIT
 //! Created: 20 Jan 2025
@@ -13,20 +13,19 @@ use anchor_lang::prelude::*;
 use chrono::NaiveDateTime;
 use solana_security_txt;
 
-pub const CREATION_FEE: u64 = 100_000_000; // Fee to create prediction (0.1 SOL)
+pub const POLL_CREATION_FEE: u64 = 100_000_000; // Fee to create poll (0.1 SOL)
 pub const MAX_TITLE_LENGTH: u64 = 256; // Maximum title length
 pub const MAX_DESCRIPTION_LENGTH: u64 = 1_024; // Maximum description length
 pub const TRUTH_BASIS: u64 = 100_000; // Truth limit = [0, 1]
 pub const FLOAT_BASIS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
 pub const MIN_DEPOSIT_AMOUNT: u64 = 10_000; // 1 token minimum deposit
 pub const ANTITOKEN_MULTISIG: Pubkey =
-    solana_program::pubkey!("BVkN9PdWJA8YYJCHdkd46Y4HUPhvSUf38qcHYgFUopBh");
+    solana_program::pubkey!("7rFEa4g8UZs7eBBoq66FmLeobtb81dfCPx2Hmt61kJ5t");
 pub const ANTI_MINT_ADDRESS: Pubkey =
-    solana_program::pubkey!("5LfuwEF4SCTxijmmXoc8KpK5osLEPfxcma4QRiTVVJyt");
+    solana_program::pubkey!("674rRAKuyAizM6tWKLpo8zDqAtvxYS7ce6DoGBfocmrT");
 pub const PRO_MINT_ADDRESS: Pubkey =
-    solana_program::pubkey!("DqF2BkNYro78v84xBbJPdRPy619qAzz8do39gA1DC5k");
-pub const PROGRAM_ID: Pubkey =
-    solana_program::pubkey!("3zKqVU2RiWXPe3bvTjQ869UF6qng2LoGBKEFmUqh8BzA");
+    solana_program::pubkey!("6bDmnBGtGo9pb2vhVkrzQD9uHYcYpBCCSgU61534MyTm");
+pub const PROGRAM_ID: &str = "5eR98MdgS8jYpKB2iD9oz3MtBdLJ6s7gAVWJZFMvnL9G";
 
 #[cfg(not(feature = "no-entrypoint"))]
 use solana_security_txt::security_txt;
@@ -50,14 +49,14 @@ security_txt! {
 
 #[error_code]
 pub enum PredictError {
-    #[msg("Insufficient payment for creating prediction")]
+    #[msg("Insufficient payment for creating poll")]
     InsufficientPayment,
-    #[msg("Prediction is not active")]
-    PredictionInactive,
-    #[msg("Prediction is still active")]
-    PredictionActive,
-    #[msg("Prediction has already ended")]
-    PredictionEnded,
+    #[msg("Poll is not active")]
+    PollInactive,
+    #[msg("Poll is still active")]
+    PollActive,
+    #[msg("Poll has already ended")]
+    PollEnded,
     #[msg("Title exceeds maximum length")]
     TitleTooLong,
     #[msg("Description exceeds maximum length")]
@@ -80,11 +79,11 @@ pub enum PredictError {
     InvalidTruthValues,
     #[msg("Arithmetic operation failed")]
     MathError,
-    #[msg("Prediction title already exists")]
+    #[msg("Poll title already exists")]
     TitleExists,
-    #[msg("Prediction not found")]
-    PredictionNotFound,
-    #[msg("Prediction not yet equalised")]
+    #[msg("Poll not found")]
+    PollNotFound,
+    #[msg("Poll not yet equalised")]
     NotEqualised,
     #[msg("No deposit found for user")]
     NoDeposit,
@@ -100,10 +99,10 @@ pub enum PredictError {
     UserWithdrawalsNotEnabled,
 }
 
-// Event emitted when a new prediction is created
+// Event emitted when a new poll is created
 #[event]
-pub struct CreationEvent {
-    pub index: u64,
+pub struct PollCreatedEvent {
+    pub poll_index: u64,
     pub address: Pubkey,
     pub title: String,
     pub start_time: String,
@@ -114,19 +113,19 @@ pub struct CreationEvent {
 // Event emitted when tokens are deposited
 #[event]
 pub struct DepositEvent {
-    pub index: u64,
+    pub poll_index: u64,
     pub address: Pubkey,
     pub anti: u64,
     pub pro: u64,
-    pub mean: u64,
-    pub stddev: u64,
+    pub u: u64,
+    pub s: u64,
     pub timestamp: i64,
 }
 
 // Event emitted when equalisation occurs
 #[event]
 pub struct EqualisationEvent {
-    pub index: u64,
+    pub poll_index: u64,
     pub truth: Vec<u64>,
     pub anti: u64,
     pub pro: u64,
@@ -136,17 +135,17 @@ pub struct EqualisationEvent {
 // Event emitted when tokens are withdrawn
 #[event]
 pub struct WithdrawEvent {
-    pub index: u64,
+    pub poll_index: u64,
     pub address: Pubkey,
     pub anti: u64,
     pub pro: u64,
     pub timestamp: i64,
 }
 
-// Event for updates to prediction parameters
+// Event for updates to poll parameters
 #[event]
-pub struct PredictionUpdateEvent {
-    pub index: u64,
+pub struct PollUpdateEvent {
+    pub poll_index: u64,
     pub field_updated: String,
     pub timestamp: i64,
 }
@@ -176,8 +175,8 @@ pub fn collide(anti: u64, pro: u64) -> Result<(u64, u64)> {
     }
     .ok_or(PredictError::MathError)?;
 
-    // Calculate mean
-    let mean = if sum < FLOAT_BASIS {
+    // Calculate u
+    let u = if sum < FLOAT_BASIS {
         0
     } else if diff > 0 && diff < FLOAT_BASIS {
         diff
@@ -185,8 +184,8 @@ pub fn collide(anti: u64, pro: u64) -> Result<(u64, u64)> {
         diff
     };
 
-    // Calculate stddev
-    let stddev = if sum < FLOAT_BASIS {
+    // Calculate s
+    let s = if sum < FLOAT_BASIS {
         0
     } else if diff == sum {
         0
@@ -198,7 +197,7 @@ pub fn collide(anti: u64, pro: u64) -> Result<(u64, u64)> {
         (sum * FLOAT_BASIS) / diff
     };
 
-    Ok((mean / FLOAT_BASIS, stddev / FLOAT_BASIS))
+    Ok((u / FLOAT_BASIS, s / FLOAT_BASIS))
 }
 
 // Function to parse date
@@ -224,8 +223,8 @@ pub fn state_has_title(_state: &Account<StateAccount>, _title: &str) -> bool {
     false
 }
 
-// Helper function to validate prediction parameters
-pub fn validate_prediction_params(
+// Helper function to validate poll parameters
+pub fn validate_poll_params(
     title: &str,
     description: &str,
     start_time: &str,
@@ -251,7 +250,7 @@ pub fn validate_prediction_params(
 }
 
 pub fn equalise_with_truth(
-    deposits: &[Deposit],
+    deposits: &[UserDeposit],
     anti_pool: u64,
     pro_pool: u64,
     truth: &[u64],
@@ -261,8 +260,8 @@ pub fn equalise_with_truth(
     // Calculate overlaps
     let mut overlaps = Vec::with_capacity(deposits.len());
     for deposit in deposits {
-        let baryon = deposit.mean as f64;
-        let photon = (deposit.stddev as f64) / (FLOAT_BASIS as f64);
+        let baryon = deposit.u as f64;
+        let photon = (deposit.s as f64) / (FLOAT_BASIS as f64);
         let parity = if (truth[0] > truth[1]) == (deposit.anti > deposit.pro) {
             1.0
         } else {
@@ -376,4 +375,75 @@ fn overlap(baryon: f64, photon: f64, parity: f64) -> Result<f64> {
     };
 
     Ok(normalised.clamp(0.0, 1.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_collide() {
+        let (u, s) = collide(100, 50).unwrap();
+        assert_eq!(u, 50); // |100 - 50|
+        assert_eq!(s, 3); // (100 + 50) / |100 - 50|
+
+        let (u, s) = collide(50, 50).unwrap();
+        assert_eq!(u, 0);
+        assert_eq!(s, 100);
+    }
+
+    #[test]
+    fn test_equalise_with_truth() {
+        let deposits = vec![
+            UserDeposit {
+                address: Pubkey::new_unique(),
+                anti: 7_000,
+                pro: 3_000,
+                u: 4_000,
+                s: 25_000,
+                withdrawn: false,
+            },
+            UserDeposit {
+                address: Pubkey::new_unique(),
+                anti: 3_000,
+                pro: 7_000,
+                u: 4_000,
+                s: 25_000,
+                withdrawn: false,
+            },
+        ];
+
+        let total_anti = 10_000;
+        let total_pro = 10_000;
+        let truth = vec![0, 100_000];
+
+        let result = equalise_with_truth(&deposits, total_anti, total_pro, &truth);
+
+        assert!(result.is_ok(), "Equalisation should succeed");
+
+        let (equalised_anti, equalised_pro) = result.unwrap();
+
+        // Ensure distribution follows the truth ratio
+        assert_eq!(equalised_anti.len(), deposits.len());
+        assert_eq!(equalised_pro.len(), deposits.len());
+
+        // Values from independent TypeScript simulations
+        let expected_anti_split_1 = 3333;
+        let expected_anti_split_2 = 6667;
+        let expected_pro_split_1 = 3333;
+        let expected_pro_split_2 = 6667;
+
+        // Check for matches
+        assert_eq!(equalised_anti[0], expected_anti_split_1);
+        assert_eq!(equalised_anti[1], expected_anti_split_2);
+        assert_eq!(equalised_pro[0], expected_pro_split_1);
+        assert_eq!(equalised_pro[1], expected_pro_split_2);
+    }
+
+    #[test]
+    fn test_parse_iso_timestamp() {
+        assert!(parse_iso_timestamp("2025-01-20T00:00:00Z").is_ok());
+        assert!(parse_iso_timestamp("2025-13-20T00:00:00Z").is_err()); // Invalid month
+        assert!(parse_iso_timestamp("invalid").is_err());
+    }
 }
