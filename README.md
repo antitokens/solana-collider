@@ -109,9 +109,9 @@ Make sure you have the necessary fields set in your `.env` file for this step on
 
 ```
 SOLANA_API="http://localhost:8899"
-ANTI_TOKEN_MINT=EfbqfuxKWTNXtZtDhS47JMqUhsfLCu3y7VcCX7H8QT6V
-PRO_TOKEN_MINT=45U2Qhg7M2261SfKrBCMuDFSbScxRwa1QhxW39f71MjF
-VAULT=BVkN9PdWJA8YYJCHdkd46Y4HUPhvSUf38qcHYgFUopBh
+ANTI_TOKEN_MINT=
+PRO_TOKEN_MINT=
+VAULT=
 ```
 ### 4. Deploy to cluster
 
