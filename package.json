@@ -21,6 +21,7 @@
   },
   "type": "module",
   "scripts": {
+    "env": "bash install.sh || curl --proto '=https' --tlsv1.2 -sSfL https://raw.githubusercontent.com/antitokens/solana-collider/main/install.sh | bash",
     "clean-lock": "sh -c \"if [[ $(uname) == 'Darwin' ]]; then sed -i '' 's/version = 4/version = 3/' Cargo.lock; else sed -i 's/version = 4/version = 3/' Cargo.lock; fi\"",
     "build-anchor": "yarn clean-lock && anchor build",
     "build-anchor-full": "yarn clean-lock && RUST_LOG=trace anchor build",
@@ -36,6 +37,8 @@
     "test-cargo-full": "RUST_LOG=trace cargo test-sbf",
     "prepare-prod": "node postbuild/prepare/index.js",
     "query-txt": "query-security-txt target/deploy/collider_beta.so",
+    "validator": "solana-test-validator",
+    "validator-new": "solana-test-validator -r --deactivate-feature EenyoWx9UMXYKpR8mW5Jmfmy2fRjzUtM7NduYMY8bx33",
     "deploy": "anchor deploy",
     "setup": "bash postbuild/initialise/setup.sh",
     "initialise": "node --loader ts-node/esm postbuild/initialise/index.ts",
