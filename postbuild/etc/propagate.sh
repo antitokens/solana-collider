@@ -7,4 +7,3 @@ if git rev-parse --abbrev-ref HEAD | grep -q 'main'; then
 else
     echo "✕ Not on main"
 fi
-
