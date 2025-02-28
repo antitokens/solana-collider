@@ -126,13 +126,13 @@ VAULT=
 #### 4.1. Prepare for production
 
 ```
-yarn prepare-prod
+yarn prep
 ```
 
 #### 4.2. Build the program
 
 ```
-yarn build-anchor
+yarn build
 ```
 
 ##### 4.2.1. Allow access to `target` directory
@@ -174,7 +174,7 @@ yarn verify-admin
 ### 7. Create a new prediction
 
 ```
-yarn create-new
+yarn new
 ```
 
 ❌ You should see an access violation error:
@@ -254,4 +254,8 @@ Follow the same steps as localnet and/or devnet, but make sure you're deploying 
 | `yarn verify-equalise`        | `node --loader ts-node/esm postbuild/equalise/verifier.ts` |
 | `yarn verify-withdraw-bulk`   | `node --loader ts-node/esm postbuild/withdraw/bulk_withdraw/verifier.ts` |
 | `yarn verify-withdraw-single` | `node --loader ts-node/esm postbuild/withdraw/user_withdraw/verifier.ts` |
+| `yarn prep`                   | `yarn prepare-prod` |
+| `yarn build`                  | `yarn build-anchor` |
+| `yarn new`                    | `yarn create-new` |
+
 <!-- prettier-ignore-end -->
