@@ -8,7 +8,7 @@ async function replaceCargoTestFilesContent(pattern) {
 
         const newTestContent = `#[tokio::test]
 async fn test_full_collider_flow() {
-    println!("\nNote: No testing available for production branch. Please switch to 'localnet' branch for testing");
+    println!("\\nNote: No testing available for production branch. Please switch to 'localnet' branch for testing");
 }
         `;
 
@@ -41,7 +41,7 @@ async function replaceAnchorTestFilesContent(pattern) {
     try {
         const files = await glob(pattern, { absolute: true });
 
-        const newTestContent = `console.log("\nNote: No testing available for production branch. Please switch to 'localnet' branch for testing");`;
+        const newTestContent = `console.log("\\nNote: No testing available for production branch. Please switch to 'localnet' branch for testing");`;
 
         let processed = 0;
         let failed = 0;

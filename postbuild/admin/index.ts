@@ -36,26 +36,26 @@ async function main() {
 
   try {
     // Find state PDA
-    const [statePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("state")],
+    const [adminPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("admin")],
       program.programId
     );
 
     // Get latest blockhash and serialize tx to check size
     const latestBlockhash = await connection.getLatestBlockhash();
-    const initStateTx = await program.methods
-      .initialiser()
+    const initAdminTx = await program.methods
+      .initialiseAdmin()
       .accounts({
-        state: statePda,
+        admin: adminPda,
         authority: wallet.publicKey,
         systemProgram: SystemProgram.programId,
       })
       .transaction();
 
-    initStateTx.recentBlockhash = latestBlockhash.blockhash;
-    initStateTx.feePayer = wallet.publicKey;
+    initAdminTx.recentBlockhash = latestBlockhash.blockhash;
+    initAdminTx.feePayer = wallet.publicKey;
 
-    const txBuffer = initStateTx.serialize({
+    const txBuffer = initAdminTx.serialize({
       requireAllSignatures: false,
       verifySignatures: false,
     });
@@ -64,15 +64,15 @@ async function main() {
 
     // Initialise program
     const tx = await program.methods
-      .initialiser()
+      .initialiseAdmin()
       .accounts({
-        state: statePda,
+        admin: adminPda,
         authority: wallet.publicKey,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
 
-    console.log("✅ Program initialised successfully!");
+    console.log("✅ Admin initialised successfully!");
     console.log("✅ Transaction signature:", tx);
   } catch (error) {
     console.error("❌ Initialisation failed:", error);
