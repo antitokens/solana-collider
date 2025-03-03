@@ -57,6 +57,7 @@
     "verify-withdraw-single": "node --loader ts-node/esm postbuild/withdraw/user_withdraw/verifier.ts",
     "prep": "yarn prepare-prod",
     "build": "yarn build-anchor",
-    "new": "yarn create-new"
+    "new": "yarn create-new",
+    "🚀": "sudo ./🚀.sh"
   }
 }
