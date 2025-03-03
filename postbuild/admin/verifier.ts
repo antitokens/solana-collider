@@ -35,47 +35,19 @@ async function main() {
   ) as unknown as Program<ColliderBeta>;
 
   try {
-    // Find state PDA
-    const [statePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("state")],
+    // Find admin PDA
+    const [adminPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("admin")],
       program.programId
     );
 
-    // Get latest blockhash and serialize tx to check size
-    const latestBlockhash = await connection.getLatestBlockhash();
-    const initStateTx = await program.methods
-      .initialiser()
-      .accounts({
-        state: statePda,
-        authority: wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      })
-      .transaction();
-
-    initStateTx.recentBlockhash = latestBlockhash.blockhash;
-    initStateTx.feePayer = wallet.publicKey;
-
-    const txBuffer = initStateTx.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false,
+    // Verify initialisation
+    const admin = await program.account.adminAccount.fetch(adminPda);
+    console.log("✅ Admin account:", {
+      initialised: admin.initialised,
     });
-
-    console.log("📦 Transaction size:", txBuffer.length, "bytes");
-
-    // Initialise program
-    const tx = await program.methods
-      .initialiser()
-      .accounts({
-        state: statePda,
-        authority: wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc();
-
-    console.log("✅ Program initialised successfully!");
-    console.log("✅ Transaction signature:", tx);
   } catch (error) {
-    console.error("❌ Initialisation failed:", error);
+    console.error("❌ Verification failed:", error);
   }
 }
 
