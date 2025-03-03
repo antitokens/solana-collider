@@ -41,6 +41,27 @@ async function main() {
       program.programId
     );
 
+    // Get latest blockhash and serialize tx to check size
+    const latestBlockhash = await connection.getLatestBlockhash();
+    const initStateTx = await program.methods
+      .initialiser()
+      .accounts({
+        state: statePda,
+        authority: wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .transaction();
+
+    initStateTx.recentBlockhash = latestBlockhash.blockhash;
+    initStateTx.feePayer = wallet.publicKey;
+
+    const txBuffer = initStateTx.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+
+    console.log("📦 Transaction size:", txBuffer.length, "bytes");
+
     // Initialise program
     const tx = await program.methods
       .initialiser()
