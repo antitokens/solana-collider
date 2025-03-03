@@ -81,6 +81,39 @@ async function main() {
       option: null,
     };
 
+    // Get latest blockhash and serialize tx to check size
+    const latestBlockhash = await connection.getLatestBlockhash();
+    const createPredictionTx = await program.methods
+      .createPrediction(
+        prediction.title,
+        prediction.description,
+        prediction.startTime,
+        prediction.endTime,
+        prediction.option
+      )
+      .accounts({
+        state: statePda,
+        prediction: predictionPda,
+        authority: wallet.publicKey,
+        predictionAntiToken: predictionAntiTokenPda,
+        predictionProToken: predictionProTokenPda,
+        antiMint: ANTI_MINT,
+        proMint: PRO_MINT,
+        vault: VAULT,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .transaction();
+
+    createPredictionTx.recentBlockhash = latestBlockhash.blockhash;
+    createPredictionTx.feePayer = wallet.publicKey;
+
+    const txBuffer = createPredictionTx.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+
+    console.log("📦 Transaction size:", txBuffer.length, "bytes");
+
     // Initialise program
     const tx = await program.methods
       .createPrediction(
