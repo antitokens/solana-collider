@@ -18,7 +18,7 @@ function clean(sourceCode) {
         if (parts.length > 1) {
           const codeToAdd = parts[1].trim();
           if (codeToAdd) {
-            cleanedLines.push(codeToAdd);
+            cleanedLines.push("\t" + codeToAdd);
           }
         }
         continue;
