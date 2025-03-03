@@ -7,6 +7,7 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
+// lib.rs
 use crate::utils::PROGRAM_ID;
 use crate::utils::ANTI_MINT_ADDRESS;
 use crate::utils::PRO_MINT_ADDRESS;

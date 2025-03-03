@@ -7,6 +7,7 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
+// instructions/bulk_withdraw.rs
 use crate::utils::*;
 use crate::BulkWithdrawTokens;
 use anchor_lang::prelude::*;
