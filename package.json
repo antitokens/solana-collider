@@ -58,6 +58,7 @@
     "prep": "yarn prepare-prod",
     "build": "yarn build-anchor",
     "new": "yarn create-new",
-    "🚀": "sudo ./🚀.sh"
+    "🚀": "sudo ./🚀.sh",
+    "gm": "yarn 🚀"
   }
 }
