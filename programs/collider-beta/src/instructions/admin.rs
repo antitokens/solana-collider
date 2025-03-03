@@ -8,6 +8,7 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
+// instructions/admin.rs
 use crate::utils::*;
 use crate::Admin;
 use crate::SetPredictionTokenAuthority;

@@ -1,3 +1,13 @@
+//! Program Author: sshmatrix, for Antitoken
+//! Program Description: Collider's instruction set
+//! Version: 1.0.0-beta
+//! License: MIT
+//! Created: 20 Jan 2025
+//! Last Modified: 20 Jan 2025
+//! Repository: https://github.com/antitokens/solana-collider
+//! Contact: dev@antitoken.pro
+
+// instructions/user_withdraw.rs
 use crate::utils::*;
 use crate::UserWithdrawTokens;
 use anchor_lang::prelude::*;

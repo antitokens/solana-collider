@@ -7,7 +7,7 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
-// instructions/create_prediction.rs
+// instructions/create.rs
 use crate::utils::*;
 use crate::CreatePrediction;
 use anchor_lang::prelude::*;

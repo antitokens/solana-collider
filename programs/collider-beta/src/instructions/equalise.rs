@@ -7,6 +7,7 @@
 //! Repository: https://github.com/antitokens/solana-collider
 //! Contact: dev@antitoken.pro
 
+// instructions/equalise.rs
 use crate::state::*;
 use crate::utils::*;
 use crate::EqualiseTokens;
