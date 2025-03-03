@@ -17,7 +17,7 @@ import {
 } from "@solana/spl-token";
 import { expect } from "chai";
 
-describe("collider-beta", () => {
+describe("🧪 Collider-beta end-to-end tests", () => {
   // Configure the client to use the local cluster
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -182,7 +182,224 @@ describe("collider-beta", () => {
     );
   });
 
-  describe("Admin", () => {
+  describe("○ Transaction Sizes", () => {
+    it("All instruction data sizes are below 4096 bytes", async () => {
+      // Test initialiseAdmin tx size
+      let latestBlockhash;
+      let txBuffer;
+
+      const initAdminTx = await program.methods
+        .initialiseAdmin()
+        .accounts({
+          admin: adminPda,
+          authority: manager.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .transaction();
+
+      // Get latest blockhash
+      latestBlockhash = await provider.connection.getLatestBlockhash();
+      initAdminTx.recentBlockhash = latestBlockhash.blockhash;
+      initAdminTx.feePayer = manager.publicKey;
+
+      txBuffer = initAdminTx.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      const initAdminSize = txBuffer.length;
+      expect(initAdminSize).to.be.lessThan(4096);
+
+      // Test initialiser tx size
+      const initStateTx = await program.methods
+        .initialiser()
+        .accounts({
+          state: statePda,
+          authority: manager.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .transaction();
+
+      // Get latest blockhash
+      latestBlockhash = await provider.connection.getLatestBlockhash();
+      initStateTx.recentBlockhash = latestBlockhash.blockhash;
+      initStateTx.feePayer = manager.publicKey;
+
+      txBuffer = initStateTx.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      const initStateSize = txBuffer.length;
+      expect(initStateSize).to.be.lessThan(4096);
+
+      // Test createPrediction tx size
+      const createPredictionTx = await program.methods
+        .createPrediction(
+          "Test Prediction",
+          "Test Description",
+          "2025-02-01T00:00:00Z",
+          "2025-03-01T00:00:00Z",
+          null,
+          new BN(1736899200) // Fixed timestamp for testing
+        )
+        .accounts({
+          state: statePda,
+          prediction: predictionPda,
+          authority: creator.publicKey,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
+          antiMint: antiMintKeypair.publicKey,
+          proMint: proMintKeypair.publicKey,
+          vault: antitokenMultisigKeypair.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .transaction();
+
+      // Get latest blockhash
+      latestBlockhash = await provider.connection.getLatestBlockhash();
+      createPredictionTx.recentBlockhash = latestBlockhash.blockhash;
+      createPredictionTx.feePayer = manager.publicKey;
+
+      txBuffer = createPredictionTx.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      const createPredictionSize = txBuffer.length;
+      expect(createPredictionSize).to.be.lessThan(4096);
+
+      // Test deposit tx size
+      const depositTx = await program.methods
+        .depositTokens(
+          index,
+          new BN(1000000),
+          new BN(1000000),
+          new BN(1739577600)
+        )
+        .accounts({
+          prediction: predictionPda,
+          authority: user.publicKey,
+          userAntiToken: userAntiToken,
+          userProToken: userProToken,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .transaction();
+
+      // Get latest blockhash
+      latestBlockhash = await provider.connection.getLatestBlockhash();
+      depositTx.recentBlockhash = latestBlockhash.blockhash;
+      depositTx.feePayer = manager.publicKey;
+
+      txBuffer = depositTx.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      const depositSize = txBuffer.length;
+      expect(depositSize).to.be.lessThan(4096);
+
+      // Test equalise tx size
+      const equaliseTx = await program.methods
+        .equaliseTokens(index, [new BN(6000), new BN(4000)], new BN(1741996800))
+        .accounts({
+          prediction: predictionPda,
+          authority: manager.publicKey,
+          userAntiToken: userAntiToken,
+          userProToken: userProToken,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .transaction();
+
+      // Get latest blockhash
+      latestBlockhash = await provider.connection.getLatestBlockhash();
+      equaliseTx.recentBlockhash = latestBlockhash.blockhash;
+      equaliseTx.feePayer = manager.publicKey;
+
+      txBuffer = equaliseTx.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      const equaliseSize = txBuffer.length;
+      expect(equaliseSize).to.be.lessThan(4096);
+
+      const remainingAccounts = [
+        { pubkey: userAntiToken, isWritable: true, isSigner: false },
+        { pubkey: userProToken, isWritable: true, isSigner: false },
+      ];
+
+      const bulkWithdrawTx = await program.methods
+        .bulkWithdrawTokens(index)
+        .accounts({
+          prediction: predictionPda,
+          authority: antitokenMultisigKeypair.publicKey,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .remainingAccounts(remainingAccounts)
+        .transaction();
+
+      // Get latest blockhash
+      latestBlockhash = await provider.connection.getLatestBlockhash();
+      bulkWithdrawTx.recentBlockhash = latestBlockhash.blockhash;
+      bulkWithdrawTx.feePayer = manager.publicKey;
+
+      txBuffer = bulkWithdrawTx.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      const bulkWithdrawSize = txBuffer.length;
+      expect(bulkWithdrawSize).to.be.lessThan(4096);
+
+      // Test user withdraw tx size
+      const userWithdrawTx = await program.methods
+        .userWithdrawTokens(index)
+        .accounts({
+          state: statePda,
+          prediction: predictionPda,
+          authority: manager.publicKey,
+          userAntiToken: userAntiToken,
+          userProToken: userProToken,
+          predictionAntiToken: predictionAntiTokenPda,
+          predictionProToken: predictionProTokenPda,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          vault: antitokenMultisigKeypair.publicKey,
+        })
+        .transaction();
+
+      // Get latest blockhash
+      latestBlockhash = await provider.connection.getLatestBlockhash();
+      userWithdrawTx.recentBlockhash = latestBlockhash.blockhash;
+      userWithdrawTx.feePayer = manager.publicKey;
+
+      txBuffer = userWithdrawTx.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      const userWithdrawSize = txBuffer.length;
+      expect(userWithdrawSize).to.be.lessThan(4096);
+
+      console.log("\tInitialise Admin:", initAdminSize, "bytes");
+      console.log("\tInitialiser:", initStateSize, "bytes");
+      console.log("\tCreate Prediction:", createPredictionSize, "bytes");
+      console.log("\tDeposit:", depositSize, "bytes");
+      console.log("\tEqualise:", equaliseSize, "bytes");
+      console.log("\tBulk Withdraw:", bulkWithdrawSize, "bytes");
+      console.log("\tUser Withdraw:", userWithdrawSize, "bytes");
+    });
+  });
+
+  describe("○ Admin", () => {
     it("Initialises the admin state", async () => {
       await program.methods
         .initialiseAdmin()
@@ -199,7 +416,7 @@ describe("collider-beta", () => {
     });
   });
 
-  describe("Initialisation", () => {
+  describe("○ Initialisation", () => {
     it("Initialises the program state", async () => {
       await program.methods
         .initialiser()
@@ -219,7 +436,7 @@ describe("collider-beta", () => {
     });
   });
 
-  describe("Prediction Creation", () => {
+  describe("○ Prediction Creation", () => {
     it("Creates a new prediction", async () => {
       const now = Math.floor(Date.now() / 1000);
       const startTime = "2025-02-01T00:00:00Z";
@@ -260,7 +477,7 @@ describe("collider-beta", () => {
     });
   });
 
-  describe("Token Deposits", () => {
+  describe("○ Token Deposits", () => {
     it("Deposits tokens successfully", async () => {
       const anti = new BN(7_000_000_000);
       const pro = new BN(3_000_000_000);
@@ -288,7 +505,7 @@ describe("collider-beta", () => {
     });
   });
 
-  describe("Prediction Equalisation", () => {
+  describe("○ Prediction Equalisation", () => {
     it("Equalises prediction with truth", async () => {
       await program.methods
         .equaliseTokens(index, [new BN(6000), new BN(4000)], new BN(1741996800))
@@ -312,7 +529,7 @@ describe("collider-beta", () => {
     });
   });
 
-  describe("Token Withdrawals", () => {
+  describe("○ Token Withdrawals", () => {
     it("Withdraws tokens after equalisation", async () => {
       const beforeAntiBalance = await getAccount(
         provider.connection,
