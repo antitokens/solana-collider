@@ -45,10 +45,10 @@ done
 
 # Addresses
 RECIPIENT=$(solana address -k $USER)
-VAULT=$(solana address -k $VAULT)
+MULTISIG=$(solana address -k $VAULT)
 AMOUNT=1000000
 
-echo "❗  VAULT=$VAULT"
+echo "❗  VAULT=$MULTISIG"
 
 # Check balances and airdrop if needed
 setup_root() {
@@ -77,7 +77,6 @@ check_and_airdrop $(solana-keygen pubkey $MANAGER) 10
 check_and_airdrop $(solana-keygen pubkey $CREATOR) 10
 check_and_airdrop $(solana-keygen pubkey $VAULT) 10
 check_and_airdrop $(solana-keygen pubkey $USER) 10
-check_and_airdrop $(solana-keygen pubkey $RECIPIENT) 10
 for auth in "${MINT_AUTHORITIES[@]}"; do
     check_and_airdrop $auth 1
 done
@@ -90,29 +89,27 @@ for i in "${!TOKEN_NAMES[@]}"; do
     TOKEN_FILE=".config/"$TOKEN_NAME"/token.json"
     AUTHORITY_FILE=".config/"$TOKEN_NAME"/id.json"
 
-    if [ ! -f $TOKEN_FILE ]; then
-        # Create token & grab MINT_ADDRESS
-        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $MANAGER $TOKEN_FILE)
-        MINT_ADDRESS=$(echo $stdout | awk '{print $3}')
+    # Create token & grab MINT_ADDRESS
+    stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $MANAGER)
+    MINT_ADDRESS=$(echo $stdout | awk '{print $3}')
 
-        # Print the address
-        echo "✅  Created $TOKEN_NAME token with address: $MINT_ADDRESS"
+    # Print the address
+    echo "✅  Created $TOKEN_NAME token with address: $MINT_ADDRESS"
 
-        if [ $TOKEN_NAME == "dAnti" ]; then
-            echo "❗  ANTI_TOKEN_MINT="$MINT_ADDRESS
-        else
-            echo "❗   PRO_TOKEN_MINT="$MINT_ADDRESS
-        fi
-
-        # Create token account to receive tokens
-        spl-token create-account $MINT_ADDRESS --owner $RECIPIENT --fee-payer $MANAGER
-
-        # Mint tokens to recipient
-        spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $AUTHORITY_FILE --recipient-owner $RECIPIENT
-
-        # Verify token airdrop
-        spl-token accounts --owner $RECIPIENT
+    if [ $TOKEN_NAME == "dAnti" ]; then
+        echo "❗  ANTI_TOKEN_MINT="$MINT_ADDRESS
+    else
+        echo "❗  PRO_TOKEN_MINT="$MINT_ADDRESS
     fi
+
+    # Create token account to receive tokens
+    spl-token create-account $MINT_ADDRESS --owner $RECIPIENT --fee-payer $MANAGER
+
+    # Mint tokens to recipient
+    spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $AUTHORITY_FILE --recipient-owner $RECIPIENT
+
+    # Verify token airdrop
+    spl-token accounts --owner $RECIPIENT
 done
 
 echo "✅  Setup complete"
