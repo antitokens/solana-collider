@@ -44,6 +44,14 @@ for TOKEN_NAME in "${TOKEN_NAMES[@]}"; do
 done
 
 echo "❗  VAULT=$(solana-keygen pubkey $VAULT)"
+# Check if running on macOS by checking the operating system type
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    sed -i '' "s/^VAULT=.*/VAULT=$(solana-keygen pubkey $VAULT)/" .env
+else
+    # Linux and others
+    sed -i "s/^VAULT=.*/VAULT=$(solana-keygen pubkey $VAULT)/" .env
+fi
 
 # Check balances and airdrop if needed
 setup_root() {
@@ -94,8 +102,20 @@ for i in "${!TOKEN_NAMES[@]}"; do
 
         if [ $TOKEN_NAME == "dAnti" ]; then
             echo "❗  ANTI_TOKEN_MINT="$MINT_ADDRESS
+            # Add this to field ANTI_TOKEN_MINT in .env
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s/^ANTI_TOKEN_MINT=.*/ANTI_TOKEN_MINT=$MINT_ADDRESS/" .env
+            else
+                sed -i "s/^ANTI_TOKEN_MINT=.*/ANTI_TOKEN_MINT=$MINT_ADDRESS/" .env
+            fi
         else
             echo "❗  PRO_TOKEN_MINT="$MINT_ADDRESS
+            # Add this to field PRO_TOKEN_MINT in .env
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s/^PRO_TOKEN_MINT=.*/PRO_TOKEN_MINT=$MINT_ADDRESS/" .env
+            else
+                sed -i "s/^PRO_TOKEN_MINT=.*/PRO_TOKEN_MINT=$MINT_ADDRESS/" .env
+            fi
         fi
 
         # Amount to mint
