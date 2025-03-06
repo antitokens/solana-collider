@@ -1,5 +1,5 @@
 #!/bin/bash
-chmod -R a+rx .config dAnti dPro
+chmod -R a+rx .config dAnti dPro dVault
 
 # Core Config
 FEE_PAYER=".config/id.json"
