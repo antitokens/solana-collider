@@ -55,6 +55,7 @@
     "verify-equalise": "node --loader ts-node/esm postbuild/equalise/verifier.ts",
     "verify-withdraw-bulk": "node --loader ts-node/esm postbuild/withdraw/bulk_withdraw/verifier.ts",
     "verify-withdraw-single": "node --loader ts-node/esm postbuild/withdraw/user_withdraw/verifier.ts",
+    "send": "bash postbuild/etc/propagate.sh",
     "prep": "yarn prepare-prod",
     "build": "yarn build-anchor",
     "new": "yarn create-new",
