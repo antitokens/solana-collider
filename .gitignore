@@ -17,6 +17,7 @@ docs/
 .config/*.json
 !.config/example.*.json
 dPro/*.json
+dPro/*.json
 !dPro/example.*.json
 dAnti/*.json
 !dAnti/example.*.json
@@ -25,6 +26,11 @@ dTest/*.json
 dVault/*.json
 !dVault/example.*.json
 
+# Packages
+node_modules
+
+# Local trash
+.DS_store
 **/.DS_Store
 
 # Rust
