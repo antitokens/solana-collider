@@ -30,13 +30,19 @@ async function main() {
   const VAULT = new PublicKey(`${process.env.VAULT}`);
 
   // Load JSON files manually
-  const keypairFile = await loadJson<number[]>("./.config/dCreator/id.json");
+  const creatorFile = await loadJson<number[]>("./.config/dCreator/id.json");
+  const deployerFile = await loadJson<number[]>("./.config/id.json");
+  const managerFile = await loadJson<number[]>("./.config/dManager/id.json");
   const idl = await loadJson<Idl>("./target/idl/collider_beta.json");
 
   try {
     // Setup connection and wallet
-    const secretKey = new Uint8Array(keypairFile);
-    const creator = Keypair.fromSecretKey(secretKey);
+    const creatorKey = new Uint8Array(creatorFile);
+    const creator = Keypair.fromSecretKey(creatorKey);
+    const deployerKey = new Uint8Array(deployerFile);
+    const deployer = Keypair.fromSecretKey(deployerKey);
+    const managerKey = new Uint8Array(managerFile);
+    const manager = Keypair.fromSecretKey(managerKey);
     const wallet = new anchor.Wallet(creator);
     const connection = new Connection(SOLANA_API);
     const provider = new anchor.AnchorProvider(connection, wallet, {
@@ -50,35 +56,39 @@ async function main() {
       provider
     ) as unknown as Program<ColliderBeta>;
 
+    console.log(" 🔍 DEPLOYER:", deployer.publicKey.toBase58());
+    console.log(" 🔍 MANAGER:", manager.publicKey.toBase58());
+    console.log(" 🔍 $ANTI MINT:", ANTI_MINT.toBase58());
+    console.log(" 🔍 $PRO MINT:", PRO_MINT.toBase58());
+    console.log(" 🔍 VAULT:", VAULT.toBase58());
+
     // Find state PDA
     const [statePda] = PublicKey.findProgramAddressSync(
       [Buffer.from("state")],
       program.programId
     );
     const state = await program.account.stateAccount.fetch(statePda);
-    console.log("🔍 State PDA:", statePda.toBase58());
+    console.log(" 🔍 STATE PDA:", statePda.toBase58());
+
+    console.log(" 🔍 CREATOR:", creator.publicKey.toBase58());
 
     const [predictionPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("prediction"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
-    console.log("🔍 Prediction PDA:", predictionPda.toBase58());
+    console.log(" 🔍 PREDICTION PDA:", predictionPda.toBase58());
 
     const [predictionAntiTokenPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("anti_token"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
-    console.log("🔍 Prediction $ANTI PDA:", predictionAntiTokenPda.toBase58());
+    console.log(" 🔍 PREDICTION $ANTI PDA:", predictionAntiTokenPda.toBase58());
 
     const [predictionProTokenPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("pro_token"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
-    console.log("🔍 Prediction $PRO PDA:", predictionProTokenPda.toBase58());
-    console.log("🔍 $ANTI MINT:", ANTI_MINT.toBase58());
-    console.log("🔍 $PRO MINT:", PRO_MINT.toBase58());
-    console.log("🔍 VAULT:", VAULT.toBase58());
-    console.log("🔍 CREATOR:", creator.publicKey.toBase58());
+    console.log(" 🔍 PREDICTION $PRO PDA:", predictionProTokenPda.toBase58());
 
     const prediction = {
       title: "Test Prediction",
