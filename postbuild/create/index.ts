@@ -55,23 +55,26 @@ async function main() {
       [Buffer.from("state")],
       program.programId
     );
-
     const state = await program.account.stateAccount.fetch(statePda);
-
+    console.log("🔍 State PDA:", statePda.toBase58());
+    
     const [predictionPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("prediction"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
+    console.log("🔍 Prediction PDA:", predictionPda.toBase58());
 
     const [predictionAntiTokenPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("anti_token"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
+    console.log("🔍 Prediction $ANTI PDA:", predictionAntiTokenPda.toBase58());
 
     const [predictionProTokenPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("pro_token"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
+    console.log("🔍 Prediction $PRO PDA:", predictionProTokenPda.toBase58());
 
     const prediction = {
       title: "Test Prediction",
