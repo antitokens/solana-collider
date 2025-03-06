@@ -27,15 +27,18 @@ async function loadJson<T>(path: string): Promise<T> {
 let antiMintSecretKey: number[];
 let proMintSecretKey: number[];
 let vaultSecretKey: number[];
+let creatorSecretKey: number[];
 let antiMintKeypair: Keypair;
 let proMintKeypair: Keypair;
 let antitokenMultisigKeypair: Keypair;
+let creatorKeypair: Keypair;
 
 // Load keypairs before tests begin
 before(async () => {
   antiMintSecretKey = await loadJson<number[]>(".config/dAnti/token.json");
   proMintSecretKey = await loadJson<number[]>(".config/dPro/token.json");
   vaultSecretKey = await loadJson<number[]>(".config/dVault/id.json");
+  creatorSecretKey = await loadJson<number[]>(".config/user.json");
 
   antiMintKeypair = Keypair.fromSecretKey(Uint8Array.from(antiMintSecretKey), {
     skipValidation: false,
@@ -49,6 +52,10 @@ before(async () => {
     Uint8Array.from(vaultSecretKey),
     { skipValidation: false }
   );
+
+  creatorKeypair = Keypair.fromSecretKey(Uint8Array.from(creatorSecretKey), {
+    skipValidation: false,
+  });
 });
 
 describe("collider-beta", () => {
@@ -79,7 +86,7 @@ describe("collider-beta", () => {
   before(async () => {
     // Create test keypairs
     manager = new Keypair();
-    creator = new Keypair();
+    creator = creatorKeypair;
     user = new Keypair();
     attacker = new Keypair();
 
@@ -239,7 +246,7 @@ describe("collider-beta", () => {
       console.log("🔍 $PRO MINT:", proMintKeypair.publicKey.toBase58());
       console.log("🔍 VAULT:", antitokenMultisigKeypair.publicKey.toBase58());
       console.log("🔍 CREATOR:", creator.publicKey.toBase58());
-      
+
       await program.methods
         .createPrediction(
           "Test Prediction",
