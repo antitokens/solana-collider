@@ -71,12 +71,11 @@ check_and_airdrop() {
 }
 
 # Perform balance checks
-setup_root 10
-check_and_airdrop $(solana-keygen pubkey $SOL_ID) 10
-check_and_airdrop $(solana-keygen pubkey $MANAGER) 10
-check_and_airdrop $(solana-keygen pubkey $CREATOR) 10
-check_and_airdrop $(solana-keygen pubkey $VAULT) 10
-check_and_airdrop $(solana-keygen pubkey $USER) 10
+setup_root 10 || check_and_airdrop $(solana-keygen pubkey $SOL_ID) 10
+check_and_airdrop $(solana-keygen pubkey $MANAGER) 1
+check_and_airdrop $(solana-keygen pubkey $CREATOR) 1
+check_and_airdrop $(solana-keygen pubkey $VAULT) 1
+check_and_airdrop $(solana-keygen pubkey $USER) 1
 for auth in "${MINT_AUTHORITIES[@]}"; do
     check_and_airdrop $auth 1
 done
