@@ -4,7 +4,7 @@ chmod -R a+rx .config dAnti dPro
 # Core Config
 FEE_PAYER=".config/id.json"
 USER=".config/user.json"
-VAULT=".config/vault.json"
+VAULT="dVault/id.json"
 
 # Make wallets
 if [ ! -f $FEE_PAYER ]; then

@@ -57,7 +57,7 @@ async function main() {
     );
     const state = await program.account.stateAccount.fetch(statePda);
     console.log("🔍 State PDA:", statePda.toBase58());
-    
+
     const [predictionPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("prediction"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
@@ -75,6 +75,10 @@ async function main() {
       program.programId
     );
     console.log("🔍 Prediction $PRO PDA:", predictionProTokenPda.toBase58());
+    console.log("🔍 $ANTI MINT:", ANTI_MINT.toBase58());
+    console.log("🔍 $PRO MINT:", PRO_MINT.toBase58());
+    console.log("🔍 VAULT:", VAULT.toBase58());
+    console.log("🔍 CREATOR:", creator.publicKey.toBase58());
 
     const prediction = {
       title: "Test Prediction",

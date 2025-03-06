@@ -33,9 +33,9 @@ let antitokenMultisigKeypair: Keypair;
 
 // Load keypairs before tests begin
 before(async () => {
-  antiMintSecretKey = await loadJson<number[]>("./dAnti/token.json");
-  proMintSecretKey = await loadJson<number[]>("./dPro/token.json");
-  vaultSecretKey = await loadJson<number[]>("./dVault/id.json");
+  antiMintSecretKey = await loadJson<number[]>(".config/dAnti/token.json");
+  proMintSecretKey = await loadJson<number[]>(".config/dPro/token.json");
+  vaultSecretKey = await loadJson<number[]>(".config/dVault/id.json");
 
   antiMintKeypair = Keypair.fromSecretKey(Uint8Array.from(antiMintSecretKey), {
     skipValidation: false,

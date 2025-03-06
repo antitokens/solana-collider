@@ -16,15 +16,18 @@ docs/
 # Keypairs
 .config/*.json
 !.config/example.*.json
-dPro/*.json
-dPro/*.json
-!dPro/example.*.json
-dAnti/*.json
-!dAnti/example.*.json
-dTest/*.json
-!dTest/example.*.json
-dVault/*.json
-!dVault/example.*.json
+
+.config/dPro/*.json
+!.config/dPro/example.*.json
+
+.config/dAnti/*.json
+!.config/dAnti/example.*.json
+
+.config/dTest/*.json
+!.config/dTest/example.*.json
+
+.config/dVault/*.json
+!.config/dVault/example.*.json
 
 # Packages
 node_modules
