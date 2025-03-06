@@ -2,6 +2,8 @@
 set -euo pipefail
 
 # Default versions; skip installation unless specified
+LOCALNET_RPC="http://localhost:8899"
+WALLET=".config/id.json"
 RUST_VERSION="1.83.0"
 SOLANA_CLI_VERSION="1.18.26"
 ANCHOR_CLI_VERSION="0.29.0"
@@ -11,6 +13,14 @@ YARN_VERSION=""
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+    --localnet-rpc)
+        LOCALNET_RPC="$2"
+        shift 2
+        ;;
+    --wallet)
+        WALLET="$2"
+        shift 2
+        ;;
     --rust)
         RUST_VERSION="$2"
         shift 2
@@ -391,6 +401,9 @@ main() {
 
     print_versions
 
+    log_info "Setting .config/id.json as Solana wallet"
+    solana config set --url "$LOCALNET_RPC" --keypair "$WALLET"
+    echo ""
     echo "✅ Installation complete. Please restart your terminal to apply all changes"
 }
 
