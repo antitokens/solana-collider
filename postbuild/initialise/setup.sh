@@ -2,16 +2,16 @@
 chmod -R a+rx .config
 
 # Core Config
-SOL_ID=".config/id.json"
+DEPLOYER=".config/id.json"
 USER=".config/dUser/id.json"
 CREATOR=".config/dCreator/id.json"
 MANAGER=".config/dManager/id.json"
 VAULT=".config/dVault/id.json"
-TOKEN_NAMES=("dAnti" "dPro")
+TICKERS=("dAnti" "dPro")
 
 # Make wallets
-if [ ! -f $SOL_ID ] || [ ! -s $SOL_ID ]; then
-    solana-keygen new --outfile $SOL_ID
+if [ ! -f $DEPLOYER ] || [ ! -s $DEPLOYER ]; then
+    solana-keygen new --outfile $DEPLOYER
 fi
 if [ ! -f $MANAGER ] || [ ! -s $MANAGER ]; then
     solana-keygen new --outfile $MANAGER
@@ -27,7 +27,7 @@ if [ ! -f $VAULT ] || [ ! -s $VAULT ]; then
 fi
 
 # Make derived wallets
-for TOKEN_NAME in "${TOKEN_NAMES[@]}"; do
+for TOKEN_NAME in "${TICKERS[@]}"; do
     MINT_AUTHORITY=".config/$TOKEN_NAME/id.json"
     TOKEN_FILE=".config/$TOKEN_NAME/token.json"
 
@@ -74,7 +74,7 @@ check_and_airdrop() {
 }
 
 # Perform balance checks
-setup_root 10 || check_and_airdrop $(solana-keygen pubkey $SOL_ID) 10
+setup_root 10 || check_and_airdrop $(solana-keygen pubkey $DEPLOYER) 10
 check_and_airdrop $(solana-keygen pubkey $MANAGER) 1
 check_and_airdrop $(solana-keygen pubkey $CREATOR) 1
 check_and_airdrop $(solana-keygen pubkey $VAULT) 1
@@ -84,8 +84,8 @@ for auth in "${MINT_AUTHORITIES[@]}"; do
 done
 
 # Process tokens
-for i in "${!TOKEN_NAMES[@]}"; do
-    TOKEN_NAME="${TOKEN_NAMES[$i]}"
+for i in "${!TICKERS[@]}"; do
+    TOKEN_NAME="${TICKERS[$i]}"
     MINT_AUTHORITY="${MINT_AUTHORITIES[$i]}"
 
     TOKEN_FILE=".config/"$TOKEN_NAME"/token.json"
