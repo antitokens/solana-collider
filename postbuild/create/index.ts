@@ -30,7 +30,7 @@ async function main() {
   const VAULT = new PublicKey(`${process.env.VAULT}`);
 
   // Load JSON files manually
-  const keypairFile = await loadJson<number[]>("./.config/user.json");
+  const keypairFile = await loadJson<number[]>("./.config/dCreator/id.json");
   const idl = await loadJson<Idl>("./target/idl/collider_beta.json");
 
   try {
