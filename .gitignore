@@ -14,13 +14,26 @@ docs/
 .env
 
 # Keypairs
-.config/*.json
+.config/id.json
 !.config/example.*.json
-dPro/*.json
-!dPro/example.*.json
-dAnti/*.json
-!dAnti/example.*.json
-dTest
+
+.config/dUser/*.json
+!.config/dUser/example.*.json
+
+.config/dCreator/*.json
+!.config/dCreator/example.*.json
+
+.config/dManager/*.json
+!.config/dManager/example.*.json
+
+.config/dVault/*.json
+!.config/dVault/example.*.json
+
+.config/dAnti/*.json
+!.config/dAnti/example.*.json
+
+.config/dPro/*.json
+!.config/dPro/example.*.json
 
 # Packages
 node_modules
