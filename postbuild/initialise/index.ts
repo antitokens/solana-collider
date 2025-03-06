@@ -16,7 +16,7 @@ async function main() {
   );
 
   // Load JSON files manually
-  const keypairFile = await loadJson<number[]>("./.config/id.json");
+  const keypairFile = await loadJson<number[]>("./.config/dManager/id.json");
   const idl = await loadJson<Idl>("./target/idl/collider_beta.json");
 
   // Setup connection and wallet
