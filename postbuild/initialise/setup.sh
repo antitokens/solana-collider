@@ -40,15 +40,10 @@ for TOKEN_NAME in "${TOKEN_NAMES[@]}"; do
     fi
 
     # Store address in array
-    MINT_AUTHORITIES+=($(solana address -k "$MINT_AUTHORITY"))
+    MINT_AUTHORITIES+=($(solana-keygen pubkey "$MINT_AUTHORITY"))
 done
 
-# Addresses
-RECIPIENT=$(solana address -k $USER)
-MULTISIG=$(solana address -k $VAULT)
-AMOUNT=1000000
-
-echo "❗  VAULT=$MULTISIG"
+echo "❗  VAULT=$(solana-keygen pubkey $VAULT)"
 
 # Check balances and airdrop if needed
 setup_root() {
@@ -101,14 +96,17 @@ for i in "${!TOKEN_NAMES[@]}"; do
         echo "❗  PRO_TOKEN_MINT="$MINT_ADDRESS
     fi
 
+    # Amount to mint
+    AMOUNT=1000000
+
     # Create token account to receive tokens
-    spl-token create-account $MINT_ADDRESS --owner $RECIPIENT --fee-payer $MANAGER
+    spl-token create-account $MINT_ADDRESS --owner $(solana-keygen pubkey $USER) --fee-payer $MANAGER
 
     # Mint tokens to recipient
-    spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $AUTHORITY_FILE --recipient-owner $RECIPIENT
+    spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $AUTHORITY_FILE --recipient-owner $(solana-keygen pubkey $USER)
 
     # Verify token airdrop
-    spl-token accounts --owner $RECIPIENT
+    spl-token accounts --owner $(solana-keygen pubkey $USER)
 done
 
 echo "✅  Setup complete"
