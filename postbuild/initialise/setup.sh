@@ -10,19 +10,19 @@ VAULT=".config/dVault/id.json"
 TOKEN_NAMES=("dAnti" "dPro")
 
 # Make wallets
-if [ ! -f $SOL_ID ]; then
+if [ ! -f $SOL_ID ] || [ ! -s $SOL_ID ]; then
     solana-keygen new --outfile $SOL_ID
 fi
-if [ ! -f $MANAGER ]; then
+if [ ! -f $MANAGER ] || [ ! -s $MANAGER ]; then
     solana-keygen new --outfile $MANAGER
 fi
-if [ ! -f $CREATOR ]; then
+if [ ! -f $CREATOR ] || [ ! -s $CREATOR ]; then
     solana-keygen new --outfile $CREATOR
 fi
-if [ ! -f $USER ]; then
+if [ ! -f $USER ] || [ ! -s $USER ]; then
     solana-keygen new --outfile $USER
 fi
-if [ ! -f $VAULT ]; then
+if [ ! -f $VAULT ] || [ ! -s $VAULT ]; then
     solana-keygen new --outfile $VAULT
 fi
 
@@ -31,11 +31,11 @@ for TOKEN_NAME in "${TOKEN_NAMES[@]}"; do
     MINT_AUTHORITY=".config/$TOKEN_NAME/id.json"
     TOKEN_FILE=".config/$TOKEN_NAME/token.json"
 
-    if [ ! -f "$MINT_AUTHORITY" ]; then
+    if [ ! -f "$MINT_AUTHORITY" ] || [ ! -s "$MINT_AUTHORITY" ]; then
         solana-keygen new --outfile "$MINT_AUTHORITY"
     fi
 
-    if [ ! -f "$TOKEN_FILE" ]; then
+    if [ ! -f "$TOKEN_FILE" ] || [ ! -s "$TOKEN_FILE" ]; then
         solana-keygen new --outfile "$TOKEN_FILE"
     fi
 
@@ -83,30 +83,33 @@ for i in "${!TOKEN_NAMES[@]}"; do
     TOKEN_FILE=".config/"$TOKEN_NAME"/token.json"
     AUTHORITY_FILE=".config/"$TOKEN_NAME"/id.json"
 
-    # Create token & grab MINT_ADDRESS
-    stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $MANAGER)
-    MINT_ADDRESS=$(echo $stdout | awk '{print $3}')
+    if [ ! -f "$TOKEN_FILE" ] || [ ! -s "$TOKEN_FILE" ]; then
 
-    # Print the address
-    echo "✅  Created $TOKEN_NAME token with address: $MINT_ADDRESS"
+        # Create token & grab MINT_ADDRESS
+        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $MANAGER $TOKEN_FILE)
+        MINT_ADDRESS=$(echo $stdout | awk '{print $3}')
 
-    if [ $TOKEN_NAME == "dAnti" ]; then
-        echo "❗  ANTI_TOKEN_MINT="$MINT_ADDRESS
-    else
-        echo "❗  PRO_TOKEN_MINT="$MINT_ADDRESS
+        # Print the address
+        echo "✅  Created $TOKEN_NAME token with address: $MINT_ADDRESS"
+
+        if [ $TOKEN_NAME == "dAnti" ]; then
+            echo "❗  ANTI_TOKEN_MINT="$MINT_ADDRESS
+        else
+            echo "❗  PRO_TOKEN_MINT="$MINT_ADDRESS
+        fi
+
+        # Amount to mint
+        AMOUNT=1000000
+
+        # Create token account to receive tokens
+        spl-token create-account $MINT_ADDRESS --owner $(solana-keygen pubkey $USER) --fee-payer $MANAGER
+
+        # Mint tokens to recipient
+        spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $AUTHORITY_FILE --recipient-owner $(solana-keygen pubkey $USER)
+
+        # Verify token airdrop
+        spl-token accounts --owner $(solana-keygen pubkey $USER)
     fi
-
-    # Amount to mint
-    AMOUNT=1000000
-
-    # Create token account to receive tokens
-    spl-token create-account $MINT_ADDRESS --owner $(solana-keygen pubkey $USER) --fee-payer $MANAGER
-
-    # Mint tokens to recipient
-    spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $AUTHORITY_FILE --recipient-owner $(solana-keygen pubkey $USER)
-
-    # Verify token airdrop
-    spl-token accounts --owner $(solana-keygen pubkey $USER)
 done
 
 echo "✅  Setup complete"
