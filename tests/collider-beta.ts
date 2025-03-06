@@ -30,12 +30,15 @@ let vaultSecretKey: number[];
 let creatorSecretKey: number[];
 let managerSecretKey: number[];
 let userSecretKey: number[];
+let deployerSecretKey: number[];
+
 let antiMintKeypair: Keypair;
 let proMintKeypair: Keypair;
 let antitokenMultisigKeypair: Keypair;
 let creatorKeypair: Keypair;
 let managerKeypair: Keypair;
 let userKeypair: Keypair;
+let deployerKeypair: Keypair;
 
 // Load keypairs before tests begin
 before(async () => {
@@ -45,6 +48,7 @@ before(async () => {
   creatorSecretKey = await loadJson<number[]>(".config/dCreator/id.json");
   managerSecretKey = await loadJson<number[]>(".config/dManager/id.json");
   userSecretKey = await loadJson<number[]>(".config/dUser/id.json");
+  deployerSecretKey = await loadJson<number[]>(".config/id.json");
 
   antiMintKeypair = Keypair.fromSecretKey(Uint8Array.from(antiMintSecretKey), {
     skipValidation: false,
@@ -68,6 +72,10 @@ before(async () => {
   });
 
   userKeypair = Keypair.fromSecretKey(Uint8Array.from(userSecretKey), {
+    skipValidation: false,
+  });
+
+  deployerKeypair = Keypair.fromSecretKey(Uint8Array.from(deployerSecretKey), {
     skipValidation: false,
   });
 });
