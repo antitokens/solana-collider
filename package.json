@@ -40,7 +40,7 @@
     "validator": "solana-test-validator",
     "validator-new": "solana-test-validator -r --deactivate-feature EenyoWx9UMXYKpR8mW5Jmfmy2fRjzUtM7NduYMY8bx33",
     "deploy": "anchor deploy",
-    "setup": "bash postbuild/initialise/setup.sh",
+    "setup": "bash postbuild/etc/setup.sh",
     "initialise": "node --loader ts-node/esm postbuild/initialise/index.ts",
     "admin": "node --loader ts-node/esm postbuild/admin/index.ts",
     "create-new": "node --loader ts-node/esm postbuild/create/index.ts",
