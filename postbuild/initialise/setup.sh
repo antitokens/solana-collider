@@ -27,16 +27,16 @@ if [ ! -f $VAULT ] || [ ! -s $VAULT ]; then
 fi
 
 # Make derived wallets
-for TOKEN_NAME in "${TICKERS[@]}"; do
-    MINT_AUTHORITY=".config/$TOKEN_NAME/id.json"
-    TOKEN_FILE=".config/$TOKEN_NAME/token.json"
+for TICKER in "${TICKERS[@]}"; do
+    MINT_AUTHORITY=".config/$TICKER/id.json"
+    KEY_FILE=".config/$TICKER/token.json"
 
     if [ ! -f "$MINT_AUTHORITY" ] || [ ! -s "$MINT_AUTHORITY" ]; then
         solana-keygen new --outfile "$MINT_AUTHORITY"
     fi
 
-    if [ ! -f "$TOKEN_FILE" ] || [ ! -s "$TOKEN_FILE" ]; then
-        solana-keygen new --outfile "$TOKEN_FILE"
+    if [ ! -f "$KEY_FILE" ] || [ ! -s "$KEY_FILE" ]; then
+        solana-keygen new --outfile "$KEY_FILE"
     fi
 
     # Store address in array
@@ -85,22 +85,22 @@ done
 
 # Process tokens
 for i in "${!TICKERS[@]}"; do
-    TOKEN_NAME="${TICKERS[$i]}"
+    TICKER="${TICKERS[$i]}"
     MINT_AUTHORITY="${MINT_AUTHORITIES[$i]}"
 
-    TOKEN_FILE=".config/"$TOKEN_NAME"/token.json"
-    AUTHORITY_FILE=".config/"$TOKEN_NAME"/id.json"
+    KEY_FILE=".config/"$TICKER"/token.json"
+    AUTHORITY_FILE=".config/"$TICKER"/id.json"
 
-    if [ ! -f "$TOKEN_FILE" ] || [ ! -s "$TOKEN_FILE" ]; then
+    if [ ! -f "$KEY_FILE" ] || [ ! -s "$KEY_FILE" ]; then
 
         # Create token & grab MINT_ADDRESS
-        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $MANAGER $TOKEN_FILE)
+        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $MANAGER $KEY_FILE)
         MINT_ADDRESS=$(echo $stdout | awk '{print $3}')
 
         # Print the address
-        echo "✅  Created $TOKEN_NAME token with address: $MINT_ADDRESS"
+        echo "✅  Created $TICKER token with address: $MINT_ADDRESS"
 
-        if [ $TOKEN_NAME == "dAnti" ]; then
+        if [ $TICKER == "dAnti" ]; then
             echo "❗  ANTI_TOKEN_MINT="$MINT_ADDRESS
             # Add this to field ANTI_TOKEN_MINT in .env
             if [[ "$OSTYPE" == "darwin"* ]]; then
