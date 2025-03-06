@@ -1,10 +1,10 @@
 #!/bin/bash
-chmod -R a+rx .config dAnti dPro dVault
+chmod -R a+rx .config
 
 # Core Config
 FEE_PAYER=".config/id.json"
 USER=".config/user.json"
-VAULT="dVault/id.json"
+VAULT=".config/dVault/id.json"
 
 # Make wallets
 if [ ! -f $FEE_PAYER ]; then
@@ -19,8 +19,8 @@ fi
 
 # Derived Config
 TOKEN_NAMES=("dAnti" "dPro")
-ANTI_MINT_AUTHORITY=${TOKEN_NAMES[0]}"/id.json"
-PRO_MINT_AUTHORITY=${TOKEN_NAMES[1]}"/id.json"
+ANTI_MINT_AUTHORITY=".config/"${TOKEN_NAMES[0]}"/id.json"
+PRO_MINT_AUTHORITY=".config/"${TOKEN_NAMES[1]}"/id.json"
 
 # Make derived wallets
 if [ ! -f $ANTI_MINT_AUTHORITY ]; then
@@ -72,9 +72,12 @@ for i in "${!TOKEN_NAMES[@]}"; do
     TOKEN_NAME="${TOKEN_NAMES[$i]}"
     MINT_AUTHORITY="${MINT_AUTHORITIES[$i]}"
 
-    if [ ! -f $TOKEN_NAME/id.json ]; then
+    TOKEN_FILE=".config/"$TOKEN_NAME"/token.json"
+    AUTHORITY_FILE=".config/"$TOKEN_NAME"/id.json"
+
+    if [ ! -f $TOKEN_FILE ]; then
         # Create token & grab MINT_ADDRESS
-        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $FEE_PAYER $TOKEN_NAME/token.json)
+        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $FEE_PAYER $TOKEN_FILE)
         MINT_ADDRESS=$(echo $stdout | awk '{print $3}')
 
         # Print the address
@@ -90,7 +93,7 @@ for i in "${!TOKEN_NAMES[@]}"; do
         spl-token create-account $MINT_ADDRESS --owner $RECIPIENT --fee-payer $FEE_PAYER
 
         # Mint tokens to recipient
-        spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $TOKEN_NAME/id.json --recipient-owner $RECIPIENT
+        spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $AUTHORITY_FILE --recipient-owner $RECIPIENT
 
         # Verify token airdrop
         spl-token accounts --owner $RECIPIENT
