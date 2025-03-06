@@ -2,13 +2,18 @@
 chmod -R a+rx .config
 
 # Core Config
-FEE_PAYER=".config/id.json"
-USER=".config/user.json"
+USER=".config/dUser/id.json"
+CREATOR=".config/dCreator/id.json"
+MANAGER=".config/dManager/id.json"
 VAULT=".config/dVault/id.json"
+TOKEN_NAMES=("dAnti" "dPro")
 
 # Make wallets
-if [ ! -f $FEE_PAYER ]; then
-    solana-keygen new --outfile $FEE_PAYER
+if [ ! -f $MANAGER ]; then
+    solana-keygen new --outfile $MANAGER
+fi
+if [ ! -f $CREATOR ]; then
+    solana-keygen new --outfile $CREATOR
 fi
 if [ ! -f $USER ]; then
     solana-keygen new --outfile $USER
@@ -17,21 +22,19 @@ if [ ! -f $VAULT ]; then
     solana-keygen new --outfile $VAULT
 fi
 
-# Derived Config
-TOKEN_NAMES=("dAnti" "dPro")
-ANTI_MINT_AUTHORITY=".config/"${TOKEN_NAMES[0]}"/id.json"
-PRO_MINT_AUTHORITY=".config/"${TOKEN_NAMES[1]}"/id.json"
-
 # Make derived wallets
-if [ ! -f $ANTI_MINT_AUTHORITY ]; then
-    solana-keygen new --outfile $ANTI_MINT_AUTHORITY
-fi
-if [ ! -f $PRO_MINT_AUTHORITY ]; then
-    solana-keygen new --outfile $PRO_MINT_AUTHORITY
-fi
+for TOKEN_NAME in "${TOKEN_NAMES[@]}"; do
+    MINT_AUTHORITY=".config/$TOKEN_NAME/id.json"
+
+    if [ ! -f "$MINT_AUTHORITY" ]; then
+        solana-keygen new --outfile "$MINT_AUTHORITY"
+    fi
+
+    # Store address in array
+    MINT_AUTHORITIES+=($(solana address -k "$MINT_AUTHORITY"))
+done
 
 # Addresses
-MINT_AUTHORITIES=($(solana address -k $ANTI_MINT_AUTHORITY) $(solana address -k $PRO_MINT_AUTHORITY))
 RECIPIENT=$(solana address -k $USER)
 VAULT=$(solana address -k $VAULT)
 AMOUNT=1000000
@@ -60,11 +63,14 @@ check_and_airdrop() {
 
 # Perform balance checks
 setup_root 1
-check_and_airdrop $(solana-keygen pubkey $FEE_PAYER) 10
+check_and_airdrop $(solana-keygen pubkey $MANAGER) 10
 for auth in "${MINT_AUTHORITIES[@]}"; do
     check_and_airdrop $auth 1
 done
+check_and_airdrop $MANAGER 1
+check_and_airdrop $CREATOR 1
 check_and_airdrop $VAULT 1
+check_and_airdrop $USER 1
 check_and_airdrop $RECIPIENT 1
 
 # Process tokens
@@ -77,7 +83,7 @@ for i in "${!TOKEN_NAMES[@]}"; do
 
     if [ ! -f $TOKEN_FILE ]; then
         # Create token & grab MINT_ADDRESS
-        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $FEE_PAYER $TOKEN_FILE)
+        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $MANAGER $TOKEN_FILE)
         MINT_ADDRESS=$(echo $stdout | awk '{print $3}')
 
         # Print the address
@@ -86,11 +92,11 @@ for i in "${!TOKEN_NAMES[@]}"; do
         if [ $TOKEN_NAME == "dAnti" ]; then
             echo "❗  ANTI_TOKEN_MINT="$MINT_ADDRESS
         else
-            echo "❗  PRO_TOKEN_MINT="$MINT_ADDRESS
+            echo "❗   PRO_TOKEN_MINT="$MINT_ADDRESS
         fi
 
         # Create token account to receive tokens
-        spl-token create-account $MINT_ADDRESS --owner $RECIPIENT --fee-payer $FEE_PAYER
+        spl-token create-account $MINT_ADDRESS --owner $RECIPIENT --fee-payer $MANAGER
 
         # Mint tokens to recipient
         spl-token mint $MINT_ADDRESS $AMOUNT --mint-authority $AUTHORITY_FILE --recipient-owner $RECIPIENT

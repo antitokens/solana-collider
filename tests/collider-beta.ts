@@ -28,17 +28,23 @@ let antiMintSecretKey: number[];
 let proMintSecretKey: number[];
 let vaultSecretKey: number[];
 let creatorSecretKey: number[];
+let managerSecretKey: number[];
+let userSecretKey: number[];
 let antiMintKeypair: Keypair;
 let proMintKeypair: Keypair;
 let antitokenMultisigKeypair: Keypair;
 let creatorKeypair: Keypair;
+let managerKeypair: Keypair;
+let userKeypair: Keypair;
 
 // Load keypairs before tests begin
 before(async () => {
   antiMintSecretKey = await loadJson<number[]>(".config/dAnti/token.json");
   proMintSecretKey = await loadJson<number[]>(".config/dPro/token.json");
   vaultSecretKey = await loadJson<number[]>(".config/dVault/id.json");
-  creatorSecretKey = await loadJson<number[]>(".config/user.json");
+  creatorSecretKey = await loadJson<number[]>(".config/dCreator/id.json");
+  managerSecretKey = await loadJson<number[]>(".config/dManager/id.json");
+  userSecretKey = await loadJson<number[]>(".config/dUser/id.json");
 
   antiMintKeypair = Keypair.fromSecretKey(Uint8Array.from(antiMintSecretKey), {
     skipValidation: false,
@@ -54,6 +60,14 @@ before(async () => {
   );
 
   creatorKeypair = Keypair.fromSecretKey(Uint8Array.from(creatorSecretKey), {
+    skipValidation: false,
+  });
+
+  managerKeypair = Keypair.fromSecretKey(Uint8Array.from(managerSecretKey), {
+    skipValidation: false,
+  });
+
+  userKeypair = Keypair.fromSecretKey(Uint8Array.from(userSecretKey), {
     skipValidation: false,
   });
 });
@@ -85,10 +99,10 @@ describe("collider-beta", () => {
 
   before(async () => {
     // Create test keypairs
-    manager = new Keypair();
+    manager = managerKeypair;
     creator = creatorKeypair;
-    user = new Keypair();
-    attacker = new Keypair();
+    user = userKeypair;
+    attacker = new Keypair(); // Randomly generated
 
     // Airdrop SOL to all accounts
     const airdropAmount = 10 * LAMPORTS_PER_SOL;
