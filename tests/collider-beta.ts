@@ -257,17 +257,20 @@ describe("collider-beta", () => {
       const startTime = "2025-02-01T00:00:00Z";
       const endTime = "2025-03-01T00:00:00Z";
 
-      console.log("🔍 State PDA:", statePda.toBase58());
-      console.log("🔍 Prediction PDA:", predictionPda.toBase58());
+      console.log("\n");
+      console.log("\t🔍 Deployer:", deployerKeypair.publicKey.toBase58());
+      console.log("\t🔍 State PDA:", statePda.toBase58());
+      console.log("\t🔍 Prediction PDA:", predictionPda.toBase58());
       console.log(
-        "🔍 Prediction $ANTI PDA:",
+        "\t🔍 Prediction $ANTI PDA:",
         predictionAntiTokenPda.toBase58()
       );
-      console.log("🔍 Prediction $PRO PDA:", predictionProTokenPda.toBase58());
-      console.log("🔍 $ANTI MINT:", antiMintKeypair.publicKey.toBase58());
-      console.log("🔍 $PRO MINT:", proMintKeypair.publicKey.toBase58());
-      console.log("🔍 VAULT:", antitokenMultisigKeypair.publicKey.toBase58());
-      console.log("🔍 CREATOR:", creator.publicKey.toBase58());
+      console.log("\t🔍 Prediction $PRO PDA:", predictionProTokenPda.toBase58());
+      console.log("\t🔍 $ANTI MINT:", antiMintKeypair.publicKey.toBase58());
+      console.log("\t🔍 $PRO MINT:", proMintKeypair.publicKey.toBase58());
+      console.log("\t🔍 VAULT:", antitokenMultisigKeypair.publicKey.toBase58());
+      console.log("\t🔍 CREATOR:", creator.publicKey.toBase58());
+      console.log("\n");
 
       await program.methods
         .createPrediction(
