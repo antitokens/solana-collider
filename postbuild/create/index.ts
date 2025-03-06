@@ -30,7 +30,7 @@ async function main() {
   const VAULT = new PublicKey(`${process.env.VAULT}`);
 
   // Load JSON files manually
-  const keypairFile = await loadJson<number[]>("./.config/user.json");
+  const keypairFile = await loadJson<number[]>("./.config/dCreator/id.json");
   const idl = await loadJson<Idl>("./target/idl/collider_beta.json");
 
   try {
@@ -55,23 +55,30 @@ async function main() {
       [Buffer.from("state")],
       program.programId
     );
-
     const state = await program.account.stateAccount.fetch(statePda);
+    console.log("🔍 State PDA:", statePda.toBase58());
 
     const [predictionPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("prediction"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
+    console.log("🔍 Prediction PDA:", predictionPda.toBase58());
 
     const [predictionAntiTokenPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("anti_token"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
+    console.log("🔍 Prediction $ANTI PDA:", predictionAntiTokenPda.toBase58());
 
     const [predictionProTokenPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("pro_token"), state.index.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
+    console.log("🔍 Prediction $PRO PDA:", predictionProTokenPda.toBase58());
+    console.log("🔍 $ANTI MINT:", ANTI_MINT.toBase58());
+    console.log("🔍 $PRO MINT:", PRO_MINT.toBase58());
+    console.log("🔍 VAULT:", VAULT.toBase58());
+    console.log("🔍 CREATOR:", creator.publicKey.toBase58());
 
     const prediction = {
       title: "Test Prediction",
