@@ -74,7 +74,7 @@ for i in "${!TOKEN_NAMES[@]}"; do
 
     if [ ! -f $TOKEN_NAME/id.json ]; then
         # Create token & grab MINT_ADDRESS
-        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $FEE_PAYER)
+        stdout=$(spl-token create-token --mint-authority $MINT_AUTHORITY --fee-payer $FEE_PAYER $TOKEN_NAME/token.json)
         MINT_ADDRESS=$(echo $stdout | awk '{print $3}')
 
         # Print the address
