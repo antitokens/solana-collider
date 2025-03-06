@@ -16,6 +16,40 @@ import {
   getAccount,
 } from "@solana/spl-token";
 import { expect } from "chai";
+import fs from "fs/promises";
+
+async function loadJson<T>(path: string): Promise<T> {
+  const data = await fs.readFile(path, "utf8");
+  return JSON.parse(data) as T;
+}
+
+// Declare variables to hold keypair data and initialized keypairs
+let antiMintSecretKey: number[];
+let proMintSecretKey: number[];
+let vaultSecretKey: number[];
+let antiMintKeypair: Keypair;
+let proMintKeypair: Keypair;
+let antitokenMultisigKeypair: Keypair;
+
+// Load keypairs before tests begin
+before(async () => {
+  antiMintSecretKey = await loadJson<number[]>("./dAnti/token.json");
+  proMintSecretKey = await loadJson<number[]>("./dPro/token.json");
+  vaultSecretKey = await loadJson<number[]>("./dVault/id.json");
+
+  antiMintKeypair = Keypair.fromSecretKey(Uint8Array.from(antiMintSecretKey), {
+    skipValidation: false,
+  });
+
+  proMintKeypair = Keypair.fromSecretKey(Uint8Array.from(proMintSecretKey), {
+    skipValidation: false,
+  });
+
+  antitokenMultisigKeypair = Keypair.fromSecretKey(
+    Uint8Array.from(vaultSecretKey),
+    { skipValidation: false }
+  );
+});
 
 describe("collider-beta", () => {
   // Configure the client to use the local cluster
@@ -23,37 +57,6 @@ describe("collider-beta", () => {
   anchor.setProvider(provider);
 
   const program = anchor.workspace.ColliderBeta as Program<ColliderBeta & Idl>;
-
-  // Fixed keypairs for tests
-  const antiMintKeypair = Keypair.fromSecretKey(
-    Uint8Array.from([
-      199, 248, 4, 119, 179, 209, 7, 251, 29, 104, 140, 5, 104, 142, 70, 118,
-      124, 30, 234, 100, 93, 56, 177, 105, 86, 95, 183, 187, 77, 30, 146, 248,
-      75, 216, 70, 100, 69, 123, 252, 137, 35, 116, 37, 57, 70, 222, 220, 169,
-      103, 132, 121, 48, 61, 34, 121, 247, 62, 62, 200, 231, 57, 4, 93, 124,
-    ]),
-    { skipValidation: false }
-  );
-
-  const proMintKeypair = Keypair.fromSecretKey(
-    Uint8Array.from([
-      154, 211, 254, 243, 5, 250, 22, 77, 89, 239, 46, 250, 57, 45, 194, 24, 18,
-      196, 39, 200, 37, 184, 155, 255, 83, 172, 147, 99, 16, 55, 162, 179, 83,
-      14, 159, 160, 141, 181, 31, 188, 126, 1, 187, 152, 138, 51, 199, 48, 236,
-      210, 29, 243, 81, 147, 101, 154, 33, 34, 191, 159, 45, 210, 243, 128,
-    ]),
-    { skipValidation: false }
-  );
-
-  const antitokenMultisigKeypair = Keypair.fromSecretKey(
-    Uint8Array.from([
-      12, 63, 179, 210, 90, 185, 236, 243, 1, 37, 19, 188, 76, 159, 88, 72, 82,
-      172, 171, 255, 220, 221, 248, 84, 222, 236, 124, 122, 17, 11, 68, 197,
-      101, 195, 172, 244, 31, 202, 21, 241, 93, 231, 125, 235, 92, 231, 50, 179,
-      127, 190, 107, 208, 159, 17, 151, 136, 105, 43, 164, 77, 45, 59, 132, 23,
-    ]),
-    { skipValidation: false }
-  );
 
   let manager: Keypair;
   let creator: Keypair;
@@ -227,9 +230,16 @@ describe("collider-beta", () => {
 
       console.log("🔍 State PDA:", statePda.toBase58());
       console.log("🔍 Prediction PDA:", predictionPda.toBase58());
-      console.log("🔍 Prediction $ANTI PDA:", predictionAntiTokenPda.toBase58());
+      console.log(
+        "🔍 Prediction $ANTI PDA:",
+        predictionAntiTokenPda.toBase58()
+      );
       console.log("🔍 Prediction $PRO PDA:", predictionProTokenPda.toBase58());
-
+      console.log("🔍 $ANTI MINT:", antiMintKeypair.publicKey.toBase58());
+      console.log("🔍 $PRO MINT:", proMintKeypair.publicKey.toBase58());
+      console.log("🔍 VAULT:", antitokenMultisigKeypair.publicKey.toBase58());
+      console.log("🔍 CREATOR:", creator.publicKey.toBase58());
+      
       await program.methods
         .createPrediction(
           "Test Prediction",
