@@ -126,9 +126,9 @@ install_rust() {
     fi
 
     if ! command -v rustup >/dev/null 2>&1; then
-        log_info "rustup not found. Installing rustup ⏳"
+        log_info "Rustup not found. Installing Rustup ⏳"
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        log_info "rustup installation complete"
+        log_info "Rustup installation complete"
     fi
 
     if command -v rustc >/dev/null 2>&1; then
@@ -265,11 +265,12 @@ install_nvm_and_node() {
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
     fi
 
-
     export NVM_DIR="$HOME/.nvm"
     # Immediately source nvm and bash_completion for the current session
     if [ -s "$NVM_DIR/nvm.sh" ]; then
-        unset PREFIX
+        if [[ "$os" == "Darwin" ]]; then
+            unset PREFIX
+        fi
         . "$NVM_DIR/nvm.sh"
     else
         log_error "NVM not found. Ensure it is installed correctly"
@@ -279,7 +280,7 @@ install_nvm_and_node() {
     if [ -s "$NVM_DIR/bash_completion" ]; then
         . "$NVM_DIR/bash_completion"
     fi
-    
+
     if command -v node >/dev/null 2>&1; then
         local current_node
         current_node=$(node --version)
