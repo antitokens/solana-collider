@@ -125,6 +125,12 @@ install_rust() {
         return
     fi
 
+    if ! command -v rustup >/dev/null 2>&1; then
+        log_info "Rustup not found. Installing Rustup ⏳"
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        log_info "Rustup installation complete"
+    fi
+
     if command -v rustc >/dev/null 2>&1; then
         local current_version
         current_version=$(rustc --version | cut -d' ' -f2)
@@ -137,8 +143,6 @@ install_rust() {
         fi
     else
         log_info "Installing Rust ⏳"
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        log_info "Rust installation complete"
         log_info "Installing specific Rust version $target_version ⏳"
         rustup default "$target_version"
     fi
@@ -195,11 +199,7 @@ install_solana_cli() {
         log_error "Solana CLI installation failed"
     fi
 
-    if [[ "$os" == "Linux" ]]; then
-        export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-    elif [[ "$os" == "Darwin" ]]; then
-        echo 'export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"' >>~/.zshrc
-    fi
+    export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 
     echo ""
 }
@@ -268,9 +268,12 @@ install_nvm_and_node() {
     export NVM_DIR="$HOME/.nvm"
     # Immediately source nvm and bash_completion for the current session
     if [ -s "$NVM_DIR/nvm.sh" ]; then
+        if [[ "$os" == "Darwin" ]]; then
+            unset PREFIX
+        fi
         . "$NVM_DIR/nvm.sh"
     else
-        log_error "nvm not found. Ensure it is installed correctly"
+        log_error "NVM not found. Ensure it is installed correctly"
         return
     fi
 
@@ -359,17 +362,25 @@ ensure_nvm_in_shell() {
     fi
 
     local shell_rc=""
-    if [[ "$SHELL" == *"zsh"* ]]; then
+    local shell_name=""
+    if [[ "$SHELL" == *"zsh" ]]; then
         shell_rc="$HOME/.zshrc"
-    elif [[ "$SHELL" == *"bash"* ]]; then
-        shell_rc="$HOME/.bashrc"
+        shell_name="zsh"
+    elif [[ "$SHELL" == *"bash" ]]; then
+        if [[ -f "$HOME/.bash_profile" ]]; then
+            shell_rc="$HOME/.bash_profile"
+        else
+            shell_rc="$HOME/.bashrc"
+        fi
+        shell_name="bash"
     else
         shell_rc="$HOME/.profile"
+        shell_name="unknown"
     fi
 
     if [ -f "$shell_rc" ]; then
         if ! grep -q 'export NVM_DIR="$HOME/.nvm"' "$shell_rc"; then
-            log_info "Appending nvm initialisation to $shell_rc"
+            log_info "Appending nvm initialisation to $shell_name"
             {
                 echo ''
                 echo 'export NVM_DIR="$HOME/.nvm"'
