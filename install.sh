@@ -125,6 +125,12 @@ install_rust() {
         return
     fi
 
+    if ! command -v rustup >/dev/null 2>&1; then
+        log_info "rustup not found. Installing rustup ⏳"
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        log_info "rustup installation complete"
+    fi
+
     if command -v rustc >/dev/null 2>&1; then
         local current_version
         current_version=$(rustc --version | cut -d' ' -f2)
@@ -137,8 +143,6 @@ install_rust() {
         fi
     else
         log_info "Installing Rust ⏳"
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        log_info "Rust installation complete"
         log_info "Installing specific Rust version $target_version ⏳"
         rustup default "$target_version"
     fi
