@@ -199,11 +199,7 @@ install_solana_cli() {
         log_error "Solana CLI installation failed"
     fi
 
-    if [[ "$os" == "Linux" ]]; then
-        export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-    elif [[ "$os" == "Darwin" ]]; then
-        echo 'export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"' >>~/.zshrc
-    fi
+    export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 
     echo ""
 }
@@ -269,19 +265,21 @@ install_nvm_and_node() {
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
     fi
 
+
     export NVM_DIR="$HOME/.nvm"
     # Immediately source nvm and bash_completion for the current session
     if [ -s "$NVM_DIR/nvm.sh" ]; then
+        unset PREFIX
         . "$NVM_DIR/nvm.sh"
     else
-        log_error "nvm not found. Ensure it is installed correctly"
+        log_error "NVM not found. Ensure it is installed correctly"
         return
     fi
 
     if [ -s "$NVM_DIR/bash_completion" ]; then
         . "$NVM_DIR/bash_completion"
     fi
-
+    
     if command -v node >/dev/null 2>&1; then
         local current_node
         current_node=$(node --version)
@@ -363,17 +361,25 @@ ensure_nvm_in_shell() {
     fi
 
     local shell_rc=""
-    if [[ "$SHELL" == *"zsh"* ]]; then
+    local shell_name=""
+    if [[ "$SHELL" == *"zsh" ]]; then
         shell_rc="$HOME/.zshrc"
-    elif [[ "$SHELL" == *"bash"* ]]; then
-        shell_rc="$HOME/.bashrc"
+        shell_name="zsh"
+    elif [[ "$SHELL" == *"bash" ]]; then
+        if [[ -f "$HOME/.bash_profile" ]]; then
+            shell_rc="$HOME/.bash_profile"
+        else
+            shell_rc="$HOME/.bashrc"
+        fi
+        shell_name="bash"
     else
         shell_rc="$HOME/.profile"
+        shell_name="unknown"
     fi
 
     if [ -f "$shell_rc" ]; then
         if ! grep -q 'export NVM_DIR="$HOME/.nvm"' "$shell_rc"; then
-            log_info "Appending nvm initialisation to $shell_rc"
+            log_info "Appending nvm initialisation to $shell_name"
             {
                 echo ''
                 echo 'export NVM_DIR="$HOME/.nvm"'
