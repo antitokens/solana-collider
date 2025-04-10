@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as anchor from "@coral-xyz/anchor";
 import { Program, Idl } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { ColliderBeta } from "../../target/types/collider_beta.ts";
 import * as dotenv from "dotenv";
 
