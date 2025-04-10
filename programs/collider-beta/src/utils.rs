@@ -20,11 +20,11 @@ pub const TRUTH_BASIS: u64 = 100_000; // Truth limit = [0, 1]
 pub const FLOAT_BASIS: u64 = 10_000; // For fixed-point arithmetic up to 0.01
 pub const MIN_DEPOSIT_AMOUNT: u64 = 10_000; // 1 token minimum deposit
 pub const ANTITOKEN_MULTISIG: Pubkey =
-    solana_program::pubkey!("7rFEa4g8UZs7eBBoq66FmLeobtb81dfCPx2Hmt61kJ5t");
+    solana_program::pubkey!("7JZwEe2zsYjMQWEw7guWibRopdrQMZ8P2Y9XZpDxME46");
 pub const ANTI_MINT_ADDRESS: Pubkey =
-    solana_program::pubkey!("674rRAKuyAizM6tWKLpo8zDqAtvxYS7ce6DoGBfocmrT");
+    solana_program::pubkey!("FgiMzizHd1YnVeXa8fvVFu6Yz5BGathLRnQPftK8utob");
 pub const PRO_MINT_ADDRESS: Pubkey =
-    solana_program::pubkey!("6bDmnBGtGo9pb2vhVkrzQD9uHYcYpBCCSgU61534MyTm");
+    solana_program::pubkey!("7EJwNesyF8JM6RGGuVdZW6fq7PwGQvfh6GUmawxnqYEL");
 pub const PROGRAM_ID: Pubkey =
     solana_program::pubkey!("C6BpSPd2mvtCP9tXQDDFAPP1NXLGDhQVmYMwsS9tkZUK");
 
