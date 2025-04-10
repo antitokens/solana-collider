@@ -2,7 +2,7 @@
 seeds = false
 
 [programs.localnet]
-collider_beta = "3zKqVU2RiWXPe3bvTjQ869UF6qng2LoGBKEFmUqh8BzA"
+collider_beta = "C6BpSPd2mvtCP9tXQDDFAPP1NXLGDhQVmYMwsS9tkZUK"
 
 [registry]
 url = "https://anchor.projectserum.com"
