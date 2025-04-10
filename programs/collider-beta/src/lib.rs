@@ -87,7 +87,6 @@ pub mod collider_beta {
         start_time: String,
         end_time: String,
         etc: Option<Vec<u8>>,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
     ) -> Result<()> {
         create::create(
             ctx,
@@ -96,7 +95,6 @@ pub mod collider_beta {
             start_time,
             end_time,
             etc,
-            unix_timestamp, // CRITICAL: Remove line in production!
         )
     }
 
@@ -105,14 +103,12 @@ pub mod collider_beta {
         index: u64,
         anti: u64,
         pro: u64,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
     ) -> Result<()> {
         deposit::deposit(
             ctx,
             index,
             anti,
             pro,
-            unix_timestamp, // CRITICAL: Remove line in production!
         )
     }
 
@@ -120,13 +116,11 @@ pub mod collider_beta {
         ctx: Context<EqualiseTokens>,
         index: u64,
         truth: Vec<u64>,
-        unix_timestamp: Option<i64>, // CRITICAL: Remove line in production!
     ) -> Result<()> {
         equalise::equalise(
             ctx,
             index,
             truth,
-            unix_timestamp, // CRITICAL: Remove line in production!
         )
     }
 

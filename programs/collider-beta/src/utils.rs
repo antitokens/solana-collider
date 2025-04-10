@@ -26,7 +26,7 @@ pub const ANTI_MINT_ADDRESS: Pubkey =
 pub const PRO_MINT_ADDRESS: Pubkey =
     solana_program::pubkey!("6bDmnBGtGo9pb2vhVkrzQD9uHYcYpBCCSgU61534MyTm");
 pub const PROGRAM_ID: Pubkey =
-    solana_program::pubkey!("3zKqVU2RiWXPe3bvTjQ869UF6qng2LoGBKEFmUqh8BzA");
+    solana_program::pubkey!("C6BpSPd2mvtCP9tXQDDFAPP1NXLGDhQVmYMwsS9tkZUK");
 
 #[cfg(not(feature = "no-entrypoint"))]
 use solana_security_txt::security_txt;
