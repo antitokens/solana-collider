@@ -3,6 +3,9 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program, Idl } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { ColliderBeta } from "../../target/types/collider_beta.ts";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 async function loadJson<T>(path: string): Promise<T> {
   const data = await fs.readFile(path, "utf8");
