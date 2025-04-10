@@ -11,9 +11,7 @@ async function loadJson<T>(path: string): Promise<T> {
 
 async function main() {
   // Declare program ID
-  const programId = new PublicKey(
-    "3zKqVU2RiWXPe3bvTjQ869UF6qng2LoGBKEFmUqh8BzA"
-  );
+  const programId = new PublicKey(process.env.PROGRAM_ID || "");
 
   // Load JSON files manually
   const keypairFile = await loadJson<number[]>("./.config/id.json");
